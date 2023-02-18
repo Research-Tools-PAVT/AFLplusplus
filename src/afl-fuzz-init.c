@@ -2582,6 +2582,7 @@ void setup_testcase_shmem(afl_state_t *afl) {
   DEBUGF("Setting up shared memory for fuzzing with input via sharedmem...\n");
 
   afl->shm_fuzz = ck_alloc(sizeof(sharedmem_t));
+  afl->shm_cfreq = ck_alloc(sizeof(sharedmem_t));
 
   // we need to set the non-instrumented mode to not overwrite the SHM_ENV_VAR
   u8 *map = afl_shm_init(afl->shm_fuzz, MAX_FILE + sizeof(u32), 1);
