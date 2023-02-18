@@ -388,6 +388,10 @@
 
 #define SHM_FUZZ_ENV_VAR "__AFL_SHM_FUZZ_ID"
 
+#ifdef FUZZMAX
+   #define SHM_CFREQ_ENV_VAR "__AFL_SHM_CFREQ_ID"
+#endif 
+
 /* Other less interesting, internal-only variables. */
 
 #define CLANG_ENV_VAR "__AFL_CLANG_MODE"

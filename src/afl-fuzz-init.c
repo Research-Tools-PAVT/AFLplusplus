@@ -2579,6 +2579,7 @@ static void handle_skipreq(int sig) {
 /* Setup shared map for fuzzing with input via sharedmem */
 
 void setup_testcase_shmem(afl_state_t *afl) {
+  DEBUGF("Setting up shared memory for fuzzing with input via sharedmem...\n");
 
   afl->shm_fuzz = ck_alloc(sizeof(sharedmem_t));
 
@@ -2599,6 +2600,17 @@ void setup_testcase_shmem(afl_state_t *afl) {
   afl->fsrv.shmem_fuzz_len = (u32 *)map;
   afl->fsrv.shmem_fuzz = map + sizeof(u32);
 
+#ifdef FUZZMAX
+  u8 *cfmap = afl_shm_init(afl->shm_cfreq, sizeof(u32), 0);
+  if (!cfmap) { FATAL("BUG: Zero return from afl_shm_init."); }
+  else
+    DEBUGF("New shared memory created for coverage feedback (id=%d).\n", afl->shm_cfreq->shm_id);
+
+  u8 *shm_cfreq_str = alloc_printf("%d", afl->shm_cfreq->shm_id);
+  setenv(SHM_CFREQ_ENV_VAR, shm_cfreq_str, 1);
+  
+  afl->fsrv.shmem_cfreq = cfmap;
+#endif
 }
 
 /* Do a PATH search and find target binary to see that it exists and

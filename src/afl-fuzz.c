@@ -48,7 +48,13 @@ extern u64 time_spent_working;
 static void at_exit() {
 
   s32   i, pid1 = 0, pid2 = 0, pgrp = -1;
+
+#ifdef FUZZMAX
+  char *list[5] = {SHM_ENV_VAR, SHM_FUZZ_ENV_VAR, SHM_CFREQ_ENV_VAR, CMPLOG_SHM_ENV_VAR, NULL};
+#else
   char *list[4] = {SHM_ENV_VAR, SHM_FUZZ_ENV_VAR, CMPLOG_SHM_ENV_VAR, NULL};
+#endif
+
   char *ptr;
 
   ptr = getenv("__AFL_TARGET_PID2");

@@ -2256,7 +2256,11 @@ int main(int argc, char **argv, char **envp) {
          "afl-cc" VERSION cRST
          " by Michal Zalewski, Laszlo Szekeres, Marc Heuse - mode: %s-%s\n",
          compiler_mode_string[compiler_mode], ptr);
-
+    #ifdef FUZZMAX
+      SAYF(cCYA "\t[*] afl-cc built with FUZZ MAX support\n");
+    #else
+      SAYF(cCYA "\t[*] afl-cc not built with FUZZ MAX support\n");
+    #endif
   }
 
   if (!be_quiet && (compiler_mode == GCC || compiler_mode == CLANG)) {

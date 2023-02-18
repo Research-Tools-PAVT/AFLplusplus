@@ -41,6 +41,11 @@ ARCH = $(shell uname -m)
 
 $(info [*] Compiling afl++ for OS $(SYS) on ARCH $(ARCH))
 
+ifdef WITH_FUZZ_MAX
+	CFLAGS += -DFUZZMAX
+	CXXFLAGS += -DFUZZMAX
+endif
+
 ifdef NO_SPLICING
   override CFLAGS_OPT += -DNO_SPLICING
 endif
