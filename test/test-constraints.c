@@ -5,7 +5,7 @@
 
 #include <sys/shm.h>
 
-#define SHM_CFREQ_ENV_VAR "__AFL_SHM_CFREQ_ID"
+#define SHM_FUZZMAX_ENV_VAR "__AFL_SHM_FUZZMAX_ID"
 
 __AFL_FUZZ_INIT();
 
@@ -13,11 +13,11 @@ int main(void) {
   ssize_t bytes_read;
 
 #ifdef FUZZMAX
-  char    *id_cfreq_str = getenv(SHM_CFREQ_ENV_VAR);
-  uint32_t shm_cfreq_id = atoi(id_cfreq_str);
-  uint8_t *__afl_cfreq_ptr = (uint8_t *)shmat(shm_cfreq_id, NULL, 0);
+  char    *id_fuzzmax_str = getenv(SHM_FUZZMAX_ENV_VAR);
+  uint32_t shm_fuzzmax_id = atoi(id_fuzzmax_str);
+  uint8_t *__afl_fuzzmax_ptr = (uint8_t *)shmat(shm_fuzzmax_id, NULL, 0);
 
-  if (!__afl_cfreq_ptr) abort();
+  if (!__afl_fuzzmax_ptr) abort();
 #endif
 
   __AFL_INIT();
@@ -33,9 +33,9 @@ int main(void) {
     uint8_t counter = 0;
     if (x > y) ++counter;
     if (x == 10 && y < 20) ++counter;
-    
+
 #ifdef FUZZMAX
-    *__afl_cfreq_ptr = counter;
+    *__afl_fuzzmax_ptr = counter;
 #endif
 
     if (counter == 2) abort();
