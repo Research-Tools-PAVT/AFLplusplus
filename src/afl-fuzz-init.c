@@ -2612,6 +2612,7 @@ void setup_testcase_shmem(afl_state_t *afl) {
 
   u8 *shm_cfreq_str = alloc_printf("%d", afl->shm_cfreq->shm_id);
   setenv(SHM_CFREQ_ENV_VAR, shm_cfreq_str, 1);
+  ck_free(shm_cfreq_str);
   
   afl->fsrv.shmem_cfreq = cfmap;
 #endif
