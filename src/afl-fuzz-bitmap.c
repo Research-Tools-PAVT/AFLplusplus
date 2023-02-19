@@ -462,7 +462,13 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
   u8  new_bits = 0, keeping = 0, res, classified = 0, is_timeout = 0;
   s32 fd;
   u64 cksum = 0;
-
+   
+  #ifdef FUZZMAX
+   /* Trying to check the value in shm_cfreq shared memory  */
+   u8 *shm_cfreq = (afl->shm_cfreq)->map;
+   DEBUGF("shm_cfreq: %u\n", *shm_cfreq);
+  #endif
+   
   /* Update path frequency. */
 
   /* Generating a hash on every input is super expensive. Bad idea and should
