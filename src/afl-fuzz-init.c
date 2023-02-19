@@ -2584,7 +2584,8 @@ void setup_testcase_shmem(afl_state_t *afl) {
   afl->shm_fuzz = ck_alloc(sizeof(sharedmem_t));
 
 #ifdef FUZZMAX
-  afl->shm_cfreq = ck_alloc(sizeof(sharedmem_t));
+  afl->shm_fuzzmax = ck_alloc(sizeof(sharedmem_t));
+  afl->shm_fuzzmax->fuzzmax_mode = 1;
 #endif
   
   // we need to set the non-instrumented mode to not overwrite the SHM_ENV_VAR
@@ -2605,16 +2606,16 @@ void setup_testcase_shmem(afl_state_t *afl) {
   afl->fsrv.shmem_fuzz = map + sizeof(u32);
 
 #ifdef FUZZMAX
-  u8 *cfmap = afl_shm_init(afl->shm_cfreq, sizeof(u32), 0);
+  u8 *cfmap = afl_shm_init(afl->shm_fuzzmax, sizeof(u32), 0);
   if (!cfmap) { FATAL("BUG: Zero return from afl_shm_init."); }
   else
-    DEBUGF("New shared memory created for coverage feedback (id=%d).\n", afl->shm_cfreq->shm_id);
+    DEBUGF("New shared memory created for coverage feedback (id=%d).\n", afl->shm_fuzzmax->shm_id);
 
-  u8 *shm_cfreq_str = alloc_printf("%d", afl->shm_cfreq->shm_id);
-  setenv(SHM_CFREQ_ENV_VAR, shm_cfreq_str, 1);
-  ck_free(shm_cfreq_str);
+  u8 *shm_fuzzmax_str = alloc_printf("%d", afl->shm_fuzzmax->shm_id);
+  setenv(SHM_FUZZMAX_ENV_VAR, shm_fuzzmax_str, 1);
+  ck_free(shm_fuzzmax_str);
   
-  afl->fsrv.shmem_cfreq = cfmap;
+  afl->fsrv.shmem_fuzzmax = cfmap;
 #endif
 }
 

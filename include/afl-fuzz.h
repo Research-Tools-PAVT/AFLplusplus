@@ -431,9 +431,9 @@ typedef struct afl_state {
   afl_forkserver_t fsrv;
   sharedmem_t      shm;
   sharedmem_t     *shm_fuzz;
-  #ifdef FUZZMAX
-    sharedmem_t *shm_cfreq;
-  #endif
+#ifdef FUZZMAX
+  sharedmem_t *shm_fuzzmax;
+#endif
   afl_env_vars_t   afl_env;
 
   char **argv;                                            /* argv if needed */

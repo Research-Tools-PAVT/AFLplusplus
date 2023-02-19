@@ -389,7 +389,7 @@
 #define SHM_FUZZ_ENV_VAR "__AFL_SHM_FUZZ_ID"
 
 #ifdef FUZZMAX
-   #define SHM_CFREQ_ENV_VAR "__AFL_SHM_CFREQ_ID"
+   #define SHM_FUZZMAX_ENV_VAR "__AFL_SHM_FUZZMAX_ID"
 #endif 
 
 /* Other less interesting, internal-only variables. */

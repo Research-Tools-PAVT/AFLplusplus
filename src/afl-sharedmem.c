@@ -72,7 +72,13 @@ void afl_shm_deinit(sharedmem_t *shm) {
 
     unsetenv(SHM_FUZZ_ENV_VAR);
 
-  } else {
+  }
+#ifdef FUZZMAX
+  else if (shm->fuzzmax_mode) {
+    unsetenv(SHM_FUZZMAX_ENV_VAR);
+  }
+#endif
+  else {
 
     unsetenv(SHM_ENV_VAR);
 

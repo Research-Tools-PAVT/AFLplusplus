@@ -52,6 +52,10 @@ typedef struct sharedmem {
 
   int             cmplog_mode;
   int             shmemfuzz_mode;
+
+#ifdef FUZZMAX
+  int             fuzzmax_mode;
+#endif
   struct cmp_map *cmp_map;
 
 } sharedmem_t;
