@@ -471,8 +471,10 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
    
   #ifdef FUZZMAX
    /* Trying to check the value in shm_cfreq shared memory  */
-   u8 *shm_fuzzmax = (afl->shm_fuzzmax)->map;
-   DEBUGF("shm_fuzzmax: %u\n", *shm_fuzzmax);
+   if(afl->debug) {
+    u8 *shm_fuzzmax = (afl->shm_fuzzmax)->map;
+    DEBUGF("shm_fuzzmax: %u\n", *shm_fuzzmax);
+  }
   #endif
    
   /* Update path frequency. */
