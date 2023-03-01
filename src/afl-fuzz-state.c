@@ -565,11 +565,14 @@ void read_afl_environment(afl_state_t *afl, char **envp) {
 
             }
 
-          } else if (!strncmp(env, "AFL_FUZZMAX_ONLY",
+          }
+#ifdef FUZZMAX
+          else if (!strncmp(env, "AFL_FUZZMAX_ONLY",
                               afl_environment_variable_len)) {
             afl->afl_env.afl_fuzzmax_only =
                 get_afl_env(afl_environment_variables[i]) ? 1 : 0;
           }
+#endif
 
         } else {
 

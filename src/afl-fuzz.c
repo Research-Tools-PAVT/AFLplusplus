@@ -318,7 +318,9 @@ static void usage(u8 *argv0, int more_help) {
       "                      afl-clang-lto/afl-gcc-fast target\n"
       "AFL_PERSISTENT: enforce persistent mode (if __AFL_LOOP is in a shared lib\n"
       "AFL_DEFER_FORKSRV: enforced deferred forkserver (__AFL_INIT is in a .so)\n"
+#ifdef FUZZMAX
       "AFL_FUZZMAX_ONLY: enforce use of fuzzmax mode only for power schedules\n"
+#endif
       "\n"
     );
 
@@ -560,8 +562,6 @@ int main(int argc, char **argv_orig, char **envp) {
 #ifdef FUZZMAX
   afl->shm_fuzzmax = ck_alloc(sizeof(sharedmem_t));
   afl->shm_fuzzmax->fuzzmax_mode = 1;
-//  if (getenv("AFL_FUZZMAX_ONLY")) afl->shm_fuzzmax->fuzzmax_only = 1;
-//  else afl->shm_fuzzmax->fuzzmax_only = 0;
   
   u8 *cfmap = afl_shm_init(afl->shm_fuzzmax, sizeof(u32), 0);
   if (!cfmap) { FATAL("BUG: Zero return from afl_shm_init."); }
