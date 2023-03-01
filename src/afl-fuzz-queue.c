@@ -832,7 +832,7 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   u32 perf_score = 100;
 
 #ifdef FUZZMAX
-  if (afl->fuzzmax_only) {
+  if (afl->afl_env.afl_fuzzmax_only) {
     perf_score = q->fuzzmax_counter;
     return perf_score;
   }
