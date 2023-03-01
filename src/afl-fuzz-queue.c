@@ -831,6 +831,13 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   u32 avg_bitmap_size = afl->total_bitmap_size / bitmap_entries;
   u32 perf_score = 100;
 
+#ifdef FUZZMAX
+  if (afl->fuzzmax_only) {
+    perf_score = q->fuzzmax_counter;
+    return perf_score;
+  }
+#endif
+  
   /* Adjust score based on execution speed of this path, compared to the
      global average. Multiplier ranges from 0.1x to 3x. Fast inputs are
      less expensive to fuzz, so we're giving them more air time. */
@@ -1096,6 +1103,11 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
     perf_score = 1;
 
   }
+  
+#ifdef FUZZMAX
+  perf_score += 10 * q->fuzzmax_counter;
+  DEBUGF("TEST ID: %u :: fuzzmax_counter: %u, perf_score: %u\n", q->id, q->fuzzmax_counter, perf_score);
+#endif
 
   /* Make sure that we don't go over limit. */
 
