@@ -32,6 +32,9 @@
 #include <stdbool.h>
 
 #include "types.h"
+#ifdef FUZZMAX
+  #include "fuzzmax.h"
+#endif
 
 #ifdef __linux__
 /**
@@ -146,7 +149,7 @@ typedef struct afl_forkserver {
   char *cmplog_binary;                  /* the name of the cmplog binary    */
 
 #ifdef FUZZMAX
-  u8 *shmem_fuzzmax;
+  fuzzmax_shmem_t *shmem_fuzzmax;
 #endif
 
   /* persistent mode replay functionality */

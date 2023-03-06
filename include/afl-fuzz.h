@@ -76,6 +76,10 @@
 #include <sys/file.h>
 #include <sys/types.h>
 
+#ifdef FUZZMAX
+  #include "fuzzmax.h"
+#endif
+
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || \
     defined(__NetBSD__) || defined(__DragonFly__)
   #include <sys/sysctl.h>
@@ -438,7 +442,7 @@ typedef struct afl_state {
   sharedmem_t      shm;
   sharedmem_t     *shm_fuzz;
 #ifdef FUZZMAX
-  sharedmem_t *shm_fuzzmax;
+  fuzzmax_shmem_t *shm_fuzzmax;
   u8 fuzzmax_only;
 #endif
   afl_env_vars_t   afl_env;
