@@ -547,9 +547,9 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   q->testcase_buf = NULL;
   q->mother = afl->queue_cur;
 
-//#ifdef FUZZMAX
-//  q->fuzzmax_counter = *(afl->shm_fuzzmax->map);
-//#endif
+#ifdef FUZZMAX
+  q->fuzzmax_counter = afl->shm_fuzzmax->fuzzmax_counter;
+#endif
 
 #ifdef INTROSPECTION
   q->bitsmap_size = afl->bitsmap_size;

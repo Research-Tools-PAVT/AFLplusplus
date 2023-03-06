@@ -560,19 +560,12 @@ int main(int argc, char **argv_orig, char **envp) {
   afl->shmem_testcase_mode = 1;  // we always try to perform shmem fuzzing
   
 #ifdef FUZZMAX
-  afl->shm_fuzzmax = ck_alloc(sizeof(fuzzmax_shmem_t));
-//  afl->shm_fuzzmax->fuzzmax_mode = 1;
-  
-  fuzzmax_shmem_t *cfmap = afl_fuzzmax_shm_init(afl->shm_fuzzmax);
-  if (!cfmap) { FATAL("BUG: Zero return from afl_shm_init."); }
+  afl->shm_fuzzmax = afl_fuzzmax_shm_init();
+  if (!afl->shm_fuzzmax) { FATAL("BUG: Zero return from afl_shm_init."); }
   else
-    DEBUGF("New shared memory created for coverage feedback (id=%d).\n", afl->shm_fuzzmax->shm_id);
+    DEBUGF("New shared memory created for coverage feedback (id=%d).\n", afl->shm_fuzzmax->shm_id);  
   
-//  u8 *shm_fuzzmax_str = alloc_printf("%d", afl->shm_fuzzmax->shm_id);
-//  setenv(SHM_FUZZMAX_ENV_VAR, shm_fuzzmax_str, 1);
-//  ck_free(shm_fuzzmax_str);
-  
-  afl->fsrv.shmem_fuzzmax = cfmap;
+  afl->fsrv.shmem_fuzzmax = afl->shm_fuzzmax;
 #endif
 
   while (
@@ -2790,7 +2783,7 @@ stop_fuzzing:
   if (afl->shm_fuzzmax) {
     DEBUGF("FUZZMAX: Deinitializing shared memory (fuzzmax)\n");
     afl_fuzzmax_shm_deinit(afl->shm_fuzzmax);
-    ck_free(afl->shm_fuzzmax);
+    afl->shm_fuzzmax = NULL;
   }
 #endif
   

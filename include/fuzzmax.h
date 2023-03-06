@@ -17,7 +17,7 @@ typedef struct fuzzmax_shmem {
 } fuzzmax_shmem_t;
 
 void update_fuzzmax_shmem(fuzzmax_shmem_t *__afl_fuzzmax_ptr, u32* T, u32 npreds);
-fuzzmax_shmem_t  *afl_fuzzmax_shm_init(fuzzmax_shmem_t * shm);
+fuzzmax_shmem_t  *afl_fuzzmax_shm_init();
 void afl_fuzzmax_shm_deinit(fuzzmax_shmem_t *shm);
 
 #endif  // _AFL_FUZZMAX_H
