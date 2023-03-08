@@ -470,9 +470,13 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
   u64 cksum = 0;
    
   #ifdef FUZZMAX
-   /* Trying to check the value in shm_cfreq shared memory  */
+   /* Trying to check the value sent by the fuzz target to the fuzzmax shared memory  */
    if(afl->debug) {
     u32 shm_fuzzmax = (afl->shm_fuzzmax)->fuzzmax_counter;
+    for (size_t i = 0; i < 24; i++) {
+      fprintf(stderr, "%u ", (afl->shm_fuzzmax)->histogram[i]);
+    }
+    fprintf(stderr, " ... \n");
     DEBUGF("shm_fuzzmax counter: %u\n", shm_fuzzmax);
   }
   #endif

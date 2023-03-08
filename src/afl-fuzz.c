@@ -561,11 +561,11 @@ int main(int argc, char **argv_orig, char **envp) {
   
 #ifdef FUZZMAX
   afl->shm_fuzzmax = afl_fuzzmax_shm_init();
+  afl->fsrv.shmem_fuzzmax = afl->shm_fuzzmax;
   if (!afl->shm_fuzzmax) { FATAL("BUG: Zero return from afl_shm_init."); }
   else
     DEBUGF("New shared memory created for coverage feedback (id=%d).\n", afl->shm_fuzzmax->shm_id);  
   
-  afl->fsrv.shmem_fuzzmax = afl->shm_fuzzmax;
 #endif
 
   while (
