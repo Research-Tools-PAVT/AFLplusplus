@@ -567,9 +567,9 @@ void read_afl_environment(afl_state_t *afl, char **envp) {
 
           }
 #ifdef FUZZMAX
-          else if (!strncmp(env, "AFL_FUZZMAX_ONLY",
+          else if (!strncmp(env, "AFL_FUZZMAX_TRACE",
                               afl_environment_variable_len)) {
-            afl->afl_env.afl_fuzzmax_only = atoi((u8 *)get_afl_env(afl_environment_variables[i]));
+            afl->afl_env.afl_fuzzmax_trace = atoi((u8 *)get_afl_env(afl_environment_variables[i]));
           }
 #endif
 

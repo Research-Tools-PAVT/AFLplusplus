@@ -241,7 +241,7 @@ static char *afl_environment_variables[] = {
     "AFL_PRINT_FILENAMES",
     "AFL_PIZZA_MODE",
 #ifdef FUZZMAX
-    "AFL_FUZZMAX_ONLY",
+    "AFL_FUZZMAX_TRACE",
 #endif
     NULL
 

@@ -12,7 +12,7 @@ typedef struct fuzzmax_shmem {
   
   u32 fuzzmax_counter;
   u8 histogram[256]; // TODO: update the max predicate allowed to large value later
-  u32 bpp_predicates_map[65536];
+  u32 bpp_predicates_map[32896];
 
 } fuzzmax_shmem_t;
 

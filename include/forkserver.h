@@ -150,6 +150,7 @@ typedef struct afl_forkserver {
 
 #ifdef FUZZMAX
   fuzzmax_shmem_t *shmem_fuzzmax;
+  bool fuzzmax_trace_mode;
 #endif
 
   /* persistent mode replay functionality */

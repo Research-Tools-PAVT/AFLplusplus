@@ -319,7 +319,7 @@ static void usage(u8 *argv0, int more_help) {
       "AFL_PERSISTENT: enforce persistent mode (if __AFL_LOOP is in a shared lib\n"
       "AFL_DEFER_FORKSRV: enforced deferred forkserver (__AFL_INIT is in a .so)\n"
 #ifdef FUZZMAX
-      "AFL_FUZZMAX_ONLY: enforce use of fuzzmax mode only for power schedules\n"
+      "AFL_FUZZMAX_TRACE: uses custom trace bits from fuzzmax encoding of the target image\n"
 #endif
       "\n"
     );
@@ -562,6 +562,7 @@ int main(int argc, char **argv_orig, char **envp) {
 #ifdef FUZZMAX
   afl->shm_fuzzmax = afl_fuzzmax_shm_init();
   afl->fsrv.shmem_fuzzmax = afl->shm_fuzzmax;
+  afl->fsrv.fuzzmax_trace_mode = afl->afl_env.afl_fuzzmax_trace;
   if (!afl->shm_fuzzmax) { FATAL("BUG: Zero return from afl_shm_init."); }
   else
     DEBUGF("New shared memory created for coverage feedback (id=%d).\n", afl->shm_fuzzmax->shm_id);  
