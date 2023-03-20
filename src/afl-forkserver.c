@@ -1609,7 +1609,7 @@ afl_fsrv_run_target(afl_forkserver_t *fsrv, u32 timeout,
   if(fsrv->fuzzmax_trace_mode) {
     memset(fsrv->trace_bits, 0, MAP_SIZE);
     memcpy(fsrv->trace_bits + sizeof(u8), fsrv->shmem_fuzzmax->histogram, 256);
-    memcpy(fsrv->trace_bits + sizeof(u8) + 256, fsrv->shmem_fuzzmax->bpp_predicates_map, 32896);
+//    memcpy(fsrv->trace_bits + sizeof(u8) + 256, fsrv->shmem_fuzzmax->bpp_predicates_map, 32896);
   }
 #endif
   
