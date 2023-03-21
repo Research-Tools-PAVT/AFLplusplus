@@ -1099,7 +1099,7 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   }
   
 #ifdef FUZZMAX
-//  perf_score += 10 * q->fuzzmax_counter;
+  perf_score += 100 * q->fuzzmax_counter;
   DEBUGF("TEST ID: %u :: fuzzmax_counter: %u, perf_score: %u\n", q->id, q->fuzzmax_counter, perf_score);
 #endif
 
