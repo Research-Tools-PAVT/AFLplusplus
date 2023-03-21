@@ -1525,6 +1525,14 @@ afl_fsrv_run_target(afl_forkserver_t *fsrv, u32 timeout,
 
   fsrv->total_execs++;
 
+  #ifdef FUZZMAX
+    if(fsrv->fuzzmax_trace_mode) {
+      memset(fsrv->trace_bits, 0, MAP_SIZE);
+      memcpy(fsrv->trace_bits + sizeof(u8), fsrv->shmem_fuzzmax->histogram, 256);
+      memcpy(fsrv->trace_bits + sizeof(u8) + 256, fsrv->shmem_fuzzmax->bpp_predicates_map, 32896);
+    }
+  #endif
+  
   /* Any subsequent operations on fsrv->trace_bits must not be moved by the
      compiler below this point. Past this location, fsrv->trace_bits[]
      behave very normally and do not have to be treated as volatile. */
@@ -1604,14 +1612,6 @@ afl_fsrv_run_target(afl_forkserver_t *fsrv, u32 timeout,
     return FSRV_RUN_CRASH;
 
   }
-
-#ifdef FUZZMAX
-  if(fsrv->fuzzmax_trace_mode) {
-    memset(fsrv->trace_bits, 0, MAP_SIZE);
-    memcpy(fsrv->trace_bits + sizeof(u8), fsrv->shmem_fuzzmax->histogram, 256);
-    memcpy(fsrv->trace_bits + sizeof(u8) + 256, fsrv->shmem_fuzzmax->bpp_predicates_map, 32896);
-  }
-#endif
   
   /* success :) */
   return FSRV_RUN_OK;
