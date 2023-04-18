@@ -32,6 +32,11 @@ VERSION     = $(shell grep '^$(HASH)define VERSION ' ./config.h | cut -d '"' -f2
 
 SYS = $(shell uname -s)
 
+ifdef STABLE_DEBUG
+	CFLAGS += -DSTABLE_DEBUG
+	CXXFLAGS += -DSTABLE_DEBUG
+endif
+
 ifeq "$(SYS)" "OpenBSD"
   LLVM_CONFIG ?= $(BIN_PATH)/llvm-config
   HAS_OPT = $(shell test -x $(BIN_PATH)/opt && echo 0 || echo 1)

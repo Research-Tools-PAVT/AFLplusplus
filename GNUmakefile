@@ -41,6 +41,11 @@ ARCH = $(shell uname -m)
 
 $(info [*] Compiling afl++ for OS $(SYS) on ARCH $(ARCH))
 
+ifdef STABLE_DEBUG
+	CFLAGS += -DSTABLE_DEBUG
+	CXXFLAGS += -DSTABLE_DEBUG
+endif
+
 ifdef NO_SPLICING
   override CFLAGS_OPT += -DNO_SPLICING
 endif
