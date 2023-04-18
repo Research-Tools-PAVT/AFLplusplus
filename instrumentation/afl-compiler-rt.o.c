@@ -113,7 +113,7 @@ int        __afl_selective_coverage __attribute__((weak));
 int        __afl_selective_coverage_start_off __attribute__((weak));
 static int __afl_selective_coverage_temp = 1;
 
-#if defined(__ANDROID__) || defined(__HAIKU__)
+#if defined(__ANDROID__) || defined(__HAIKU__) || defined(NO_TLS)
 PREV_LOC_T __afl_prev_loc[NGRAM_SIZE_MAX];
 PREV_LOC_T __afl_prev_caller[CTX_MAX_K];
 u32        __afl_prev_ctx;
@@ -1536,7 +1536,7 @@ void __sanitizer_cov_trace_pc_guard_init(uint32_t *start, uint32_t *stop) {
 
   }
 
-  if (start == stop || *start) return;
+  if (start == stop || *start) { return; }
 
   x = getenv("AFL_INST_RATIO");
   if (x) {
@@ -1563,12 +1563,13 @@ void __sanitizer_cov_trace_pc_guard_init(uint32_t *start, uint32_t *stop) {
           "[-] FATAL: forkserver is already up, but an instrumented dlopen() "
           "library loaded afterwards. You must AFL_PRELOAD such libraries to "
           "be able to fuzz them or LD_PRELOAD to run outside of afl-fuzz.\n"
-          "To ignore this set AFL_IGNORE_PROBLEMS=1.\n");
+          "To ignore this set AFL_IGNORE_PROBLEMS=1 but this will be bad for "
+          "coverage.\n");
       abort();
 
     } else {
 
-      static u32 offset = 4;
+      static u32 offset = 5;
 
       while (start < stop) {
 
@@ -1582,7 +1583,7 @@ void __sanitizer_cov_trace_pc_guard_init(uint32_t *start, uint32_t *stop) {
 
         }
 
-        if (unlikely(++offset >= __afl_final_loc)) { offset = 4; }
+        if (unlikely(++offset >= __afl_final_loc)) { offset = 5; }
 
       }
 
@@ -1596,7 +1597,7 @@ void __sanitizer_cov_trace_pc_guard_init(uint32_t *start, uint32_t *stop) {
      to avoid duplicate calls (which can happen as an artifact of the underlying
      implementation in LLVM). */
 
-  if (__afl_final_loc < 3) __afl_final_loc = 3;  // we skip the first 4 entries
+  if (__afl_final_loc < 5) __afl_final_loc = 5;  // we skip the first 5 entries
 
   *(start++) = ++__afl_final_loc;
 

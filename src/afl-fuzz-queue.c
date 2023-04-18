@@ -74,7 +74,8 @@ double compute_weight(afl_state_t *afl, struct queue_entry *q,
   if (likely(afl->schedule < RARE)) { weight *= (avg_exec_us / q->exec_us); }
   weight *= (log(q->bitmap_size) / avg_bitmap_size);
   weight *= (1 + (q->tc_ref / avg_top_size));
-  if (unlikely(weight < 1.0)) { weight = 1.0; }
+
+  if (unlikely(weight < 0.1)) { weight = 0.1; }
   if (unlikely(q->favored)) { weight *= 5; }
   if (unlikely(!q->was_fuzzed)) { weight *= 2; }
 
@@ -143,6 +144,20 @@ void create_alias_table(afl_state_t *afl) {
             compute_weight(afl, q, avg_exec_us, avg_bitmap_size, avg_top_size);
         q->perf_score = calculate_score(afl, q);
         sum += q->weight;
+
+      }
+
+    }
+
+    if (unlikely(afl->schedule == MMOPT) && afl->queued_discovered) {
+
+      u32 cnt = afl->queued_discovered >= 5 ? 5 : afl->queued_discovered;
+
+      for (i = n - cnt; i < n; i++) {
+
+        struct queue_entry *q = afl->queue_buf[i];
+
+        if (likely(!q->disabled)) { q->weight *= 2.0; }
 
       }
 
@@ -589,7 +604,24 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   queue_buf[afl->queued_items - 1] = q;
   q->id = afl->queued_items - 1;
 
-  afl->last_find_time = get_cur_time();
+  u64 cur_time = get_cur_time();
+
+  if (likely(afl->start_time) &&
+      unlikely(afl->longest_find_time < cur_time - afl->last_find_time)) {
+
+    if (unlikely(!afl->last_find_time)) {
+
+      afl->longest_find_time = cur_time - afl->start_time;
+
+    } else {
+
+      afl->longest_find_time = cur_time - afl->last_find_time;
+
+    }
+
+  }
+
+  afl->last_find_time = cur_time;
 
   if (afl->custom_mutators_count) {
 
