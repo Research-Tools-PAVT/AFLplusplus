@@ -774,6 +774,10 @@ void read_testcases(afl_state_t *afl, u8 *directory) {
 
       if (!access(dfn, F_OK)) { passed_det = 1; }
 
+#ifdef STABLE_DEBUG
+      DEBUGF("[add_to_queue] AFL queued it for inital testing (read_testcases)\n");
+#endif
+
       add_to_queue(afl, fn2, st.st_size >= MAX_FILE ? MAX_FILE : st.st_size,
                    passed_det);
 
