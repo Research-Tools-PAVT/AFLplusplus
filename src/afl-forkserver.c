@@ -1298,7 +1298,7 @@ afl_fsrv_run_target(afl_forkserver_t *fsrv, u32 timeout,
 
 #ifdef FUZZMAX
   if (fsrv->fuzzmax_trace_mode) {
-    memset(fsrv->trace_bits, 0, MAP_SIZE);
+    /* memset(fsrv->trace_bits, 0, MAP_SIZE); */
     memcpy(fsrv->trace_bits, fsrv->shmem_fuzzmax->histogram, 256);
     memcpy(fsrv->trace_bits + 256, fsrv->shmem_fuzzmax->bpp_predicates_map,
            32896);
@@ -1376,9 +1376,7 @@ afl_fsrv_run_target(afl_forkserver_t *fsrv, u32 timeout,
 }
 
 void afl_fsrv_killall() {
-  LIST_FOREACH(&fsrv_list, afl_forkserver_t, {
-    afl_fsrv_kill(el);
-  });
+  LIST_FOREACH(&fsrv_list, afl_forkserver_t, { afl_fsrv_kill(el); });
 }
 
 void afl_fsrv_deinit(afl_forkserver_t *fsrv) {

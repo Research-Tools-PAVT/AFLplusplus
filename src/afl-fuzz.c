@@ -558,15 +558,15 @@ int main(int argc, char **argv_orig, char **envp) {
   rand_set_seed(afl, tv.tv_sec ^ tv.tv_usec ^ getpid());
 
   afl->shmem_testcase_mode = 1;  // we always try to perform shmem fuzzing
-  
+
 #ifdef FUZZMAX
   afl->shm_fuzzmax = afl_fuzzmax_shm_init();
   afl->fsrv.shmem_fuzzmax = afl->shm_fuzzmax;
   afl->fsrv.fuzzmax_trace_mode = afl->afl_env.afl_fuzzmax_trace;
   if (!afl->shm_fuzzmax) { FATAL("BUG: Zero return from afl_shm_init."); }
   else
-    DEBUGF("New shared memory created for coverage feedback (id=%d).\n", afl->shm_fuzzmax->shm_id);  
-  
+    DEBUGF("New shared memory created for custom coverage feedback (id=%d).\n", afl->shm_fuzzmax->shm_id);  
+
 #endif
 
   while (
@@ -2779,7 +2779,7 @@ stop_fuzzing:
     ck_free(afl->shm_fuzz);
 
   }
-  
+
 #ifdef FUZZMAX
   if (afl->shm_fuzzmax) {
     DEBUGF("FUZZMAX: Deinitializing shared memory (fuzzmax)\n");
@@ -2787,7 +2787,7 @@ stop_fuzzing:
     afl->shm_fuzzmax = NULL;
   }
 #endif
-  
+
   afl_fsrv_deinit(&afl->fsrv);
 
   /* remove tmpfile */
@@ -2816,4 +2816,3 @@ stop_fuzzing:
 }
 
 #endif                                                          /* !AFL_LIB */
-
