@@ -119,10 +119,7 @@ u8 *get_afl_area_ptr(void) {
 #endif
   }
 
-  /* Write something into the bitmap so that the parent doesn't give up */
-  afl_area_ptr[0] = 1;
-
-  return ++afl_area_ptr;
+  return afl_area_ptr;
 }
 
 void check_sat(u8 *T, u32 npreds, u8 *afl_area_ptr) {
