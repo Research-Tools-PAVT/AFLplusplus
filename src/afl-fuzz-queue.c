@@ -563,17 +563,17 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   q->testcase_buf = NULL;
   q->mother = afl->queue_cur;
 
-// #ifdef SATFUZZ_DEBUG
-//   if (q->mother != NULL) {
-//     DEBUGF("[add_to_queue] Entry: %u, cur_depth: %u, CurrEntry: %u, " cGRN " %s" cRST "\n", 
-//       q->id, afl->cur_depth, afl->current_entry, q->fname);
-//     DEBUGF("[add_to_queue] Mother_id: %u," cBRI " %s" cRST "\n", 
-//       q->mother->id, q->mother->fname);
-//   } else {
-//     DEBUGF("[add_to_queue] Entry: %u, cur_depth: %u, CurrEntry: %u, name: %s\n", 
-//       q->id, afl->cur_depth, afl->current_entry, q->fname);
-//   }
-// #endif
+#ifdef SATFUZZ_DEBUG
+  if (q->mother != NULL) {
+    DEBUGF("[add_to_queue] Entry: %u, cur_depth: %u, CurrEntry: %u, " cGRN " %s" cRST "\n", 
+      q->id, afl->cur_depth, afl->current_entry, q->fname);
+    DEBUGF("[add_to_queue] Mother_id: %u," cBRI " %s" cRST "\n", 
+      q->mother->id, q->mother->fname);
+  } else {
+    DEBUGF("[add_to_queue] Entry: %u, cur_depth: %u, CurrEntry: %u, name: %s\n", 
+      q->id, afl->cur_depth, afl->current_entry, q->fname);
+  }
+#endif
 
 #ifdef INTROSPECTION
   q->bitsmap_size = afl->bitsmap_size;
@@ -1147,19 +1147,19 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
 
   }
 
-// #ifdef SATFUZZ_DEBUG
-//   if (q->mother != NULL) {
-//     DEBUGF("[fuzzsat] TEST ID: %u, CurrEntry: %u, perf_score: %u, | tf: %lf\n", 
-//       q->id, afl->current_entry, perf_score, factor);
-//     fprintf(stderr, "[fuzzsat] TEST ID: %u, " cBRI "%s -> " cGRN "%s" cRST "\n", 
-//       q->id, q->mother->fname, q->fname);
-//     fprintf(stderr, cRST "");
-//   } else {
-//     DEBUGF("[fuzzsat] TEST ID: %u, CurrEntry: %u, perf_score: %u, | tf: %lf\n", 
-//       q->id, afl->current_entry, perf_score, factor);
-//     DEBUGF("[fuzzsat] TEST ID: %u, Curr file: %s\n", q->id, q->fname);
-//   }
-// #endif
+#ifdef SATFUZZ_DEBUG
+  if (q->mother != NULL) {
+    DEBUGF("[fuzzsat] TEST ID: %u, CurrEntry: %u, perf_score: %u, | tf: %lf\n", 
+      q->id, afl->current_entry, perf_score, factor);
+    fprintf(stderr, "[fuzzsat] TEST ID: %u, " cBRI "%s -> " cGRN "%s" cRST "\n", 
+      q->id, q->mother->fname, q->fname);
+    fprintf(stderr, cRST "");
+  } else {
+    DEBUGF("[fuzzsat] TEST ID: %u, CurrEntry: %u, perf_score: %u, | tf: %lf\n", 
+      q->id, afl->current_entry, perf_score, factor);
+    DEBUGF("[fuzzsat] TEST ID: %u, Curr file: %s\n", q->id, q->fname);
+  }
+#endif
   return perf_score;
 
 }
