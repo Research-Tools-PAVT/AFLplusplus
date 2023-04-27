@@ -161,6 +161,7 @@ static char *afl_environment_variables[] = {
     "AFL_LLVM_SKIP_NEVERZERO",
     "AFL_NO_AFFINITY",
     "AFL_TRY_AFFINITY",
+    "AFL_ENABLE_SATFUZZ",
     "AFL_LLVM_LTO_DONTWRITEID",
     "AFL_LLVM_LTO_SKIPINIT"
     "AFL_LLVM_LTO_STARTID",
