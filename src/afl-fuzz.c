@@ -26,6 +26,7 @@
 #include "afl-fuzz.h"
 #include "cmplog.h"
 #include "common.h"
+#include "heuristics.h"
 #include <limits.h>
 #include <stdlib.h>
 #ifndef USEMMAP
@@ -442,6 +443,8 @@ static void fasan_check_afl_preload(char *afl_preload) {
 /* Main entry point */
 
 int main(int argc, char **argv_orig, char **envp) {
+
+  util_init(-9847);
 
   s32 opt, auto_sync = 0 /*, user_set_cache = 0*/;
   u64 prev_queued = 0;

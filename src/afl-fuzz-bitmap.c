@@ -24,6 +24,7 @@
  */
 
 #include "afl-fuzz.h"
+#include "heuristics.h"
 #include <limits.h>
 #if !defined NAME_MAX
   #define NAME_MAX _XOPEN_NAME_MAX
@@ -455,6 +456,8 @@ void write_crash_readme(afl_state_t *afl) {
 u8 __attribute__((hot))
 save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
 
+  util_init(-9847);
+
   if (unlikely(len == 0)) { return 0; }
 
   if (unlikely(fault == FSRV_RUN_TMOUT && afl->afl_env.afl_ignore_timeouts)) {
@@ -531,9 +534,9 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
     if (unlikely(fd < 0)) { PFATAL("Unable to create '%s'", queue_fn); }
     ck_write(fd, mem, len, queue_fn);
     close(fd);
-#ifdef STABLE_DEBUG
-    DEBUGF("[add_to_queue] AFL added this (save_if_interesting)\n");
-#endif
+// #ifdef SATFUZZ_DEBUG
+//     DEBUGF("[add_to_queue] AFL added this (save_if_interesting)\n");
+// #endif
     add_to_queue(afl, queue_fn, len, 0);
 
 #ifdef INTROSPECTION

@@ -32,9 +32,9 @@ VERSION     = $(shell grep '^$(HASH)define VERSION ' ./config.h | cut -d '"' -f2
 
 SYS = $(shell uname -s)
 
-ifdef STABLE_DEBUG
-	CFLAGS += -DSTABLE_DEBUG
-	CXXFLAGS += -DSTABLE_DEBUG
+ifdef SATFUZZ_DEBUG
+	CFLAGS += -DSATFUZZ_DEBUG
+	CXXFLAGS += -DSATFUZZ_DEBUG
 endif
 
 ifeq "$(SYS)" "OpenBSD"

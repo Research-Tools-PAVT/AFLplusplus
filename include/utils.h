@@ -54,7 +54,6 @@ __thread u32 afl_map_size = MAP_SIZE;
 
 u8 *get_afl_area_ptr(void) {
   char *id_str = getenv(SHM_ENV_VAR);
-  char *ptr;
 
   u8 *afl_area_ptr = NULL;
 

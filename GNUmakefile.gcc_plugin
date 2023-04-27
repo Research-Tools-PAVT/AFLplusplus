@@ -28,8 +28,8 @@ MAN_PATH    ?= $(PREFIX)/share/man/man8
 
 VERSION     = $(shell grep '^$(HASH)define VERSION ' ./config.h | cut -d '"' -f2)
 
-ifdef STABLE_DEBUG
-	CFLAGS          ?= -O3 -g -funroll-loops -D_FORTIFY_SOURCE=1 -DSTABLE_DEBUG
+ifdef SATFUZZ_DEBUG
+	CFLAGS          ?= -O3 -g -funroll-loops -D_FORTIFY_SOURCE=1 -DSATFUZZ_DEBUG
 else
 	CFLAGS          ?= -O3 -g -funroll-loops -D_FORTIFY_SOURCE=1
 endif 
@@ -40,8 +40,8 @@ CFLAGS_SAFE     := -Wall -Iinclude -Wno-pointer-sign \
                    -Wno-unused-function
 override CFLAGS += $(CFLAGS_SAFE)
 
-ifdef STABLE_DEBUG
-	CXXFLAGS    ?= -O3 -g -funroll-loops -D_FORTIFY_SOURCE=1 -DSTABLE_DEBUG
+ifdef SATFUZZ_DEBUG
+	CXXFLAGS    ?= -O3 -g -funroll-loops -D_FORTIFY_SOURCE=1 -DSATFUZZ_DEBUG
 else
 	CXXFLAGS    ?= -O3 -g -funroll-loops -D_FORTIFY_SOURCE=1
 endif 
