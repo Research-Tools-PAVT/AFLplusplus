@@ -563,7 +563,7 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   q->mother = afl->queue_cur;
   
   q->fm_hits = afl->shm_fm.map[0];
-  DEBUGF("fm_hits: %u, npreds: %u\n", afl->shm_fm.map[0], afl->shm_fm.map[1]);
+  q->npreds = afl->shm_fm.map[1];
 
 #ifdef STABLE_DEBUG
   if (q->mother != NULL) {
@@ -608,6 +608,8 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   q->id = afl->queued_items - 1;
 
   u64 cur_time = get_cur_time();
+  
+  DEBUGF("[TEST ID: %u] fm_hits: %u, npreds: %u\n", q->id, afl->shm_fm.map[0], afl->shm_fm.map[1]);
 
   if (likely(afl->start_time) &&
       unlikely(afl->longest_find_time < cur_time - afl->last_find_time)) {

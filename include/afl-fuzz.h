@@ -201,6 +201,7 @@ struct queue_entry {
   struct queue_entry *mother;        /* queue entry this based on        */
 
   u8 fm_hits;
+  u8 npreds;
 };
 
 struct extra_data {
