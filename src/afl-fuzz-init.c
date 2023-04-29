@@ -2582,6 +2582,17 @@ static void handle_skipreq(int sig) {
 
 }
 
+void setup_fm_shmem(afl_state_t *afl) {
+  u8* map = afl_shm_init(&afl->shm_fm, 2, 1);
+  afl->shm_fm.fm_shmem_mode = 1;
+  
+  if (!map) { FATAL("BUG: Zero return from afl_shm_init."); }
+  
+  u8 *shm_str = alloc_printf("%d", afl->shm_fm.shm_id);
+  setenv(FM_SHM_ENV_VAR, shm_str, 1);
+  ck_free(shm_str);
+}
+
 /* Setup shared map for fuzzing with input via sharedmem */
 
 void setup_testcase_shmem(afl_state_t *afl) {

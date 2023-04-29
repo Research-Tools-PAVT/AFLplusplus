@@ -81,7 +81,7 @@
    will be kept and written to the crash/ directory as RECORD:... files.
    Note that every crash will be written, not only unique ones! */
 
-//#define AFL_PERSISTENT_RECORD
+// #define AFL_PERSISTENT_RECORD
 
 /* console output colors: There are three ways to configure its behavior
  * 1. default: colored outputs fixed on: defined USE_COLOR && defined
@@ -211,9 +211,9 @@
 /* Probabilities of skipping non-favored entries in the queue, expressed as
    percentages: */
 
-#define SKIP_TO_NEW_PROB 99     /* ...when there are new, pending favorites */
-#define SKIP_NFAV_OLD_PROB 95   /* ...no new favs, cur entry already fuzzed */
-#define SKIP_NFAV_NEW_PROB 75   /* ...no new favs, cur entry not fuzzed yet */
+#define SKIP_TO_NEW_PROB 99   /* ...when there are new, pending favorites */
+#define SKIP_NFAV_OLD_PROB 95 /* ...no new favs, cur entry already fuzzed */
+#define SKIP_NFAV_NEW_PROB 75 /* ...no new favs, cur entry not fuzzed yet */
 
 /* Splicing cycle count: */
 
@@ -328,7 +328,7 @@
       32,  /* One-off with common buffer size         */ \
       64,  /* One-off with common buffer size         */ \
       100, /* One-off with common buffer size         */ \
-      127                        /* Overflow signed 8-bit when incremented  */
+      127  /* Overflow signed 8-bit when incremented  */
 
 #define INTERESTING_8_LEN 9
 
@@ -342,7 +342,7 @@
       1000, /* One-off with common buffer size         */ \
       1024, /* One-off with common buffer size         */ \
       4096, /* One-off with common buffer size         */ \
-      32767                      /* Overflow signed 16-bit when incremented */
+      32767 /* Overflow signed 16-bit when incremented */
 
 #define INTERESTING_16_LEN 10
 
@@ -354,7 +354,7 @@
       65535,      /* Overflow unsig 16-bit when incremented  */ \
       65536,      /* Overflow unsig 16 bit                   */ \
       100663045,  /* Large positive number (endian-agnostic) */ \
-      2147483647                 /* Overflow signed 32-bit when incremented */
+      2147483647  /* Overflow signed 32-bit when incremented */
 
 #define INTERESTING_32_LEN 8
 
@@ -387,6 +387,8 @@
 /* Environment variable used to pass SHM FUZZ ID to the called program. */
 
 #define SHM_FUZZ_ENV_VAR "__AFL_SHM_FUZZ_ID"
+
+#define FM_SHM_ENV_VAR "__AFL_FM_SHM_ID"
 
 /* Other less interesting, internal-only variables. */
 
@@ -512,5 +514,4 @@
 
 #define AFL_TXT_STRING_MAX_MUTATIONS 6
 
-#endif                                                  /* ! _HAVE_CONFIG_H */
-
+#endif /* ! _HAVE_CONFIG_H */
