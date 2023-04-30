@@ -1,27 +1,27 @@
 /*
-   american fuzzy lop++ - afl-proxy skeleton example
-   ---------------------------------------------------
+    american fuzzy lop++ - afl-proxy skeleton example
+    ---------------------------------------------------
 
-   Written by Marc Heuse <mh@mh-sec.de>
+    Written by Marc Heuse <mh@mh-sec.de>
 
-   Copyright 2019-2023 AFLplusplus Project. All rights reserved.
+    Copyright 2019-2023 AFLplusplus Project. All rights reserved.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at:
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at:
 
-   http://www.apache.org/licenses/LICENSE-2.0
-
-
-   HOW-TO
-   ======
-
-   You only need to change the while() loop of the main() to send the
-   data of buf[] with length len to the target and write the coverage
-   information to __afl_area_ptr[__afl_map_size]
+    http://www.apache.org/licenses/LICENSE-2.0
 
 
-*/
+    HOW-TO
+    ======
+
+    You only need to change the while() loop of the main() to send the
+    data of buf[] with length len to the target and write the coverage
+    information to __afl_area_ptr[__afl_map_size]
+
+
+ */
 
 #ifdef __ANDROID__
   #include "android-ashmem.h"
@@ -52,8 +52,15 @@ __thread u32 afl_map_size = MAP_SIZE;
 
 /* SHM setup. */
 
+u8 *get_fm_shmem(void) {
+  char *id_str = getenv(FM_SHM_ENV_VAR);
+  u32   shm_id = atoi(id_str);
+  return shmat(shm_id, 0, 0);
+}
+
 u8 *get_afl_area_ptr(void) {
   char *id_str = getenv(SHM_ENV_VAR);
+  char *ptr;
 
   u8 *afl_area_ptr = NULL;
 
@@ -121,7 +128,7 @@ u8 *get_afl_area_ptr(void) {
   return afl_area_ptr;
 }
 
-void check_sat(u8 *T, u32 npreds, u8 *afl_area_ptr) {
+void check_sat(u8 *T, u32 npreds, u8 *afl_area_ptr, u8 *fm_map) {
   u32 fuzzmax_counter = 0;
 
 #ifndef CRASH_VALIDATION
@@ -132,6 +139,10 @@ void check_sat(u8 *T, u32 npreds, u8 *afl_area_ptr) {
     for (u32 cid = 0; cid <= rid; ++cid)
       afl_area_ptr[npreds + (rid * npreds + cid)] = T[rid] && T[cid];
   }
+
+  fm_map[0] = fuzzmax_counter;
+  fm_map[1] = npreds;
+
 #else
   for (u32 rid = 0; rid < npreds; ++rid)
     fuzzmax_counter += T[rid];
