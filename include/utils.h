@@ -44,6 +44,8 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+#define FM_SHM_ENV_VAR "__AFL_FM_SHM_ENV_VAR"
+
 #ifdef __ANDROID__
 u32 afl_map_size = MAP_SIZE;
 #else
