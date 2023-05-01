@@ -114,9 +114,9 @@ static void usage(u8 *argv0, int more_help) {
 
       "Execution control settings:\n"
       "  -p schedule   - power schedules compute a seed's performance score:\n"
-      "                  fast(default), explore, exploit, seek, rare, mmopt, "
-      "coe, lin\n"
-      "                  quad -- see docs/FAQ.md for more information\n"
+      "                  fast(default), explore, exploit, seek, rare, mmopt,\n"
+      "                  coe, lin, custom_one, quad -- see docs/FAQ.md for more information\n"
+      
       "  -f file       - location read by the fuzzed program (default: stdin "
       "or @@)\n"
       "  -t msec       - timeout for each run (auto-scaled, default %u ms). "
