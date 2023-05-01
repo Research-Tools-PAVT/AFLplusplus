@@ -561,9 +561,6 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   q->trace_mini = NULL;
   q->testcase_buf = NULL;
   q->mother = afl->queue_cur;
-  
-  q->fm_hits = afl->shm_fm.map[0];
-  q->npreds = afl->shm_fm.map[1];
 
 #ifdef STABLE_DEBUG
   if (q->mother != NULL) {
@@ -609,6 +606,8 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
 
   u64 cur_time = get_cur_time();
   
+  q->fm_hits = afl->shm_fm.map[0];
+  q->npreds = afl->shm_fm.map[1];
   DEBUGF("[TEST ID: %u] fm_hits: %u, npreds: %u\n", q->id, afl->shm_fm.map[0], afl->shm_fm.map[1]);
 
   if (likely(afl->start_time) &&
@@ -1116,6 +1115,11 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       perf_score *= (1 - (double)((double)afl->n_fuzz[q->n_fuzz_entry] /
                                   (double)afl->fsrv.total_execs));
 
+      break;
+      
+      
+    case CUSTOM_ONE:
+      perf_score = q->fm_hits;
       break;
 
     default:

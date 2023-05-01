@@ -535,6 +535,9 @@ int main(int argc, char **argv_orig, char **envp) {
         } else if (!stricmp(optarg, "seek")) {
           afl->schedule = SEEK;
 
+        } else if (!stricmp(optarg, "custom_one")) {
+            afl->schedule = CUSTOM_ONE;
+            
         } else {
           FATAL("Unknown -p power schedule");
         }
@@ -1283,6 +1286,9 @@ int main(int argc, char **argv_orig, char **envp) {
       break;
     case EXPLORE:
       OKF("Using exploration-based constant power schedule (EXPLORE)");
+      break;
+    case CUSTOM_ONE:
+      OKF("Using custom power schedule (CUSTOM_ONE)");
       break;
     default:
       FATAL("Unknown power schedule");
@@ -2094,6 +2100,9 @@ int main(int argc, char **argv_orig, char **envp) {
             break;
           case RARE:
             afl->schedule = FAST;
+            break;
+          case CUSTOM_ONE:
+            afl->schedule = EXPLOIT; // TODO: update this method to something else
             break;
         }
 
