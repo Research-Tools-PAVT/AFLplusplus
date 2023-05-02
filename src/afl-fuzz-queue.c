@@ -862,6 +862,8 @@ void cull_queue(afl_state_t *afl) {
 
 u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
 
+  // afl->fsrv.trace_bits[4000]
+
   u32 cal_cycles = afl->total_cal_cycles;
   u32 bitmap_entries = afl->total_bitmap_entries;
 
@@ -1034,7 +1036,6 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
     // Fall through
     case FAST:
     
-      util_init(-9847);
       // Don't modify unfuzzed seeds
       if (!q->fuzz_level) break;
 
@@ -1072,6 +1073,17 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       if (q->favored) factor *= 1.15;
 
       break;
+
+#ifdef FUZZMAX
+    case CUSTOM:
+      // Don't modify unfuzzed seeds
+      if (!q->fuzz_level) break;
+
+      factor = 1.25;
+      perf_score = 120;
+
+      break;
+#endif
 
     case LIN:
       // Don't modify perf_score for unfuzzed seeds

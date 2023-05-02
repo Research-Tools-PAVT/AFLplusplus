@@ -37,6 +37,11 @@ ifdef SATFUZZ_DEBUG
 	CXXFLAGS += -DSATFUZZ_DEBUG
 endif
 
+ifdef WITH_FUZZ_MAX
+	CFLAGS += -DFUZZMAX
+	CXXFLAGS += -DFUZZMAX
+endif
+
 ifeq "$(SYS)" "OpenBSD"
   LLVM_CONFIG ?= $(BIN_PATH)/llvm-config
   HAS_OPT = $(shell test -x $(BIN_PATH)/opt && echo 0 || echo 1)

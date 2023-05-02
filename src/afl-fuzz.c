@@ -444,8 +444,6 @@ static void fasan_check_afl_preload(char *afl_preload) {
 
 int main(int argc, char **argv_orig, char **envp) {
 
-  util_init(-9847);
-
   s32 opt, auto_sync = 0 /*, user_set_cache = 0*/;
   u64 prev_queued = 0;
   u32 sync_interval_cnt = 0, seek_to = 0, show_help = 0, default_output = 1,
@@ -561,6 +559,11 @@ int main(int argc, char **argv_orig, char **envp) {
 
           afl->schedule = COE;
 
+#ifdef FUZZMAX
+        } else if (!stricmp(optarg, "custom")) {
+
+          afl->schedule = CUSTOM;
+#endif
         } else if (!stricmp(optarg, "exploit")) {
 
           afl->schedule = EXPLOIT;
@@ -1461,6 +1464,11 @@ int main(int argc, char **argv_orig, char **envp) {
     case FAST:
       OKF("Using exponential power schedule (FAST)");
       break;
+#ifdef FUZZMAX
+    case CUSTOM:
+      OKF("Using CUSTOM schedule (CUSTOM)");
+      break;
+#endif
     case COE:
       OKF("Using cut-off exponential power schedule (COE)");
       break;
@@ -2470,6 +2478,11 @@ int main(int argc, char **argv_orig, char **envp) {
           case FAST:
             afl->schedule = COE;
             break;
+#ifdef FUZZMAX
+          case CUSTOM:
+            afl->schedule = CUSTOM;
+            break;
+#endif
           case COE:
             afl->schedule = LIN;
             break;

@@ -34,6 +34,13 @@ else
 	CFLAGS          ?= -O3 -g -funroll-loops -D_FORTIFY_SOURCE=1
 endif 
 
+ifdef WITH_FUZZ_MAX
+	CFLAGS          ?= -O3 -g -funroll-loops -D_FORTIFY_SOURCE=1 -DFUZZMAX
+else
+	CFLAGS          ?= -O3 -g -funroll-loops -D_FORTIFY_SOURCE=1
+endif 
+
+
 CFLAGS_SAFE     := -Wall -Iinclude -Wno-pointer-sign \
                    -DAFL_PATH=\"$(HELPER_PATH)\" -DBIN_PATH=\"$(BIN_PATH)\" \
                    -DGCC_VERSION=\"$(GCCVER)\" -DGCC_BINDIR=\"$(GCCBINDIR)\" \

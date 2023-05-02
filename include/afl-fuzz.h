@@ -287,6 +287,9 @@ enum {
   /* 01 */ MMOPT,   /* Modified MOPT schedule           */
   /* 02 */ EXPLOIT, /* AFL's exploitation-based const.  */
   /* 03 */ FAST,    /* Exponential schedule             */
+#ifdef FUZZMAX
+  /* 00 */ CUSTOM,
+#endif
   /* 04 */ COE,     /* Cut-Off Exponential schedule     */
   /* 05 */ LIN,     /* Linear schedule                  */
   /* 06 */ QUAD,    /* Quadratic schedule               */
