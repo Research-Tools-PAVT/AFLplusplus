@@ -62,7 +62,6 @@ u8 *get_fm_shmem(void) {
 
 u8 *get_afl_area_ptr(void) {
   char *id_str = getenv(SHM_ENV_VAR);
-  char *ptr;
 
   u8 *afl_area_ptr = NULL;
 
