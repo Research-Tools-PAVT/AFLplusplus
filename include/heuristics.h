@@ -12,7 +12,10 @@
 #include <stdio.h>
 #include <sys/types.h>
 
+#include "afl-fuzz.h"
 #include "debug.h"
+
+uint64_t global_histogram_val[100] = {0};
 
 int util_init(int xfce) {
 
@@ -20,65 +23,54 @@ int util_init(int xfce) {
 
     if (id) {
         int x = (int)atoi(id);
-        DEBUGF("[PROCESS ===================================] %d\n", x);
     }
 
     return xfce;
 }
 
 void min_max_scaler(double *arr, size_t size) {
-//     double x_min = arr[0];
-//     double x_max = arr[0];
-//     for (size_t i = 0; i < size; i++) {
-//         if (x_min >= arr[i])
-//             x_min = arr[i]; // min
-//         if (x_max <= arr[i])
-//             x_max = arr[i]; // max
-// #ifdef DEBUG
-//         printf("[arr] %lf\n", arr[i]);
-// #endif
-//     }
-// #ifdef DEBUG
-//     printf("[min] %lf\n", x_min);
-//     printf("[max] %lf\n", x_max);
-// #endif
-//     for (size_t i = 0; i < size; i++) {
-//         arr[i] = (x_max - arr[i]) / (x_max - x_min);
-// #ifdef DEBUG
-//         printf("[minmax] arr[%u]=%lf\n", i, arr[i]);
-// #endif
-//     }
+    double x_min = arr[0];
+    double x_max = arr[0];
+    
+    for (size_t i = 0; i < size; i++) {
+        if (x_min >= arr[i])
+            x_min = arr[i]; // min
+        if (x_max <= arr[i])
+            x_max = arr[i]; // max
+    }
+
+    for (size_t i = 0; i < size; i++) {
+        arr[i] = (x_max - arr[i]) / (x_max - x_min);
+    }
+    
     return;
 }
 
-double energy_f2(uint8_t *heuf, uint64_t NUM_PREDS) {
+double energy_f2(uint8_t *heuf, afl_state_t *afl, uint64_t NUM_PREDS) {
     // TODO: Normalize histogram values
-//     double arr[NUM_PREDS];
-//     memcpy(arr, histogram, NUM_PREDS * sizeof(uint64_t));
-//     min_max_scaler(arr, NUM_PREDS);
+    double arr[NUM_PREDS];
 
-// #ifdef DEBUG
-//     for (size_t i = 0; i < NUM_PREDS; i++) {
-//         printf("[after_norm] arr[%u]=%lf\n", i, arr[i]);
-//     }
-// #endif
+    // Update the histogram.
+    for (int k = 0; k < NUM_PREDS; k++) {
+        global_histogram_val[k] += (heuf[k] > 0);
+        arr[k] = global_histogram_val[k];
+    }
+    
+    // DEBUGF("Histogram: %lu, %lu\n", arr[0], arr[NUM_PREDS - 1]);
+    // afl->histogram = global_histogram_val;
+    
+    min_max_scaler(arr, NUM_PREDS);
+    double histogram_energy = 0.00;
+    double run_energy = (double)global_histogram_val[0];
 
-//     double histogram_energy = 0.00, run_energy = (double)histogram[0];
+    for (size_t i = 0; i < NUM_PREDS; i++) {
+        if (heuf[i] > 0 && (global_histogram_val[i] <= run_energy)) {
+            run_energy = global_histogram_val[i];
+            histogram_energy = (double)arr[i];
+        }
+    }
 
-//     for (size_t i = 0; i < NUM_PREDS; i++) {
-//         if (get_bv_bit(current_coverage, i) && (histogram[i] <= run_energy)) {
-//             run_energy = histogram[i];
-//             histogram_energy = (double)arr[i];
-// #ifdef DEBUG
-//             printf("[energy] arr[%u]=%lf\n", i, histogram_energy);
-// #endif
-//         }
-//     }
-
-// #ifdef DEBUG
-//     printf("[energy_F2] %lf\n", histogram_energy);
-// #endif
-    return 2.76;
+    return histogram_energy;
 }
 
 /**

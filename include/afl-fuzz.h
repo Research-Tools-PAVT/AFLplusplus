@@ -450,6 +450,11 @@ typedef struct afl_state {
       most_time, most_execs_key, most_execs, old_hit_count, force_ui_update,
       prev_run_time;
 
+#ifdef FUZZMAX
+  uint64_t *histogram;
+  double histogram_quad, counter_quad, histogram_norm, counter_norm, factor;
+#endif
+
   MOpt_globals_t mopt_globals_core, mopt_globals_pilot;
 
   s32 limit_time_puppet, SPLICE_CYCLES_puppet, limit_time_sig, key_puppet,

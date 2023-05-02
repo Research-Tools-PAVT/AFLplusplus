@@ -1079,8 +1079,58 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       // Don't modify unfuzzed seeds
       if (!q->fuzz_level) break;
 
+      switch ((u32)log2(afl->n_fuzz[q->n_fuzz_entry])) {
+
+        case 0 ... 1:
+          factor = 4;
+          break;
+
+        case 2 ... 3:
+          factor = 3;
+          break;
+
+        case 4:
+          factor = 2;
+          break;
+
+        case 5:
+          break;
+
+        case 6:
+          if (!q->favored) factor = 0.8;
+          break;
+
+        case 7:
+          if (!q->favored) factor = 0.6;
+          break;
+
+        default:
+          if (!q->favored) factor = 0.4;
+          break;
+
+      }
+
+      if (q->favored) factor *= 1.15;
+
       uint64_t NUM_PREDS = afl->fsrv.trace_bits[1000];
-      factor = energy_f2(afl->fsrv.trace_bits, NUM_PREDS);
+      double prev_factor = factor;
+
+      double histogram_norm = energy_f2(afl->fsrv.trace_bits, afl, NUM_PREDS);
+      double counter_norm = (double)(afl->fsrv.trace_bits[1002] 
+        / (double)afl->fsrv.trace_bits[1000]);
+
+      double histogram_quad = histogram_norm * histogram_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
+      double counter_quad = counter_norm * counter_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
+
+      factor += histogram_norm * histogram_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
+      factor += counter_norm * counter_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
+
+      afl->histogram_norm = histogram_norm;
+      afl->counter_norm = counter_norm;
+      afl->histogram_quad = histogram_quad;
+      afl->counter_quad = counter_quad;
+      afl->factor = factor;
+
       perf_score = 120;
 
       break;

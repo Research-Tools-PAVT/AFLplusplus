@@ -790,6 +790,8 @@ void show_stats_normal(afl_state_t *afl) {
 
   SAYF("\n" cBRI "[SATFUZZ]" cRST "%s\n", banner);
 
+  SAYF(cBRI "\n---------------------------------------------------------------\n" cRST);
+
   SAYF("%s" cGRA "[NUM_PREDS:%s%3u" cGRA "]" cRST, SP5, 
         cBRI, afl->fsrv.trace_bits[1000]);
 
@@ -798,6 +800,27 @@ void show_stats_normal(afl_state_t *afl) {
 
   SAYF("%s" cGRA "[CURRENT_COUNTER:%s%3u" cGRA "]\n" cRST, SP5, 
         cBRI, afl->fsrv.trace_bits[1002]);
+
+  SAYF("%s" cGRA "[Histogram Quad:%s%3f" cGRA "]" cRST, SP5, 
+        cBRI, afl->histogram_quad);
+
+  SAYF("%s" cGRA "[Counter Quad:%s%3f" cGRA "]\n" cRST, SP5, 
+        cBRI, afl->counter_quad);
+
+  SAYF("%s" cGRA "[histogram_norm:%s%3f" cGRA "]" cRST, SP5, 
+        cBRI, afl->histogram_norm);
+
+  SAYF("%s" cGRA "[counter_norm:%s%3f" cGRA "]" cRST, SP5, 
+        cBRI, afl->counter_norm);
+  
+  SAYF("%s" cGRA "[factor:%s%3f" cGRA "]\n" cRST, SP5, 
+        cBRI, afl->factor);
+
+  // // for (uint16_t k = num_preds; k < num_preds; k++)
+  // SAYF("%s" cGRA "Histogram: [1:%s%3lu" cGRA "]" cRST, SP5, 
+  //       cBRI, afl->histogram[2]);
+
+  SAYF(cBRI "\n---------------------------------------------------------------\n" cRST);
 
   /* Since `total_crashes` does not get reloaded from disk on restart,
     it indicates if we found crashes this round already -> paint red.
