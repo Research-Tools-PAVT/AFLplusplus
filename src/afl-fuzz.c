@@ -26,7 +26,6 @@
 #include "afl-fuzz.h"
 #include "cmplog.h"
 #include "common.h"
-#include "heuristics.h"
 #include <limits.h>
 #include <stdlib.h>
 #ifndef USEMMAP

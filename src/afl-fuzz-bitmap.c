@@ -24,7 +24,6 @@
  */
 
 #include "afl-fuzz.h"
-#include "heuristics.h"
 #include <limits.h>
 #if !defined NAME_MAX
   #define NAME_MAX _XOPEN_NAME_MAX

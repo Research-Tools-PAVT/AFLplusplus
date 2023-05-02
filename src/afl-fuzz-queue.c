@@ -1079,7 +1079,8 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       // Don't modify unfuzzed seeds
       if (!q->fuzz_level) break;
 
-      factor = 1.25;
+      uint64_t NUM_PREDS = afl->fsrv.trace_bits[1000];
+      factor = energy_f2(afl->fsrv.trace_bits, NUM_PREDS);
       perf_score = 120;
 
       break;

@@ -776,8 +776,6 @@ void show_stats_normal(afl_state_t *afl) {
 
   }
 
-  SAYF("\n%s\n", banner);
-
   /* "Handy" shortcuts for drawing boxes... */
 
 #define bSTG bSTART cGRA
@@ -789,6 +787,17 @@ void show_stats_normal(afl_state_t *afl) {
 #define SP5 "     "
 #define SP10 SP5 SP5
 #define SP20 SP10 SP10
+
+  SAYF("\n" cBRI "[SATFUZZ]" cRST "%s\n", banner);
+
+  SAYF("%s" cGRA "[NUM_PREDS:%s%3u" cGRA "]" cRST, SP5, 
+        cBRI, afl->fsrv.trace_bits[1000]);
+
+  SAYF("%s" cGRA "[MAX_COUNTER:%s%3u" cGRA "]" cRST, SP5, 
+        cBRI, afl->fsrv.trace_bits[1001]);
+
+  SAYF("%s" cGRA "[CURRENT_COUNTER:%s%3u" cGRA "]\n" cRST, SP5, 
+        cBRI, afl->fsrv.trace_bits[1002]);
 
   /* Since `total_crashes` does not get reloaded from disk on restart,
     it indicates if we found crashes this round already -> paint red.
@@ -1258,21 +1267,20 @@ void show_stats_normal(afl_state_t *afl) {
 
     if (afl->cpu_aff >= 0) {
 
-      SAYF("%s" cGRA "[cpu%03u:%s%3u%%" cGRA "]\r" cRST, spacing,
+      SAYF("%s" cGRA "[CPU%03u:%s%3u%%" cGRA "]\r" cRST, spacing,
            MIN(afl->cpu_aff, 999), cpu_color, MIN(cur_utilization, (u32)999));
 
     } else {
 
-      SAYF("%s" cGRA "   [cpu:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
+      SAYF("%s" cGRA "   [CPU:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
            MIN(cur_utilization, (u32)999));
 
     }
 
 #else
 
-    SAYF("%s" cGRA "   [cpu:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
+    SAYF("%s" cGRA "   [CPU:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
          MIN(cur_utilization, (u32)999));
-
 #endif                                                    /* ^HAVE_AFFINITY */
 
   } else {
@@ -2104,19 +2112,19 @@ void show_stats_pizza(afl_state_t *afl) {
 
     if (afl->cpu_aff >= 0) {
 
-      SAYF("%s" cGRA "[cpu%03u:%s%3u%%" cGRA "]\r" cRST, spacing,
+      SAYF("%s" cGRA "[CPU%03u:%s%3u%%" cGRA "]\r" cRST, spacing,
            MIN(afl->cpu_aff, 999), cpu_color, MIN(cur_utilization, (u32)999));
 
     } else {
 
-      SAYF("%s" cGRA "   [cpu:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
+      SAYF("%s" cGRA "   [CPU:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
            MIN(cur_utilization, (u32)999));
 
     }
 
 #else
 
-    SAYF("%s" cGRA "   [cpu:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
+    SAYF("%s" cGRA "   [CPU:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
          MIN(cur_utilization, (u32)999));
 
 #endif                                                    /* ^HAVE_AFFINITY */

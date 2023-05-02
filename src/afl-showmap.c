@@ -1360,7 +1360,6 @@ int main(int argc, char **argv_orig, char **envp) {
 
   if (getenv("AFL_DEBUG")) {
 
-    DEBUGF("");
     for (i = 0; i < argc; i++)
       SAYF(" %s", argv[i]);
     SAYF("\n");
