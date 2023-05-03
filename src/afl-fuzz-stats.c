@@ -813,8 +813,14 @@ void show_stats_normal(afl_state_t *afl) {
   SAYF("%s" cGRA "[counter_norm:%s%3f" cGRA "]" cRST, SP5, 
         cBRI, afl->counter_norm);
   
-  SAYF("%s" cGRA "[factor:%s%3f" cGRA "]" cRST, SP5, 
+  SAYF("%s" cGRA "[factor:%s%3f" cGRA "]\n" cRST, SP5, 
         cBRI, afl->factor);
+
+  SAYF("%s" cGRA "[Perf Score:%s%3f" cGRA "]" cRST, SP5, 
+        cBRI, afl->queue_cur->perf_score);
+
+  SAYF("%s" cGRA "[Weight:%s%3f" cGRA "]\n" cRST, SP5, 
+        cBRI, afl->queue_cur->weight);
 
   // // for (uint16_t k = num_preds; k < num_preds; k++)
   // SAYF("%s" cGRA "Histogram: [1:%s%3lu" cGRA "]" cRST, SP5, 

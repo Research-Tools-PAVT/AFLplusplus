@@ -1130,6 +1130,8 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       afl->histogram_quad = histogram_quad;
       afl->counter_quad = counter_quad;
       afl->factor = factor;
+      
+      perf_score = 10 * afl->fsrv.trace_bits[1002];
 
       break;
 #endif
