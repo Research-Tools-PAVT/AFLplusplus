@@ -1131,8 +1131,6 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       afl->counter_quad = counter_quad;
       afl->factor = factor;
 
-      perf_score = 120;
-
       break;
 #endif
 

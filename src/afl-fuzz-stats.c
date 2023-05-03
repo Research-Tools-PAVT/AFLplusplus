@@ -813,7 +813,7 @@ void show_stats_normal(afl_state_t *afl) {
   SAYF("%s" cGRA "[counter_norm:%s%3f" cGRA "]" cRST, SP5, 
         cBRI, afl->counter_norm);
   
-  SAYF("%s" cGRA "[factor:%s%3f" cGRA "]\n" cRST, SP5, 
+  SAYF("%s" cGRA "[factor:%s%3f" cGRA "]" cRST, SP5, 
         cBRI, afl->factor);
 
   // // for (uint16_t k = num_preds; k < num_preds; k++)
