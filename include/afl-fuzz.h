@@ -278,17 +278,17 @@ enum {
 
 enum {
 
-  /* 00 */ EXPLORE, /* AFL default, Exploration-based constant schedule */
-  /* 01 */ MMOPT,   /* Modified MOPT schedule           */
-  /* 02 */ EXPLOIT, /* AFL's exploitation-based const.  */
-  /* 03 */ FAST,    /* Exponential schedule             */
-  /* 04 */ COE,     /* Cut-Off Exponential schedule     */
-  /* 05 */ LIN,     /* Linear schedule                  */
-  /* 06 */ QUAD,    /* Quadratic schedule               */
-  /* 07 */ RARE,    /* Rare edges                       */
-  /* 08 */ SEEK,    /* EXPLORE that ignores timings     */
-  /* 09 */ CUSTOM_ONE,    /* Original CUSTOM_ONE schedule           */
-  
+  /* 00 */ EXPLORE,    /* AFL default, Exploration-based constant schedule */
+  /* 01 */ MMOPT,      /* Modified MOPT schedule           */
+  /* 02 */ EXPLOIT,    /* AFL's exploitation-based const.  */
+  /* 03 */ FAST,       /* Exponential schedule             */
+  /* 04 */ COE,        /* Cut-Off Exponential schedule     */
+  /* 05 */ LIN,        /* Linear schedule                  */
+  /* 06 */ QUAD,       /* Quadratic schedule               */
+  /* 07 */ RARE,       /* Rare edges                       */
+  /* 08 */ SEEK,       /* EXPLORE that ignores timings     */
+  /* 09 */ CUSTOM_ONE, /* Original CUSTOM_ONE schedule           */
+
   POWER_SCHEDULES_NUM
 
 };

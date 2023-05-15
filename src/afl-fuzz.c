@@ -115,8 +115,9 @@ static void usage(u8 *argv0, int more_help) {
       "Execution control settings:\n"
       "  -p schedule   - power schedules compute a seed's performance score:\n"
       "                  fast(default), explore, exploit, seek, rare, mmopt,\n"
-      "                  coe, lin, custom_one, quad -- see docs/FAQ.md for more information\n"
-      
+      "                  coe, lin, custom_one, quad -- see docs/FAQ.md for "
+      "more information\n"
+
       "  -f file       - location read by the fuzzed program (default: stdin "
       "or @@)\n"
       "  -t msec       - timeout for each run (auto-scaled, default %u ms). "
@@ -445,7 +446,7 @@ int main(int argc, char **argv_orig, char **envp) {
   exit_1 = !!afl->afl_env.afl_bench_just_one;
 
   setup_fm_shmem(afl);
-  
+
   SAYF(cCYA "afl-fuzz" VERSION cRST
             " based on afl by Michal Zalewski and a large online community\n");
 
@@ -536,8 +537,8 @@ int main(int argc, char **argv_orig, char **envp) {
           afl->schedule = SEEK;
 
         } else if (!stricmp(optarg, "custom_one")) {
-            afl->schedule = CUSTOM_ONE;
-            
+          afl->schedule = CUSTOM_ONE;
+
         } else {
           FATAL("Unknown -p power schedule");
         }
@@ -2102,7 +2103,7 @@ int main(int argc, char **argv_orig, char **envp) {
             afl->schedule = FAST;
             break;
           case CUSTOM_ONE:
-            afl->schedule = EXPLOIT; // TODO: update this method to something else
+            afl->schedule = CUSTOM_ONE;
             break;
         }
 
@@ -2270,7 +2271,7 @@ stop_fuzzing:
   destroy_custom_mutators(afl);
   afl_shm_deinit(&afl->shm);
   afl_shm_deinit(&afl->shm_fm);
-  
+
   if (afl->shm_fuzz) {
     afl_shm_deinit(afl->shm_fuzz);
     ck_free(afl->shm_fuzz);

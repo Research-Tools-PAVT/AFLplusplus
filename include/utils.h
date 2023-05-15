@@ -52,7 +52,7 @@ __thread u32 afl_map_size = MAP_SIZE;
 
 /* SHM setup. */
 
-u8 *get_fm_shmem(void) {
+u8 *get_fm_ptr(void) {
   char *id_str = getenv(FM_SHM_ENV_VAR);
   u32   shm_id = atoi(id_str);
   return shmat(shm_id, 0, 0);
@@ -125,7 +125,7 @@ u8 *get_afl_area_ptr(void) {
 #endif
   }
 
-  return afl_area_ptr;
+  return afl_area_ptr + (1 << 8);
 }
 
 void check_sat(u8 *T, u32 npreds, u8 *afl_area_ptr, u8 *fm_map) {
@@ -133,11 +133,10 @@ void check_sat(u8 *T, u32 npreds, u8 *afl_area_ptr, u8 *fm_map) {
 
 #ifndef CRASH_VALIDATION
   for (u32 rid = 0; rid < npreds; ++rid) {
-    afl_area_ptr[rid] = T[rid];
     fuzzmax_counter += T[rid];
 
     for (u32 cid = 0; cid <= rid; ++cid)
-      afl_area_ptr[npreds + (rid * npreds + cid)] = T[rid] && T[cid];
+      afl_area_ptr[(rid * npreds + cid)] = T[rid] && T[cid];
   }
 
   fm_map[0] = fuzzmax_counter;
