@@ -711,13 +711,17 @@ void cull_queue(afl_state_t *afl) {
     }
   }
 
+  if (!afl->queue_buf[max_score_id]->favored) {
+    afl->queue_buf[max_score_id]->favored = 1;
+    ++afl->queued_favored;
+    if (!afl->queue_buf[max_score_id]->was_fuzzed) { ++afl->pending_favored; }
+  }
+
   for (i = 0; i < afl->queued_items; i++) {
     if (likely(!afl->queue_buf[i]->disabled)) {
       mark_as_redundant(afl, afl->queue_buf[i], !afl->queue_buf[i]->favored);
     }
   }
-
-  afl->queue_buf[max_score_id]->favored = 1;
 }
 
 /* Calculate case desirability score to adjust the length of havoc fuzzing.
