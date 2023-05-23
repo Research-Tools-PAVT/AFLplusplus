@@ -1112,12 +1112,12 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
 
       if (q->favored) factor *= 1.15;
 
-      uint64_t NUM_PREDS = afl->fsrv.trace_bits[1000];
+      uint64_t NUM_PREDS = afl->fsrv.trace_bits[0];
       double prev_factor = factor;
 
       double histogram_norm = energy_f2(afl->fsrv.trace_bits, afl, NUM_PREDS);
-      double counter_norm = (double)(afl->fsrv.trace_bits[1002] 
-        / (double)afl->fsrv.trace_bits[1000]);
+      double counter_norm = (double)(afl->fsrv.trace_bits[NUM_PREDS + 2] 
+        / (double)(NUM_PREDS));
 
       double histogram_quad = histogram_norm * histogram_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
       double counter_quad = counter_norm * counter_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
@@ -1131,7 +1131,7 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       afl->counter_quad = counter_quad;
       afl->factor = factor;
       
-      perf_score = 10 * afl->fsrv.trace_bits[1002];
+      perf_score = 10 * afl->fsrv.trace_bits[NUM_PREDS + 2];
 
       break;
 #endif

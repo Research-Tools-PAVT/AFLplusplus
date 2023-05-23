@@ -793,13 +793,13 @@ void show_stats_normal(afl_state_t *afl) {
   SAYF(cBRI "\n---------------------------------------------------------------\n" cRST);
 
   SAYF("%s" cGRA "[NUM_PREDS:%s%3u" cGRA "]" cRST, SP5, 
-        cBRI, afl->fsrv.trace_bits[1000]);
+        cBRI, afl->fsrv.trace_bits[0]);
 
   SAYF("%s" cGRA "[MAX_COUNTER:%s%3u" cGRA "]" cRST, SP5, 
-        cBRI, afl->fsrv.trace_bits[1001]);
+        cBRI, afl->fsrv.trace_bits[afl->fsrv.trace_bits[0] + 1]);
 
   SAYF("%s" cGRA "[CURRENT_COUNTER:%s%3u" cGRA "]\n" cRST, SP5, 
-        cBRI, afl->fsrv.trace_bits[1002]);
+        cBRI, afl->fsrv.trace_bits[afl->fsrv.trace_bits[0] + 2]);
 
   SAYF("%s" cGRA "[Histogram Quad:%s%3f" cGRA "]" cRST, SP5, 
         cBRI, afl->histogram_quad);
@@ -821,10 +821,6 @@ void show_stats_normal(afl_state_t *afl) {
 
   SAYF("%s" cGRA "[Weight:%s%3f" cGRA "]\n" cRST, SP5, 
         cBRI, afl->queue_cur->weight);
-
-  // // for (uint16_t k = num_preds; k < num_preds; k++)
-  // SAYF("%s" cGRA "Histogram: [1:%s%3lu" cGRA "]" cRST, SP5, 
-  //       cBRI, afl->histogram[2]);
 
   SAYF(cBRI "\n---------------------------------------------------------------\n" cRST);
 
