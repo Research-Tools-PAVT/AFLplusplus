@@ -132,16 +132,15 @@ void check_sat(u8 *T, u32 npreds, u8 *afl_area_ptr, u8 *fm_map) {
   u32 fuzzmax_counter = 0;
 
 #ifndef CRASH_VALIDATION
-  u32 hid = 0;
+  u32 hid = 1;
   for (u32 rid = 0; rid < npreds; ++rid) {
     fuzzmax_counter += T[rid];
 
     for (u32 cid = 0; cid <= rid; ++cid)
       afl_area_ptr[hid++] = T[rid] && T[cid];
-
-    afl_area_ptr[npreds] = 1;
   }
 
+  afl_area_ptr[0] = 1;
   fm_map[0] = fuzzmax_counter;
   fm_map[1] = npreds;
 
