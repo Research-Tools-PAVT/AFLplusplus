@@ -788,18 +788,20 @@ void show_stats_normal(afl_state_t *afl) {
 #define SP10 SP5 SP5
 #define SP20 SP10 SP10
 
+  uint64_t NUM_PREDS = afl->fsrv.trace_bits[2000];
+
   SAYF("\n" cBRI "[SATFUZZ]" cRST "%s\n", banner);
 
   SAYF(cBRI "\n---------------------------------------------------------------\n" cRST);
 
   SAYF("%s" cGRA "[NUM_PREDS:%s%3u" cGRA "]" cRST, SP5, 
-        cBRI, afl->fsrv.trace_bits[0]);
+        cBRI, NUM_PREDS);
 
   SAYF("%s" cGRA "[MAX_COUNTER:%s%3u" cGRA "]" cRST, SP5, 
-        cBRI, afl->fsrv.trace_bits[afl->fsrv.trace_bits[0] + 1]);
+        cBRI, afl->fsrv.trace_bits[2001]);
 
   SAYF("%s" cGRA "[CURRENT_COUNTER:%s%3u" cGRA "]\n" cRST, SP5, 
-        cBRI, afl->fsrv.trace_bits[afl->fsrv.trace_bits[0] + 2]);
+        cBRI, afl->fsrv.trace_bits[2002]);
 
   SAYF("%s" cGRA "[Histogram Quad:%s%3f" cGRA "]" cRST, SP5, 
         cBRI, afl->histogram_quad);

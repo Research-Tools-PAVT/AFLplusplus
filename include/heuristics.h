@@ -58,18 +58,25 @@ double energy_f2(uint8_t *heuf, afl_state_t *afl, uint64_t NUM_PREDS) {
     
     // DEBUGF("Histogram: %lu, %lu\n", arr[0], arr[NUM_PREDS - 1]);
     // afl->histogram = global_histogram_val;
-    
+
     min_max_scaler(arr, NUM_PREDS);
     double histogram_energy = 0.00;
     double run_energy = (double)global_histogram_val[0];
 
+    FILE *fptr = fopen("histogram.log", "a");
+
     for (size_t i = 0; i < NUM_PREDS; i++) {
+        fprintf(fptr, "%lu, ", global_histogram_val[i]);
         if (heuf[i] > 0 && (global_histogram_val[i] <= run_energy)) {
             run_energy = global_histogram_val[i];
             histogram_energy = (double)arr[i];
         }
     }
 
+    fprintf(fptr, "\n");
+    fflush(fptr);
+    
+    fclose(fptr);
     return histogram_energy;
 }
 
