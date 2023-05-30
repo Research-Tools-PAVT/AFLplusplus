@@ -788,7 +788,9 @@ void show_stats_normal(afl_state_t *afl) {
 #define SP10 SP5 SP5
 #define SP20 SP10 SP10
 
-  uint64_t NUM_PREDS = afl->fsrv.trace_bits[2000];
+#ifdef FUZZMAX
+
+  uint64_t NUM_PREDS = afl->fsrv.trace_bits[1000];
 
   SAYF("\n" cBRI "[SATFUZZ]" cRST "%s\n", banner);
 
@@ -798,10 +800,10 @@ void show_stats_normal(afl_state_t *afl) {
         cBRI, NUM_PREDS);
 
   SAYF("%s" cGRA "[MAX_COUNTER:%s%3u" cGRA "]" cRST, SP5, 
-        cBRI, afl->fsrv.trace_bits[2001]);
+        cBRI, afl->fsrv.trace_bits[1001]);
 
   SAYF("%s" cGRA "[CURRENT_COUNTER:%s%3u" cGRA "]\n" cRST, SP5, 
-        cBRI, afl->fsrv.trace_bits[2002]);
+        cBRI, afl->fsrv.trace_bits[1002]);
 
   SAYF("%s" cGRA "[Histogram Quad:%s%3f" cGRA "]" cRST, SP5, 
         cBRI, afl->histogram_quad);
@@ -825,6 +827,7 @@ void show_stats_normal(afl_state_t *afl) {
         cBRI, afl->queue_cur->weight);
 
   SAYF(cBRI "\n---------------------------------------------------------------\n" cRST);
+#endif
 
   /* Since `total_crashes` does not get reloaded from disk on restart,
     it indicates if we found crashes this round already -> paint red.

@@ -23,7 +23,9 @@
  */
 
 #include "afl-fuzz.h"
-#include "heuristics.h"
+#ifdef FUZZMAX
+  #include "heuristics.h"
+#endif
 #include <limits.h>
 #include <ctype.h>
 #include <math.h>
@@ -884,6 +886,7 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   // Longer execution time means longer work on the input, the deeper in
   // coverage, the better the fuzzing, right? -mh
 
+#ifndef FUZZMAX
   if (likely(afl->schedule < RARE) && likely(!afl->fixed_seed)) {
 
     if (q->exec_us * 0.1 > avg_exec_us) {
@@ -917,6 +920,7 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
     }
 
   }
+#endif
 
   /* Adjust score based on bitmap size. The working theory is that better
      coverage translates to better targets. Multiplier from 0.25x to 3x. */
@@ -1112,11 +1116,11 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
 
       if (q->favored) factor *= 1.15;
 
-      uint64_t NUM_PREDS = afl->fsrv.trace_bits[2000];
+      uint64_t NUM_PREDS = afl->fsrv.trace_bits[1000];
       double prev_factor = factor;
 
       double histogram_norm = energy_f2(afl->fsrv.trace_bits, afl, NUM_PREDS);
-      double counter_norm = (double)(afl->fsrv.trace_bits[2002] 
+      double counter_norm = (double)(afl->fsrv.trace_bits[1002] 
         / (double)(NUM_PREDS));
 
       double histogram_quad = histogram_norm * histogram_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
@@ -1131,7 +1135,7 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       afl->counter_quad = counter_quad;
       afl->factor = factor;
       
-      perf_score = 10 * afl->fsrv.trace_bits[2002];
+      perf_score = 10 * afl->fsrv.trace_bits[1002];
 
       break;
 #endif
