@@ -155,6 +155,11 @@ struct queue_entry {
   u32 len;                              /* Input length                     */
   u32 id;                               /* entry number in queue_buf        */
 
+#ifdef FUZZMAX
+  u32 num_preds;
+  u32 predicate_counter;
+#endif 
+
   u8 colorized,                         /* Do not run redqueen stage again  */
       cal_failed;                       /* Calibration failed?              */
   bool trim_done,                       /* Trimmed?                         */

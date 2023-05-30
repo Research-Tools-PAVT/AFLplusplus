@@ -806,10 +806,19 @@ void cull_queue(afl_state_t *afl) {
   afl->queued_favored = 0;
   afl->pending_favored = 0;
 
+#ifdef FUZZMAX
+  u32 max_score_id = 0;
+#endif
+
   for (i = 0; i < afl->queued_items; i++) {
 
     afl->queue_buf[i]->favored = 0;
 
+#ifdef FUZZMAX
+    if (afl->queue_buf[i]->predicate_counter > 
+          afl->queue_buf[max_score_id]->predicate_counter) 
+      max_score_id = i;
+#endif
   }
 
   /* Let's see if anything in the bitmap isn't captured in temp_v.
@@ -846,6 +855,14 @@ void cull_queue(afl_state_t *afl) {
 
   }
 
+#ifdef FUZZMAX
+  if (!afl->queue_buf[max_score_id]->favored) {
+    afl->queue_buf[max_score_id]->favored = 1;
+    ++afl->queued_favored;
+    if (!afl->queue_buf[max_score_id]->was_fuzzed) { ++afl->pending_favored; }
+  }
+#endif
+
   for (i = 0; i < afl->queued_items; i++) {
 
     if (likely(!afl->queue_buf[i]->disabled)) {
@@ -875,6 +892,11 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   u32 avg_exec_us = afl->total_cal_us / cal_cycles;
   u32 avg_bitmap_size = afl->total_bitmap_size / bitmap_entries;
   u32 perf_score = 100;
+
+#ifdef FUZZMAX
+  q->num_preds = afl->fsrv.trace_bits[1000];
+  q->predicate_counter = afl->fsrv.trace_bits[1002];
+#endif
 
   /* Adjust score based on execution speed of this path, compared to the
      global average. Multiplier ranges from 0.1x to 3x. Fast inputs are
