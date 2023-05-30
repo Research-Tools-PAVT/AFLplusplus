@@ -1126,7 +1126,7 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       double histogram_quad = histogram_norm * histogram_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
       double counter_quad = counter_norm * counter_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
 
-      factor += histogram_norm * histogram_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
+      factor += 100 * (histogram_norm * histogram_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1));
       factor += counter_norm * counter_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
 
       afl->histogram_norm = histogram_norm;

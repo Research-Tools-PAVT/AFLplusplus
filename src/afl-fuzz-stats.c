@@ -792,41 +792,75 @@ void show_stats_normal(afl_state_t *afl) {
 
   uint64_t NUM_PREDS = afl->fsrv.trace_bits[1000];
 
-  SAYF("\n" cBRI "[SATFUZZ]" cRST "%s\n", banner);
+  SAYF("\n" cBRI "[SATFUZZ]" cRST "%s\n\n", banner);
 
-  SAYF(cBRI "\n---------------------------------------------------------------\n" cRST);
+  SAYF(SET_G1 bSTG bLT bH bSTOP                         cCYA
+       " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
+       " Counters " bSTG bH2 bH                 bRT bSTOP "\n");
 
-  SAYF("%s" cGRA "[NUM_PREDS:%s%3u" cGRA "]" cRST, SP5, 
+  SAYF(bSTG bV bSTOP);
+
+  SAYF("%s" cGRA "NUM_PREDS:%s%3u" cGRA "" cRST, SP5, 
         cBRI, NUM_PREDS);
 
-  SAYF("%s" cGRA "[MAX_COUNTER:%s%3u" cGRA "]" cRST, SP5, 
+  SAYF("%s" cGRA "MAX_COUNTER:%s%3u" cGRA "" cRST, SP5, 
         cBRI, afl->fsrv.trace_bits[1001]);
 
-  SAYF("%s" cGRA "[CURRENT_COUNTER:%s%3u" cGRA "]\n" cRST, SP5, 
+  SAYF("%s" cGRA "CURRENT_COUNTER:%s%3u" cGRA cRST, SP5, 
         cBRI, afl->fsrv.trace_bits[1002]);
 
-  SAYF("%s" cGRA "[Histogram Quad:%s%3f" cGRA "]" cRST, SP5, 
+  SAYF(bSTG "       " bV bSTOP "\n");
+
+  SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
+       " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
+       " Metrics " bSTG bH2 bH2                 bVL bSTOP "\n");
+
+  SAYF(bSTG bV bSTOP);
+
+  SAYF("%s" cGRA "Histogram Quad:%s%12f" cGRA "" cRST, SP5, 
         cBRI, afl->histogram_quad);
 
-  SAYF("%s" cGRA "[Counter Quad:%s%3f" cGRA "]\n" cRST, SP5, 
+  SAYF("%s" cGRA "Counter Quad:%s%12f" cGRA "" cRST, SP5, 
         cBRI, afl->counter_quad);
 
-  SAYF("%s" cGRA "[histogram_norm:%s%3f" cGRA "]" cRST, SP5, 
+  SAYF(bSTG "       " bV bSTOP "\n");
+  SAYF(bSTG bV bSTOP);
+
+  SAYF("%s" cGRA "Histogram_norm:%s%12f" cGRA "" cRST, SP5, 
         cBRI, afl->histogram_norm);
 
-  SAYF("%s" cGRA "[counter_norm:%s%3f" cGRA "]" cRST, SP5, 
+  SAYF("%s" cGRA "Counter_norm:%s%12f" cGRA "" cRST, SP5, 
         cBRI, afl->counter_norm);
   
-  SAYF("%s" cGRA "[factor:%s%3f" cGRA "]\n" cRST, SP5, 
+  SAYF(bSTG "       " bV bSTOP "\n");
+  SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
+       " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
+       " Statistics " bSTG bH               bVL bSTOP "\n");
+
+  SAYF(bSTG bV bSTOP);
+
+  SAYF("%s" cGRA "Factor:%s%20f" cGRA "" cRST, SP5, 
         cBRI, afl->factor);
 
-  SAYF("%s" cGRA "[Perf Score:%s%3f" cGRA "]" cRST, SP5, 
+  SAYF("%s" cGRA "Perf Score:%s%14f" cGRA "" cRST, SP5, 
         cBRI, afl->queue_cur->perf_score);
 
-  SAYF("%s" cGRA "[Weight:%s%3f" cGRA "]\n" cRST, SP5, 
-        cBRI, afl->queue_cur->weight);
+  SAYF(bSTG "       " bV bSTOP "\n");
+  SAYF(bSTG bV bSTOP);
 
-  SAYF(cBRI "\n---------------------------------------------------------------\n" cRST);
+  SAYF("%s" cGRA "Weight:%s%20f" cGRA "" cRST, SP5, 
+        cBRI, afl->queue_cur->weight);
+  
+  SAYF("%s" cGRA "Bitmap Usage: %s%4u / %4u" cGRA "" cRST, SP5, 
+        cBRI, afl->queue_cur->bitmap_size, afl->total_bitmap_size);
+
+  SAYF(bSTG "\t      " bV bSTOP "\n");
+
+  SAYF(SET_G1 bSTG bLB bH bSTOP          cCYA
+       "" bSTG bH30 bH20 bH5 bH2 bH5 bH bH bSTOP cCYA
+       "" bSTG bH2 bH2                 bRB bSTOP "\n");
+
+  SAYF(cBRI "\n" cRST);
 #endif
 
   /* Since `total_crashes` does not get reloaded from disk on restart,
