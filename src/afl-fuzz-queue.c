@@ -25,6 +25,7 @@
 #include "afl-fuzz.h"
 #ifdef FUZZMAX
   #include "heuristics.h"
+  #include "satfuzz.h"
 #endif
 #include <limits.h>
 #include <ctype.h>
@@ -894,8 +895,8 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   u32 perf_score = 100;
 
 #ifdef FUZZMAX
-  q->num_preds = afl->fsrv.trace_bits[1000];
-  q->predicate_counter = afl->fsrv.trace_bits[1002];
+  q->num_preds = afl->fsrv.trace_bits[COUNTER_WRITES];
+  q->predicate_counter = afl->fsrv.trace_bits[COUNTER_WRITES + 2];
 #endif
 
   /* Adjust score based on execution speed of this path, compared to the
@@ -1138,18 +1139,16 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
 
       if (q->favored) factor *= 1.15;
 
-      uint64_t NUM_PREDS = afl->fsrv.trace_bits[1000];
       double prev_factor = factor;
 
-      double histogram_norm = energy_f2(afl->fsrv.trace_bits, afl, NUM_PREDS);
-      double counter_norm = (double)(afl->fsrv.trace_bits[1002] 
-        / (double)(NUM_PREDS));
+      double histogram_norm = energy_f2(afl->fsrv.trace_bits, afl, q->num_preds);
+      double counter_norm = (double)(q->predicate_counter / (double)(q->num_preds));
 
       double histogram_quad = histogram_norm * histogram_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
       double counter_quad = counter_norm * counter_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
 
-      factor += 100 * (histogram_norm * histogram_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1));
-      factor += counter_norm * counter_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
+      factor += HISTOGRAM_MULTIPLIER * (histogram_norm * histogram_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1));
+      factor += COUNTER_MULTIPLIER * (counter_norm * counter_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1));
 
       afl->histogram_norm = histogram_norm;
       afl->counter_norm = counter_norm;
@@ -1157,7 +1156,8 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       afl->counter_quad = counter_quad;
       afl->factor = factor;
       
-      perf_score = 10 * afl->fsrv.trace_bits[1002];
+      uint8_t MAX_COUNTER = afl->fsrv.trace_bits[COUNTER_WRITES + 1];
+      perf_score = PERF_SCORE_MULTIPLIER * q->predicate_counter + MAX_COUNTER;
 
       break;
 #endif

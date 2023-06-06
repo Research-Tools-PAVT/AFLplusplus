@@ -24,6 +24,9 @@
  */
 
 #include "afl-fuzz.h"
+#ifdef FUZZMAX
+  #include "satfuzz.h"
+#endif
 #include "envs.h"
 #include <limits.h>
 
@@ -790,7 +793,7 @@ void show_stats_normal(afl_state_t *afl) {
 
 #ifdef FUZZMAX
 
-  uint64_t NUM_PREDS = afl->fsrv.trace_bits[1000];
+  uint64_t NUM_PREDS = afl->fsrv.trace_bits[COUNTER_WRITES];
 
   SAYF("\n" cBRI "[SATFUZZ]" cRST "%s\n\n", banner);
 
@@ -804,10 +807,10 @@ void show_stats_normal(afl_state_t *afl) {
         cBRI, NUM_PREDS);
 
   SAYF("%s" cGRA "MAX_COUNTER:%s%3u" cGRA "" cRST, SP5, 
-        cBRI, afl->fsrv.trace_bits[1001]);
+        cBRI, afl->fsrv.trace_bits[COUNTER_WRITES + 1]);
 
   SAYF("%s" cGRA "CURRENT_COUNTER:%s%3u" cGRA cRST, SP5, 
-        cBRI, afl->fsrv.trace_bits[1002]);
+        cBRI, afl->fsrv.trace_bits[COUNTER_WRITES + 2]);
 
   SAYF(bSTG "       " bV bSTOP "\n");
 
