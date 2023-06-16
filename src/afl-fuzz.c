@@ -124,7 +124,8 @@ static void usage(u8 *argv0, int more_help) {
       "\n%s [ options ] -- /path/to/fuzzed_app [ ... ]\n\n"
 
       "Required parameters:\n"
-      "  -i dir        - input directory with test cases\n"
+      "  -i dir        - input directory with test cases (or '-' to resume, "
+      "also see AFL_AUTORESUME)\n"
       "  -o dir        - output directory for fuzzer findings\n\n"
 
       "Execution control settings:\n"
@@ -1285,16 +1286,16 @@ int main(int argc, char **argv_orig, char **envp) {
 
   if (afl->fsrv.mem_limit && afl->shm.cmplog_mode) afl->fsrv.mem_limit += 260;
 
-  OKF("afl++ is maintained by Marc \"van Hauser\" Heuse, Heiko \"hexcoder\" "
-      "Eißfeldt, Andrea Fioraldi and Dominik Maier");
-  OKF("afl++ is open source, get it at "
+  OKF("AFL++ is maintained by Marc \"van Hauser\" Heuse, Dominik Maier, Andrea "
+      "Fioraldi and Heiko \"hexcoder\" Eißfeldt");
+  OKF("AFL++ is open source, get it at "
       "https://github.com/AFLplusplus/AFLplusplus");
-  OKF("NOTE: afl++ >= v3 has changed defaults and behaviours - see README.md");
+  OKF("NOTE: AFL++ >= v3 has changed defaults and behaviours - see README.md");
 
   #ifdef __linux__
   if (afl->fsrv.nyx_mode) {
 
-    OKF("afl++ Nyx mode is enabled (developed and mainted by Sergej Schumilo)");
+    OKF("AFL++ Nyx mode is enabled (developed and mainted by Sergej Schumilo)");
     OKF("Nyx is open source, get it at https://github.com/Nyx-Fuzz");
 
   }
@@ -1539,29 +1540,6 @@ int main(int argc, char **argv_orig, char **envp) {
 
   }
 
-  if (afl->limit_time_sig > 0 && afl->custom_mutators_count) {
-
-    if (afl->custom_only) {
-
-      FATAL("Custom mutators are incompatible with MOpt (-L)");
-
-    }
-
-    u32 custom_fuzz = 0;
-    LIST_FOREACH(&afl->custom_mutator_list, struct custom_mutator, {
-
-      if (el->afl_custom_fuzz) { custom_fuzz = 1; }
-
-    });
-
-    if (custom_fuzz) {
-
-      WARNF("afl_custom_fuzz is incompatible with MOpt (-L)");
-
-    }
-
-  }
-
   if (afl->afl_env.afl_max_det_extras) {
 
     s32 max_det_extras = atoi(afl->afl_env.afl_max_det_extras);
@@ -1778,16 +1756,6 @@ int main(int argc, char **argv_orig, char **envp) {
   check_if_tty(afl);
   if (afl->afl_env.afl_force_ui) { afl->not_on_tty = 0; }
 
-  if (afl->afl_env.afl_custom_mutator_only) {
-
-    /* This ensures we don't proceed to havoc/splice */
-    afl->custom_only = 1;
-
-    /* Ensure we also skip all deterministic steps */
-    afl->skip_deterministic = 1;
-
-  }
-
   get_core_count(afl);
 
   atexit(at_exit);
@@ -1836,7 +1804,106 @@ int main(int argc, char **argv_orig, char **envp) {
     printf("DEBUG: rand %06d is %u\n", counter, rand_below(afl, 65536));
   #endif
 
+  if (!getenv("AFL_CUSTOM_INFO_PROGRAM")) {
+
+    setenv("AFL_CUSTOM_INFO_PROGRAM", argv[optind], 1);
+
+  }
+
+  if (!getenv("AFL_CUSTOM_INFO_PROGRAM_INPUT") && afl->fsrv.out_file) {
+
+    setenv("AFL_CUSTOM_INFO_PROGRAM_INPUT", afl->fsrv.out_file, 1);
+
+  }
+
+  if (!getenv("AFL_CUSTOM_INFO_PROGRAM_ARGV")) {
+
+    u8 envbuf[8096] = "", tmpbuf[8096] = "";
+    for (s32 i = optind + 1; i < argc; ++i) {
+
+      strcpy(tmpbuf, envbuf);
+      if (strchr(argv[i], ' ') && !strchr(argv[i], '"') &&
+          !strchr(argv[i], '\'')) {
+
+        if (!strchr(argv[i], '\'')) {
+
+          snprintf(envbuf, sizeof(tmpbuf), "%s '%s'", tmpbuf, argv[i]);
+
+        } else {
+
+          snprintf(envbuf, sizeof(tmpbuf), "%s \"%s\"", tmpbuf, argv[i]);
+
+        }
+
+      } else {
+
+        snprintf(envbuf, sizeof(tmpbuf), "%s %s", tmpbuf, argv[i]);
+
+      }
+
+    }
+
+    setenv("AFL_CUSTOM_INFO_PROGRAM_ARGV", envbuf + 1, 1);
+
+  }
+
+  if (!getenv("AFL_CUSTOM_INFO_OUT")) {
+
+    setenv("AFL_CUSTOM_INFO_OUT", afl->out_dir, 1);  // same as __AFL_OUT_DIR
+
+  }
+
   setup_custom_mutators(afl);
+
+  if (afl->afl_env.afl_custom_mutator_only) {
+
+    if (!afl->custom_mutators_count) {
+
+      if (afl->shm.cmplog_mode) {
+
+        WARNF(
+            "No custom mutator loaded, using AFL_CUSTOM_MUTATOR_ONLY is "
+            "pointless and only allowed now to allow experiments with CMPLOG.");
+
+      } else {
+
+        FATAL(
+            "No custom mutator loaded but AFL_CUSTOM_MUTATOR_ONLY specified.");
+
+      }
+
+    }
+
+    /* This ensures we don't proceed to havoc/splice */
+    afl->custom_only = 1;
+
+    /* Ensure we also skip all deterministic steps */
+    afl->skip_deterministic = 1;
+
+  }
+
+  if (afl->limit_time_sig > 0 && afl->custom_mutators_count) {
+
+    if (afl->custom_only) {
+
+      FATAL("Custom mutators are incompatible with MOpt (-L)");
+
+    }
+
+    u32 custom_fuzz = 0;
+    LIST_FOREACH(&afl->custom_mutator_list, struct custom_mutator, {
+
+      if (el->afl_custom_fuzz) { custom_fuzz = 1; }
+
+    });
+
+    if (custom_fuzz) {
+
+      WARNF("afl_custom_fuzz is incompatible with MOpt (-L)");
+
+    }
+
+  }
 
   write_setup_file(afl, argc, argv);
 
@@ -1989,6 +2056,7 @@ int main(int argc, char **argv_orig, char **envp) {
   if (afl->non_instrumented_mode || afl->fsrv.qemu_mode ||
       afl->fsrv.frida_mode || afl->fsrv.cs_mode || afl->unicorn_mode) {
 
+    u32 old_map_size = map_size;
     map_size = afl->fsrv.real_map_size = afl->fsrv.map_size = MAP_SIZE;
     afl->virgin_bits = ck_realloc(afl->virgin_bits, map_size);
     afl->virgin_tmout = ck_realloc(afl->virgin_tmout, map_size);
@@ -1999,6 +2067,18 @@ int main(int argc, char **argv_orig, char **envp) {
     afl->clean_trace_custom = ck_realloc(afl->clean_trace_custom, map_size);
     afl->first_trace = ck_realloc(afl->first_trace, map_size);
     afl->map_tmp_buf = ck_realloc(afl->map_tmp_buf, map_size);
+
+    if (old_map_size < map_size) {
+
+      memset(afl->var_bytes + old_map_size, 0, map_size - old_map_size);
+      memset(afl->top_rated + old_map_size, 0, map_size - old_map_size);
+      memset(afl->clean_trace + old_map_size, 0, map_size - old_map_size);
+      memset(afl->clean_trace_custom + old_map_size, 0,
+             map_size - old_map_size);
+      memset(afl->first_trace + old_map_size, 0, map_size - old_map_size);
+      memset(afl->map_tmp_buf + old_map_size, 0, map_size - old_map_size);
+
+    }
 
   }
 
@@ -2027,6 +2107,7 @@ int main(int argc, char **argv_orig, char **envp) {
 
       OKF("Re-initializing maps to %u bytes", new_map_size);
 
+      u32 old_map_size = map_size;
       afl->virgin_bits = ck_realloc(afl->virgin_bits, new_map_size);
       afl->virgin_tmout = ck_realloc(afl->virgin_tmout, new_map_size);
       afl->virgin_crash = ck_realloc(afl->virgin_crash, new_map_size);
@@ -2038,6 +2119,18 @@ int main(int argc, char **argv_orig, char **envp) {
           ck_realloc(afl->clean_trace_custom, new_map_size);
       afl->first_trace = ck_realloc(afl->first_trace, new_map_size);
       afl->map_tmp_buf = ck_realloc(afl->map_tmp_buf, new_map_size);
+
+      if (old_map_size < new_map_size) {
+
+        memset(afl->var_bytes + old_map_size, 0, new_map_size - old_map_size);
+        memset(afl->top_rated + old_map_size, 0, new_map_size - old_map_size);
+        memset(afl->clean_trace + old_map_size, 0, new_map_size - old_map_size);
+        memset(afl->clean_trace_custom + old_map_size, 0,
+               new_map_size - old_map_size);
+        memset(afl->first_trace + old_map_size, 0, new_map_size - old_map_size);
+        memset(afl->map_tmp_buf + old_map_size, 0, new_map_size - old_map_size);
+
+      }
 
       afl_fsrv_kill(&afl->fsrv);
       afl_shm_deinit(&afl->shm);
@@ -2089,6 +2182,7 @@ int main(int argc, char **argv_orig, char **envp) {
 
       OKF("Re-initializing maps to %u bytes due cmplog", new_map_size);
 
+      u32 old_map_size = map_size;
       afl->virgin_bits = ck_realloc(afl->virgin_bits, new_map_size);
       afl->virgin_tmout = ck_realloc(afl->virgin_tmout, new_map_size);
       afl->virgin_crash = ck_realloc(afl->virgin_crash, new_map_size);
@@ -2100,6 +2194,18 @@ int main(int argc, char **argv_orig, char **envp) {
           ck_realloc(afl->clean_trace_custom, new_map_size);
       afl->first_trace = ck_realloc(afl->first_trace, new_map_size);
       afl->map_tmp_buf = ck_realloc(afl->map_tmp_buf, new_map_size);
+
+      if (old_map_size < new_map_size) {
+
+        memset(afl->var_bytes + old_map_size, 0, new_map_size - old_map_size);
+        memset(afl->top_rated + old_map_size, 0, new_map_size - old_map_size);
+        memset(afl->clean_trace + old_map_size, 0, new_map_size - old_map_size);
+        memset(afl->clean_trace_custom + old_map_size, 0,
+               new_map_size - old_map_size);
+        memset(afl->first_trace + old_map_size, 0, new_map_size - old_map_size);
+        memset(afl->map_tmp_buf + old_map_size, 0, new_map_size - old_map_size);
+
+      }
 
       afl_fsrv_kill(&afl->fsrv);
       afl_fsrv_kill(&afl->cmplog_fsrv);

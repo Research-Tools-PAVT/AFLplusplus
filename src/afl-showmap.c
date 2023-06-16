@@ -1287,7 +1287,7 @@ int main(int argc, char **argv_orig, char **envp) {
 
         break;
 
-      case 'Y':  // fallthough
+      case 'Y':  // fallthrough
 #ifdef __linux__
       case 'X':                                                 /* NYX mode */
 
@@ -1419,6 +1419,14 @@ int main(int argc, char **argv_orig, char **envp) {
 
     // If @@ are in the target args, replace them and also set use_stdin=false.
     detect_file_args(argv + optind, stdin_file, &fsrv->use_stdin);
+
+    fsrv->dev_null_fd = open("/dev/null", O_RDWR);
+    if (fsrv->dev_null_fd < 0) { PFATAL("Unable to open /dev/null"); }
+
+    fsrv->out_file = stdin_file;
+    fsrv->out_fd =
+        open(stdin_file, O_RDWR | O_CREAT | O_EXCL, DEFAULT_PERMISSION);
+    if (fsrv->out_fd < 0) { PFATAL("Unable to create '%s'", stdin_file); }
 
   } else {
 
@@ -1587,6 +1595,14 @@ int main(int argc, char **argv_orig, char **envp) {
 
     fsrv->map_size = map_size;
 
+  } else {
+
+    afl_fsrv_start(fsrv, use_argv, &stop_soon,
+                   (get_afl_env("AFL_DEBUG_CHILD") ||
+                    get_afl_env("AFL_DEBUG_CHILD_OUTPUT"))
+                       ? 1
+                       : 0);
+
   }
 
   if (in_dir || in_filelist) {
@@ -1615,9 +1631,6 @@ int main(int argc, char **argv_orig, char **envp) {
     u8  *dn = NULL;
 
     if (getenv("AFL_DEBUG_GDB")) wait_for_gdb = true;
-
-    fsrv->dev_null_fd = open("/dev/null", O_RDWR);
-    if (fsrv->dev_null_fd < 0) { PFATAL("Unable to open /dev/null"); }
 
     if (in_filelist) {
 
@@ -1665,10 +1678,6 @@ int main(int argc, char **argv_orig, char **envp) {
     }
 
     atexit(at_exit_handler);
-    fsrv->out_file = stdin_file;
-    fsrv->out_fd =
-        open(stdin_file, O_RDWR | O_CREAT | O_EXCL, DEFAULT_PERMISSION);
-    if (fsrv->out_fd < 0) { PFATAL("Unable to create '%s'", out_file); }
 
     if (get_afl_env("AFL_DEBUG")) {
 
@@ -1683,12 +1692,6 @@ int main(int argc, char **argv_orig, char **envp) {
       SAYF("\n");
 
     }
-
-    afl_fsrv_start(fsrv, use_argv, &stop_soon,
-                   (get_afl_env("AFL_DEBUG_CHILD") ||
-                    get_afl_env("AFL_DEBUG_CHILD_OUTPUT"))
-                       ? 1
-                       : 0);
 
     map_size = fsrv->map_size;
 

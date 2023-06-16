@@ -716,6 +716,8 @@ void read_testcases(afl_state_t *afl, u8 *directory) {
 
   }
 
+  // if (getenv("MYTEST")) afl->in_place_resume = 1;
+
   if (nl_cnt) {
 
     u32 done = 0;
@@ -831,6 +833,8 @@ void read_testcases(afl_state_t *afl, u8 *directory) {
 
   }
 
+  // if (getenv("MYTEST")) afl->in_place_resume = 0;
+
   free(nl);                                                  /* not tracked */
 
   if (!afl->queued_items && directory == NULL) {
@@ -912,8 +916,10 @@ void perform_dry_run(afl_state_t *afl) {
 
     if (res == afl->crash_mode || res == FSRV_RUN_NOBITS) {
 
-      SAYF(cGRA "    len = %u, map size = %u, exec speed = %llu us\n" cRST,
-           q->len, q->bitmap_size, q->exec_us);
+      SAYF(cGRA
+           "    len = %u, map size = %u, exec speed = %llu us, hash = "
+           "%016llx\n" cRST,
+           q->len, q->bitmap_size, q->exec_us, q->exec_cksum);
 
     }
 
@@ -1010,7 +1016,7 @@ void perform_dry_run(afl_state_t *afl) {
 
                "    - Least likely, there is a horrible bug in the fuzzer. If "
                "other options\n"
-               "      fail, poke <afl-users@googlegroups.com> for "
+               "      fail, poke the Awesome Fuzzing Discord for "
                "troubleshooting tips.\n",
                stringify_mem_size(val_buf, sizeof(val_buf),
                                   afl->fsrv.mem_limit << 20),
@@ -1039,7 +1045,7 @@ void perform_dry_run(afl_state_t *afl) {
 
                "    - Least likely, there is a horrible bug in the fuzzer. If "
                "other options\n"
-               "      fail, poke <afl-users@googlegroups.com> for "
+               "      fail, poke the Awesome Fuzzing Discord for "
                "troubleshooting tips.\n");
 
         }
@@ -1168,14 +1174,14 @@ void perform_dry_run(afl_state_t *afl) {
 
   u32 duplicates = 0, i;
 
-  for (idx = 0; idx < afl->queued_items; idx++) {
+  for (idx = 0; idx < afl->queued_items - 1; idx++) {
 
     q = afl->queue_buf[idx];
     if (!q || q->disabled || q->cal_failed || !q->exec_cksum) { continue; }
-
     u32 done = 0;
+
     for (i = idx + 1;
-         i < afl->queued_items && !done && likely(afl->queue_buf[i]); i++) {
+         likely(i < afl->queued_items && afl->queue_buf[i] && !done); ++i) {
 
       struct queue_entry *p = afl->queue_buf[i];
       if (p->disabled || p->cal_failed || !p->exec_cksum) { continue; }
@@ -1198,6 +1204,13 @@ void perform_dry_run(afl_state_t *afl) {
           p->disabled = 1;
           p->perf_score = 0;
 
+          if (afl->debug) {
+
+            WARNF("Same coverage - %s is kept active, %s is disabled.",
+                  q->fname, p->fname);
+
+          }
+
         } else {
 
           if (!q->was_fuzzed) {
@@ -1211,7 +1224,14 @@ void perform_dry_run(afl_state_t *afl) {
           q->disabled = 1;
           q->perf_score = 0;
 
-          done = 1;
+          if (afl->debug) {
+
+            WARNF("Same coverage - %s is kept active, %s is disabled.",
+                  p->fname, q->fname);
+
+          }
+
+          done = 1;  // end inner loop because outer loop entry is disabled now
 
         }
 
