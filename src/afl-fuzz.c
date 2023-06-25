@@ -2280,7 +2280,8 @@ int main(int argc, char **argv_orig, char **envp) {
 
   if (likely(!afl->afl_env.afl_no_startup_calibration)) {
 
-    perform_dry_run(afl);
+    ACTF("skipping initial seed calibration due option override");
+   //  perform_dry_run(afl);
 
   } else {
 
