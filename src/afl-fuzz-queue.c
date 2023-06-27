@@ -981,6 +981,9 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
 
       if (q->favored) factor *= 1.15;
 
+      // Maximum number of predicates hit so far.
+      uint8_t MAX_COUNTER = afl->fsrv.trace_bits[COUNTER_WRITES + 1];
+
       // afl->fsrv.trace_bits is the bitmap
       // we are updating on the client side
       // code.
@@ -995,13 +998,8 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
           counter_norm * counter_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
 
       // Update the factor for this test case.
-      factor += HISTOGRAM_MULTIPLIER * (histogram_norm * histogram_norm /
-                                        (afl->n_fuzz[q->n_fuzz_entry] + 1));
-      factor += COUNTER_MULTIPLIER * (counter_norm * counter_norm /
-                                      (afl->n_fuzz[q->n_fuzz_entry] + 1));
-
-      // Maximum number of predicates hit so far.
-      uint8_t MAX_COUNTER = afl->fsrv.trace_bits[COUNTER_WRITES + 1];
+      factor += HISTOGRAM_MULTIPLIER * histogram_quad;
+      factor += COUNTER_MULTIPLIER * counter_quad;
 
       // Update the performance score of the test case.
       perf_score = PERF_SCORE_MULTIPLIER * q->predicate_counter + MAX_COUNTER;
