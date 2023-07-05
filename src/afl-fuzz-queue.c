@@ -707,9 +707,11 @@ void cull_queue(afl_state_t *afl) {
     afl->queue_buf[i]->favored = 0;
 
 #ifdef FUZZMAX
-    if (afl->queue_buf[i]->predicate_counter >
-        afl->queue_buf[max_score_id]->predicate_counter)
-      max_score_id = i;
+    if (likely(!afl->afl_env.afl_no_satfuzz_cullqueue)) {
+      if (afl->queue_buf[i]->predicate_counter >
+          afl->queue_buf[max_score_id]->predicate_counter)
+        max_score_id = i;
+    }
 #endif
   }
 
@@ -738,10 +740,12 @@ void cull_queue(afl_state_t *afl) {
   }
 
 #ifdef FUZZMAX
-  if (!afl->queue_buf[max_score_id]->favored) {
-    afl->queue_buf[max_score_id]->favored = 1;
-    ++afl->queued_favored;
-    if (!afl->queue_buf[max_score_id]->was_fuzzed) { ++afl->pending_favored; }
+  if (likely(!afl->afl_env.afl_no_satfuzz_cullqueue)) {
+    if (!afl->queue_buf[max_score_id]->favored) {
+      afl->queue_buf[max_score_id]->favored = 1;
+      ++afl->queued_favored;
+      if (!afl->queue_buf[max_score_id]->was_fuzzed) { ++afl->pending_favored; }
+    }
   }
 #endif
 

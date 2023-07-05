@@ -250,6 +250,9 @@ static char *afl_environment_variables[] = {
     "AFL_USE_QASAN",
     "AFL_PRINT_FILENAMES",
     "AFL_PIZZA_MODE",
+#ifdef FUZZMAX
+    "AFL_NO_SATFUZZ_CULLQUEUE",
+#endif
     NULL
 
 };
@@ -257,4 +260,3 @@ static char *afl_environment_variables[] = {
 extern char *afl_environment_variables[];
 
 #endif
-
