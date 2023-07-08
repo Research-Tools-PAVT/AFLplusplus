@@ -1,9 +1,14 @@
-#define GAP 5
+/**
+ * Declear CONSTANTS for SATFUZZ implementation.
+ */
+
+
+#define GAP 6
 #define BASE_OFFSET 50
 #define COUNTER_WRITES 1000
 
-#define HISTOGRAM_MULTIPLIER 250
+#define HISTOGRAM_MULTIPLIER 550
 #define COUNTER_MULTIPLIER 10
-#define PERF_SCORE_MULTIPLIER 15
+#define PERF_SCORE_MULTIPLIER 20
 
-#define PRINT_FREQ 8192
+#define PRINT_FREQ 4096
