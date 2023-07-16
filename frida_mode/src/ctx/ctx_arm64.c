@@ -7,36 +7,26 @@
 
   #define ARM64_REG_8(LABEL, REG) \
     case LABEL: {                 \
-                                  \
       return REG & GUM_INT8_MASK; \
-                                  \
     }
 
   #define ARM64_REG_16(LABEL, REG)   \
     case LABEL: {                    \
-                                     \
       return (REG & GUM_INT16_MASK); \
-                                     \
     }
 
   #define ARM64_REG_32(LABEL, REG)   \
     case LABEL: {                    \
-                                     \
       return (REG & GUM_INT32_MASK); \
-                                     \
     }
 
   #define ARM64_REG_64(LABEL, REG) \
     case LABEL: {                  \
-                                   \
       return (REG);                \
-                                   \
     }
 
 gsize ctx_read_reg(GumArm64CpuContext *ctx, arm64_reg reg) {
-
   switch (reg) {
-
     case ARM64_REG_WZR:
     case ARM64_REG_XZR:
       return 0;
@@ -175,20 +165,16 @@ gsize ctx_read_reg(GumArm64CpuContext *ctx, arm64_reg reg) {
     default:
       FFATAL("Failed to read register: %d", reg);
       return 0;
-
   }
-
 }
 
 size_t ctx_get_size(const cs_insn *instr, cs_arm64_op *operand) {
-
   uint8_t num_registers;
   uint8_t count_byte;
   char    vas_digit;
   size_t  mnemonic_len;
 
   switch (instr->id) {
-
     case ARM64_INS_STP:
     case ARM64_INS_STXP:
     case ARM64_INS_STNP:
@@ -201,7 +187,6 @@ size_t ctx_get_size(const cs_insn *instr, cs_arm64_op *operand) {
     default:
       num_registers = 1;
       break;
-
   }
 
   mnemonic_len = strlen(instr->mnemonic);
@@ -209,22 +194,17 @@ size_t ctx_get_size(const cs_insn *instr, cs_arm64_op *operand) {
 
   char last = instr->mnemonic[mnemonic_len - 1];
   switch (last) {
-
     case 'b':
       return 1;
     case 'h':
       return 2;
     case 'w':
       return 4 * num_registers;
-
   }
 
   if (operand->vas == ARM64_VAS_INVALID) {
-
     if (operand->type == ARM64_OP_REG) {
-
       switch (operand->reg) {
-
         case ARM64_REG_WZR:
         case ARM64_REG_WSP:
         case ARM64_REG_W0 ... ARM64_REG_W30:
@@ -237,41 +217,30 @@ size_t ctx_get_size(const cs_insn *instr, cs_arm64_op *operand) {
         default:
           return 8 * num_registers;
           ;
-
       }
-
     }
 
     return 8 * num_registers;
-
   }
 
   if (g_str_has_prefix(instr->mnemonic, "st") ||
       g_str_has_prefix(instr->mnemonic, "ld")) {
-
     if (mnemonic_len < 3) {
-
       FFATAL("VAS Mnemonic too short: %s\n", instr->mnemonic);
-
     }
 
     vas_digit = instr->mnemonic[2];
     if (vas_digit < '0' || vas_digit > '9') {
-
       FFATAL("VAS Mnemonic digit out of range: %s\n", instr->mnemonic);
-
     }
 
     count_byte = vas_digit - '0';
 
   } else {
-
     count_byte = 1;
-
   }
 
   switch (operand->vas) {
-
     case ARM64_VAS_1B:
       return 1 * count_byte;
     case ARM64_VAS_1H:
@@ -293,10 +262,7 @@ size_t ctx_get_size(const cs_insn *instr, cs_arm64_op *operand) {
       return 16 * count_byte;
     default:
       FFATAL("Unexpected VAS type: %s %d", instr->mnemonic, operand->vas);
-
   }
-
 }
 
 #endif
-

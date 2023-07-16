@@ -77,44 +77,35 @@ typedef int128_t s128;
 #ifndef MIN
   #define MIN(a, b)           \
     ({                        \
-                              \
       __typeof__(a) _a = (a); \
       __typeof__(b) _b = (b); \
       _a < _b ? _a : _b;      \
-                              \
     })
 
   #define MAX(a, b)           \
     ({                        \
-                              \
       __typeof__(a) _a = (a); \
       __typeof__(b) _b = (b); \
       _a > _b ? _a : _b;      \
-                              \
     })
 
-#endif                                                              /* !MIN */
+#endif /* !MIN */
 
 #define SWAP16(_x)                    \
   ({                                  \
-                                      \
     u16 _ret = (_x);                  \
     (u16)((_ret << 8) | (_ret >> 8)); \
-                                      \
   })
 
 #define SWAP32(_x)                                                   \
   ({                                                                 \
-                                                                     \
     u32 _ret = (_x);                                                 \
     (u32)((_ret << 24) | (_ret >> 24) | ((_ret << 8) & 0x00FF0000) | \
           ((_ret >> 8) & 0x0000FF00));                               \
-                                                                     \
   })
 
 #define SWAP64(_x)                                                             \
   ({                                                                           \
-                                                                               \
     u64 _ret = (_x);                                                           \
     _ret =                                                                     \
         (_ret & 0x00000000FFFFFFFF) << 32 | (_ret & 0xFFFFFFFF00000000) >> 32; \
@@ -123,14 +114,12 @@ typedef int128_t s128;
     _ret =                                                                     \
         (_ret & 0x00FF00FF00FF00FF) << 8 | (_ret & 0xFF00FF00FF00FF00) >> 8;   \
     _ret;                                                                      \
-                                                                               \
   })
 
 // It is impossible to define 128 bit constants, so ...
 #ifdef WORD_SIZE_64
   #define SWAPN(_x, _l)                            \
     ({                                             \
-                                                   \
       u128  _res = (_x), _ret;                     \
       char *d = (char *)&_ret, *s = (char *)&_res; \
       int   i;                                     \
@@ -139,18 +128,15 @@ typedef int128_t s128;
       u32 sr = 128U - ((_l) << 3U);                \
       (_ret >>= sr);                               \
       (u128) _ret;                                 \
-                                                   \
     })
 #endif
 
 #define SWAPNN(_x, _y, _l)                     \
   ({                                           \
-                                               \
     char *d = (char *)(_x), *s = (char *)(_y); \
     u32   i, l = (_l)-1;                       \
     for (i = 0; i <= l; i++)                   \
       d[l - i] = s[i];                         \
-                                               \
   })
 
 #ifdef AFL_LLVM_PASS
@@ -169,7 +155,7 @@ typedef int128_t s128;
     #define SR(s) ((void)s)
     #define R(x) (arc4random_uniform(x))
   #endif
-#endif                                                    /* ^AFL_LLVM_PASS */
+#endif /* ^AFL_LLVM_PASS */
 
 #define STRINGIFY_INTERNAL(x) #x
 #define STRINGIFY(x) STRINGIFY_INTERNAL(x)
@@ -192,5 +178,4 @@ typedef int128_t s128;
   #endif
 #endif
 
-#endif                                                   /* ! _HAVE_TYPES_H */
-
+#endif /* ! _HAVE_TYPES_H */

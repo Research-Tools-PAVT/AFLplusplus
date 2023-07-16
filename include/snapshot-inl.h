@@ -59,57 +59,40 @@
 #define AFL_SNAPSHOT_NOSTACK 64
 
 struct afl_snapshot_vmrange_args {
-
   unsigned long start, end;
-
 };
 
 static int afl_snapshot_dev_fd;
 
 static int afl_snapshot_init(void) {
-
   afl_snapshot_dev_fd = open(AFL_SNAPSHOT_FILE_NAME, 0);
   return afl_snapshot_dev_fd;
-
 }
 
 static void afl_snapshot_exclude_vmrange(void *start, void *end) {
-
   struct afl_snapshot_vmrange_args args = {(unsigned long)start,
                                            (unsigned long)end};
   ioctl(afl_snapshot_dev_fd, AFL_SNAPSHOT_EXCLUDE_VMRANGE, &args);
-
 }
 
 static void afl_snapshot_include_vmrange(void *start, void *end) {
-
   struct afl_snapshot_vmrange_args args = {(unsigned long)start,
                                            (unsigned long)end};
   ioctl(afl_snapshot_dev_fd, AFL_SNAPSHOT_INCLUDE_VMRANGE, &args);
-
 }
 
 static int afl_snapshot_take(int config) {
-
   return ioctl(afl_snapshot_dev_fd, AFL_SNAPSHOT_IOCTL_TAKE, config);
-
 }
 
 static int afl_snapshot_do(void) {
-
   return ioctl(afl_snapshot_dev_fd, AFL_SNAPSHOT_IOCTL_DO);
-
 }
 
 static void afl_snapshot_restore(void) {
-
   ioctl(afl_snapshot_dev_fd, AFL_SNAPSHOT_IOCTL_RESTORE);
-
 }
 
 static void afl_snapshot_clean(void) {
-
   ioctl(afl_snapshot_dev_fd, AFL_SNAPSHOT_IOCTL_CLEAN);
-
 }
-

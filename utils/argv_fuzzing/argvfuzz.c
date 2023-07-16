@@ -12,7 +12,7 @@
 
  */
 
-#define _GNU_SOURCE                                        /* for RTLD_NEXT */
+#define _GNU_SOURCE /* for RTLD_NEXT */
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -22,7 +22,6 @@
 int __libc_start_main(int (*main)(int, char **, char **), int argc, char **argv,
                       void (*init)(void), void (*fini)(void),
                       void (*rtld_fini)(void), void *stack_end) {
-
   int (*orig)(int (*main)(int, char **, char **), int argc, char **argv,
               void (*init)(void), void (*fini)(void), void (*rtld_fini)(void),
               void *stack_end);
@@ -35,15 +34,11 @@ int __libc_start_main(int (*main)(int, char **, char **), int argc, char **argv,
   orig = dlsym(RTLD_NEXT, __func__);
 
   if (!orig) {
-
     fprintf(stderr, "hook did not find original %s: %s\n", __func__, dlerror());
     exit(EXIT_FAILURE);
-
   }
 
   sub_argv = afl_init_argv(&sub_argc);
 
   return orig(main, sub_argc, sub_argv, init, fini, rtld_fini, stack_end);
-
 }
-

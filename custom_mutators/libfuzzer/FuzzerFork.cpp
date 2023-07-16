@@ -30,22 +30,18 @@
 namespace fuzzer {
 
 struct Stats {
-
   size_t number_of_executed_units = 0;
   size_t peak_rss_mb = 0;
   size_t average_exec_per_sec = 0;
-
 };
 
 static Stats ParseFinalStatsFromLog(const std::string &LogPath) {
-
   std::ifstream In(LogPath);
   std::string   Line;
   Stats         Res;
   struct {
-
     const char *Name;
-    size_t *    Var;
+    size_t     *Var;
 
   } NameVarPairs[] = {
 
@@ -57,7 +53,6 @@ static Stats ParseFinalStatsFromLog(const std::string &LogPath) {
   };
 
   while (std::getline(In, Line, '\n')) {
-
     if (Line.find("stat::") != 0) continue;
     std::istringstream ISS(Line);
     std::string        Name;
@@ -65,15 +60,12 @@ static Stats ParseFinalStatsFromLog(const std::string &LogPath) {
     ISS >> Name >> Val;
     for (size_t i = 0; NameVarPairs[i].Name; i++)
       if (Name == NameVarPairs[i].Name) *NameVarPairs[i].Var = Val;
-
   }
 
   return Res;
-
 }
 
 struct FuzzJob {
-
   // Inputs.
   Command     Cmd;
   std::string CorpusDir;
@@ -89,19 +81,15 @@ struct FuzzJob {
   int ExitCode;
 
   ~FuzzJob() {
-
     RemoveFile(CFPath);
     RemoveFile(LogPath);
     RemoveFile(SeedListPath);
     RmDirRecursive(CorpusDir);
     RmDirRecursive(FeaturesDir);
-
   }
-
 };
 
 struct GlobalEnv {
-
   Vector<std::string>                   Args;
   Vector<std::string>                   CorpusDirs;
   std::string                           MainCorpusDir;
@@ -111,7 +99,7 @@ struct GlobalEnv {
   Set<uint32_t>                         Features, Cov;
   Set<std::string>                      FilesWithDFT;
   Vector<std::string>                   Files;
-  Random *                              Rand;
+  Random                               *Rand;
   std::chrono::system_clock::time_point ProcessStartTime;
   int                                   Verbosity = 0;
 
@@ -122,21 +110,16 @@ struct GlobalEnv {
   size_t NumRuns = 0;
 
   std::string StopFile() {
-
     return DirPlusFile(TempDir, "STOP");
-
   }
 
   size_t secondsSinceProcessStartUp() const {
-
     return std::chrono::duration_cast<std::chrono::seconds>(
                std::chrono::system_clock::now() - ProcessStartTime)
         .count();
-
   }
 
   FuzzJob *CreateNewJob(size_t JobId) {
-
     Command Cmd(Args);
     Cmd.removeFlag("fork");
     Cmd.removeFlag("runs");
@@ -149,38 +132,30 @@ struct GlobalEnv {
     Cmd.addFlag("max_total_time", std::to_string(std::min((size_t)300, JobId)));
     Cmd.addFlag("stop_file", StopFile());
     if (!DataFlowBinary.empty()) {
-
       Cmd.addFlag("data_flow_trace", DFTDir);
       if (!Cmd.hasFlag("focus_function")) Cmd.addFlag("focus_function", "auto");
-
     }
 
     auto        Job = new FuzzJob;
     std::string Seeds;
     if (size_t CorpusSubsetSize =
             std::min(Files.size(), (size_t)sqrt(Files.size() + 2))) {
-
       auto Time1 = std::chrono::system_clock::now();
       for (size_t i = 0; i < CorpusSubsetSize; i++) {
-
         auto &SF = Files[Rand->SkewTowardsLast(Files.size())];
         Seeds += (Seeds.empty() ? "" : ",") + SF;
         CollectDFT(SF);
-
       }
 
       auto Time2 = std::chrono::system_clock::now();
       Job->DftTimeInSeconds = duration_cast<seconds>(Time2 - Time1).count();
-
     }
 
     if (!Seeds.empty()) {
-
       Job->SeedListPath =
           DirPlusFile(TempDir, std::to_string(JobId) + ".seeds");
       WriteToFile(Seeds, Job->SeedListPath);
       Cmd.addFlag("seed_inputs", "@" + Job->SeedListPath);
-
     }
 
     Job->LogPath = DirPlusFile(TempDir, std::to_string(JobId) + ".log");
@@ -193,10 +168,8 @@ struct GlobalEnv {
     Cmd.addFlag("features_dir", Job->FeaturesDir);
 
     for (auto &D : {Job->CorpusDir, Job->FeaturesDir}) {
-
       RmDirRecursive(D);
       MkDir(D);
-
     }
 
     Cmd.setOutputFile(Job->LogPath);
@@ -209,11 +182,9 @@ struct GlobalEnv {
              Job->Cmd.toString().c_str());
     // Start from very short runs and gradually increase them.
     return Job;
-
   }
 
   void RunOneMergeJob(FuzzJob *Job) {
-
     auto Stats = ParseFinalStatsFromLog(Job->LogPath);
     NumRuns += Stats.number_of_executed_units;
 
@@ -223,7 +194,6 @@ struct GlobalEnv {
     GetSizedFilesFromDir(Job->CorpusDir, &TempFiles);
     std::sort(TempFiles.begin(), TempFiles.end());
     for (auto &F : TempFiles) {
-
       auto FeatureFile = F.File;
       FeatureFile.replace(0, Job->CorpusDir.size(), Job->FeaturesDir);
       auto FeatureBytes = FileToVector(FeatureFile, 0, false);
@@ -231,16 +201,11 @@ struct GlobalEnv {
       Vector<uint32_t> NewFeatures(FeatureBytes.size() / sizeof(uint32_t));
       memcpy(NewFeatures.data(), FeatureBytes.data(), FeatureBytes.size());
       for (auto Ft : NewFeatures) {
-
         if (!Features.count(Ft)) {
-
           MergeCandidates.push_back(F);
           break;
-
         }
-
       }
-
     }
 
     // if (!FilesToAdd.empty() || Job->ExitCode != 0)
@@ -258,12 +223,10 @@ struct GlobalEnv {
     CrashResistantMerge(Args, {}, MergeCandidates, &FilesToAdd, Features,
                         &NewFeatures, Cov, &NewCov, Job->CFPath, false);
     for (auto &Path : FilesToAdd) {
-
       auto U = FileToVector(Path);
       auto NewPath = DirPlusFile(MainCorpusDir, Hash(U));
       WriteToFile(U, NewPath);
       Files.push_back(NewPath);
-
     }
 
     Features.insert(NewFeatures.begin(), NewFeatures.end());
@@ -273,11 +236,9 @@ struct GlobalEnv {
         if (TPC.PcIsFuncEntry(TE))
           PrintPC("  NEW_FUNC: %p %F %L\n", "",
                   TPC.GetNextInstructionPc(TE->PC));
-
   }
 
   void CollectDFT(const std::string &InputPath) {
-
     if (DataFlowBinary.empty()) return;
     if (!FilesWithDFT.insert(InputPath).second) return;
     Command Cmd(Args);
@@ -291,32 +252,24 @@ struct GlobalEnv {
     Cmd.combineOutAndErr();
     // Printf("CollectDFT: %s\n", Cmd.toString().c_str());
     ExecuteCommand(Cmd);
-
   }
-
 };
 
 struct JobQueue {
-
   std::queue<FuzzJob *>   Qu;
   std::mutex              Mu;
   std::condition_variable Cv;
 
   void Push(FuzzJob *Job) {
-
     {
-
       std::lock_guard<std::mutex> Lock(Mu);
       Qu.push(Job);
-
     }
 
     Cv.notify_one();
-
   }
 
   FuzzJob *Pop() {
-
     std::unique_lock<std::mutex> Lk(Mu);
     // std::lock_guard<std::mutex> Lock(Mu);
     Cv.wait(Lk, [&] { return !Qu.empty(); });
@@ -324,28 +277,21 @@ struct JobQueue {
     auto Job = Qu.front();
     Qu.pop();
     return Job;
-
   }
-
 };
 
 void WorkerThread(JobQueue *FuzzQ, JobQueue *MergeQ) {
-
   while (auto Job = FuzzQ->Pop()) {
-
     // Printf("WorkerThread: job %p\n", Job);
     Job->ExitCode = ExecuteCommand(Job->Cmd);
     MergeQ->Push(Job);
-
   }
-
 }
 
 // This is just a skeleton of an experimental -fork=1 feature.
 void FuzzWithFork(Random &Rand, const FuzzingOptions &Options,
                   const Vector<std::string> &Args,
                   const Vector<std::string> &CorpusDirs, int NumJobs) {
-
   Printf("INFO: -fork=%d: fuzzing in separate process(s)\n", NumJobs);
 
   GlobalEnv Env;
@@ -372,17 +318,14 @@ void FuzzWithFork(Random &Rand, const FuzzingOptions &Options,
     Env.MainCorpusDir = CorpusDirs[0];
 
   if (Options.KeepSeed) {
-
     for (auto &File : SeedFiles)
       Env.Files.push_back(File.File);
 
   } else {
-
     auto CFPath = DirPlusFile(Env.TempDir, "merge.txt");
     CrashResistantMerge(Env.Args, {}, SeedFiles, &Env.Files, {}, &Env.Features,
                         {}, &Env.Cov, CFPath, false);
     RemoveFile(CFPath);
-
   }
 
   Printf("INFO: -fork=%d: %zd seed inputs, starting to fuzz in %s\n", NumJobs,
@@ -393,34 +336,27 @@ void FuzzWithFork(Random &Rand, const FuzzingOptions &Options,
   JobQueue FuzzQ, MergeQ;
 
   auto StopJobs = [&]() {
-
     for (int i = 0; i < NumJobs; i++)
       FuzzQ.Push(nullptr);
     MergeQ.Push(nullptr);
     WriteToFile(Unit({1}), Env.StopFile());
-
   };
 
   size_t              JobId = 1;
   Vector<std::thread> Threads;
   for (int t = 0; t < NumJobs; t++) {
-
     Threads.push_back(std::thread(WorkerThread, &FuzzQ, &MergeQ));
     FuzzQ.Push(Env.CreateNewJob(JobId++));
-
   }
 
   while (true) {
-
     std::unique_ptr<FuzzJob> Job(MergeQ.Pop());
     if (!Job) break;
     ExitCode = Job->ExitCode;
     if (ExitCode == Options.InterruptExitCode) {
-
       Printf("==%lu== libFuzzer: a child was interrupted; exiting\n", GetPid());
       StopJobs();
       break;
-
     }
 
     Fuzzer::MaybeExitGracefully();
@@ -433,10 +369,8 @@ void FuzzWithFork(Random &Rand, const FuzzingOptions &Options,
     else if (Options.IgnoreOOMs && ExitCode == Options.OOMExitCode)
       Env.NumOOMs++;
     else if (ExitCode != 0) {
-
       Env.NumCrashes++;
       if (Options.IgnoreCrashes) {
-
         std::ifstream In(Job->LogPath);
         std::string   Line;
         while (std::getline(In, Line, '\n'))
@@ -445,15 +379,12 @@ void FuzzWithFork(Random &Rand, const FuzzingOptions &Options,
             Printf("%s\n", Line.c_str());
 
       } else {
-
         // And exit if we don't ignore this crash.
         Printf("INFO: log from the inner process:\n%s",
                FileToString(Job->LogPath).c_str());
         StopJobs();
         break;
-
       }
-
     }
 
     // Stop if we are over the time budget.
@@ -462,25 +393,20 @@ void FuzzWithFork(Random &Rand, const FuzzingOptions &Options,
     // We also don't stop instantly: other jobs need to finish.
     if (Options.MaxTotalTimeSec > 0 &&
         Env.secondsSinceProcessStartUp() >= (size_t)Options.MaxTotalTimeSec) {
-
       Printf("INFO: fuzzed for %zd seconds, wrapping up soon\n",
              Env.secondsSinceProcessStartUp());
       StopJobs();
       break;
-
     }
 
     if (Env.NumRuns >= Options.MaxNumberOfRuns) {
-
       Printf("INFO: fuzzed for %zd iterations, wrapping up soon\n",
              Env.NumRuns);
       StopJobs();
       break;
-
     }
 
     FuzzQ.Push(Env.CreateNewJob(JobId++));
-
   }
 
   for (auto &T : Threads)
@@ -494,8 +420,6 @@ void FuzzWithFork(Random &Rand, const FuzzingOptions &Options,
   Printf("INFO: exiting: %d time: %zds\n", ExitCode,
          Env.secondsSinceProcessStartUp());
   exit(ExitCode);
-
 }
 
 }  // namespace fuzzer
-

@@ -15,12 +15,9 @@ NOTE: This utility is not meant to be used standalone. Never run this utility di
 static void plot_toggled(GtkWidget *caller, gpointer data);
 
 int main(int argc, char **argv) {
-
   if (argc == 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help"))) {
-
     printf("%s %s", argv[0], USAGE);
     return EXIT_SUCCESS;
-
   }
 
   GtkWidget *window;
@@ -150,24 +147,17 @@ int main(int argc, char **argv) {
   gtk_main();
 
   return EXIT_SUCCESS;
-
 }
 
 static void plot_toggled(GtkWidget *caller, gpointer data) {
-
   gboolean state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(caller));
 
   GtkWidget *widget = *(GtkWidget **)data;
 
   if (state) {
-
     gtk_widget_show(widget);
 
   } else {
-
     gtk_widget_hide(widget);
-
   }
-
 }
-

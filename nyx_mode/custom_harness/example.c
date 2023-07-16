@@ -10,7 +10,6 @@
 #define MMAP_SIZE(x) ((x & ~(PAGE_SIZE - 1)) + PAGE_SIZE)
 
 int main(int argc, char **argv) {
-
   /* if you want to debug code running in Nyx, hprintf() is the way to go.
    *  Long story short -- it's just a guest-to-hypervisor printf. Hence the name
    * "hprintf"
@@ -54,7 +53,7 @@ int main(int argc, char **argv) {
       (uintptr_t)trace_buffer; /* trace "bitmap" pointer - required for
                                   instrumentation-only fuzzing */
   agent_config.ijon_trace_buffer_vaddr =
-      (uintptr_t)NULL;                             /* "IJON" buffer pointer */
+      (uintptr_t)NULL; /* "IJON" buffer pointer */
   agent_config.agent_non_reload_mode =
       1; /* non-reload mode is supported (usually because the agent implements a
             fork-server; currently not used) */
@@ -73,7 +72,6 @@ int main(int argc, char **argv) {
 
   /* the main fuzzing loop */
   while (1) {
-
     /* Creates a root snapshot on first execution. Also we requested the next
      * input with this hypercall */
     kAFL_hypercall(HYPERCALL_KAFL_USER_FAST_ACQUIRE, 0);  // root snapshot <--
@@ -91,35 +89,25 @@ int main(int argc, char **argv) {
     ((uint8_t *)trace_buffer)[0] = 0x1;
 
     if (len >= 4) {
-
       /* set a byte in the bitmap to guide your fuzzer */
       ((uint8_t *)trace_buffer)[0] = 0x1;
       if (payload_buffer->data[0] == '!') {
-
         ((uint8_t *)trace_buffer)[1] = 0x1;
         if (payload_buffer->data[1] == 'N') {
-
           ((uint8_t *)trace_buffer)[2] = 0x1;
           if (payload_buffer->data[2] == 'Y') {
-
             ((uint8_t *)trace_buffer)[3] = 0x1;
             if (payload_buffer->data[3] == 'X') {
-
               ((uint8_t *)trace_buffer)[4] = 0x1;
               /* Notifiy the hypervisor and the fuzzer that a "crash" has
                * occured. Also a string is passed by this hypercall (this is
                * currently not supported by AFL++-Nyx) */
               kAFL_hypercall(HYPERCALL_KAFL_PANIC_EXTENDED,
                              (uintptr_t) "Something went wrong\n");
-
             }
-
           }
-
         }
-
       }
-
     }
 
     /* this hypercall is used to notify the hypervisor and the fuzzer that a
@@ -132,10 +120,7 @@ int main(int argc, char **argv) {
 
     /* This shouldn't happen if you have enabled the reload mode */
     hprintf("This should never happen :)\n");
-
   }
 
   return 0;
-
 }
-

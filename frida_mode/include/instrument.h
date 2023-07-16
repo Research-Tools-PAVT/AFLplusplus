@@ -73,4 +73,3 @@ void instrument_write_regs(GumCpuContext *cpu_context, gpointer user_data);
 void instrument_regs_format(int fd, char *format, ...);
 
 #endif
-

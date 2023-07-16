@@ -10,7 +10,6 @@
 #include <unistd.h>
 
 int main(int argc, char **argv) {
-
   int  a = 0;
   char s[100];
   read(0, s, 100);
@@ -18,6 +17,4 @@ int main(int argc, char **argv) {
   if (s[7] == 'B') { abort(); }
 
   return 0;
-
 }
-

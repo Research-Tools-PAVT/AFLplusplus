@@ -6,8 +6,8 @@
 //#include "debug.h"
 #include "afl-fuzz.h"
 
-#ifdef  INTROSPECTION
-  const char *introspection_ptr;
+#ifdef INTROSPECTION
+const char *introspection_ptr;
 #endif
 
 afl_state_t *afl_struct;
@@ -21,39 +21,31 @@ extern "C" void   LLVMFuzzerMyInit(int (*UserCb)(const uint8_t *Data,
                                    unsigned int Seed);
 
 typedef struct my_mutator {
-
   afl_state_t *afl;
-  u8 *         mutator_buf;
+  u8          *mutator_buf;
   unsigned int seed;
   unsigned int extras_cnt, a_extras_cnt;
 
 } my_mutator_t;
 
 extern "C" int dummy(const uint8_t *Data, size_t Size) {
-
   (void)(Data);
   (void)(Size);
   fprintf(stderr, "dummy() called\n");
   return 0;
-
 }
 
 extern "C" my_mutator_t *afl_custom_init(afl_state_t *afl, unsigned int seed) {
-
   my_mutator_t *data = (my_mutator_t *)calloc(1, sizeof(my_mutator_t));
   if (!data) {
-
     perror("afl_custom_init alloc");
     return NULL;
-
   }
 
   if ((data->mutator_buf = (u8 *)malloc(MAX_FILE)) == NULL) {
-
     free(data);
     perror("mutator_buf alloc");
     return NULL;
-
   }
 
   data->afl = afl;
@@ -72,7 +64,6 @@ extern "C" my_mutator_t *afl_custom_init(afl_state_t *afl, unsigned int seed) {
   LLVMFuzzerMyInit(dummy, seed);
 
   return data;
-
 }
 
 /* When a new queue entry is added we check if there are new dictionary
@@ -130,21 +121,17 @@ extern "C" size_t afl_custom_fuzz(my_mutator_t *data, uint8_t *buf,
                                   size_t buf_size, u8 **out_buf,
                                   uint8_t *add_buf, size_t add_buf_size,
                                   size_t max_size) {
-
   memcpy(data->mutator_buf, buf, buf_size);
   size_t ret = LLVMFuzzerMutate(data->mutator_buf, buf_size, max_size);
 
   /* return size of mutated data */
   *out_buf = data->mutator_buf;
   return ret;
-
 }
 
-#ifdef  INTROSPECTION
-extern "C" const char* afl_custom_introspection(my_mutator_t *data) {
-
+#ifdef INTROSPECTION
+extern "C" const char *afl_custom_introspection(my_mutator_t *data) {
   return introspection_ptr;
-
 }
 #endif
 
@@ -154,9 +141,6 @@ extern "C" const char* afl_custom_introspection(my_mutator_t *data) {
  * @param data The data ptr from afl_custom_init
  */
 extern "C" void afl_custom_deinit(my_mutator_t *data) {
-
   free(data->mutator_buf);
   free(data);
-
 }
-

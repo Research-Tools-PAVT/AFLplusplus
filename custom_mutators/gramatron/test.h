@@ -11,25 +11,22 @@
 #define INIT_SIZE 100  // Initial size of the dynamic array holding the input
 
 typedef struct terminal {
-
   int    state;
   int    trigger_idx;
   size_t symbol_len;
-  char * symbol;
+  char  *symbol;
 
 } terminal;
 
 typedef struct trigger {
-
-  char * id;
+  char  *id;
   int    dest;
-  char * term;
+  char  *term;
   size_t term_len;
 
 } trigger;
 
 typedef struct state {
-
   int      state_name;   // Integer State name
   int      trigger_len;  // Number of triggers associated with this state
   trigger *ptr;          // Pointer to beginning of the list of triggers
@@ -37,7 +34,6 @@ typedef struct state {
 } state;
 
 typedef struct {
-
   size_t    used;
   size_t    size;
   size_t    inputlen;
@@ -54,4 +50,3 @@ Array *gen_input(state *, Array *);
 void   print_repr(Array *, char *);
 void   initArray(Array *, size_t);
 void   insertArray(Array *, int, char *, size_t, int);
-

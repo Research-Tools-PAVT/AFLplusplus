@@ -14,7 +14,6 @@ asan_loadN_t  asan_loadN = NULL;
 asan_storeN_t asan_storeN = NULL;
 
 static void asan_callout(GumCpuContext *ctx, gpointer user_data) {
-
   UNUSED_PARAMETER(user_data);
 
   cs_x86_op  *operand = (cs_x86_op *)user_data;
@@ -32,19 +31,14 @@ static void asan_callout(GumCpuContext *ctx, gpointer user_data) {
   size = operand->size;
 
   if (operand->access == CS_AC_READ) {
-
     asan_loadN(address, size);
 
   } else if (operand->access == CS_AC_WRITE) {
-
     asan_storeN(address, size);
-
   }
-
 }
 
 void asan_instrument(const cs_insn *instr, GumStalkerIterator *iterator) {
-
   UNUSED_PARAMETER(iterator);
 
   cs_x86      x86 = instr->detail->x86;
@@ -59,7 +53,6 @@ void asan_instrument(const cs_insn *instr, GumStalkerIterator *iterator) {
   if (instr->id == X86_INS_NOP) return;
 
   for (uint8_t i = 0; i < x86.op_count; i++) {
-
     operand = &x86.operands[i];
 
     if (operand->type != X86_OP_MEM) { continue; }
@@ -70,24 +63,17 @@ void asan_instrument(const cs_insn *instr, GumStalkerIterator *iterator) {
     ctx = g_malloc0(sizeof(cs_x86_op));
     memcpy(ctx, operand, sizeof(cs_x86_op));
     gum_stalker_iterator_put_callout(iterator, asan_callout, ctx, g_free);
-
   }
-
 }
 
 void asan_arch_init(void) {
-
   asan_loadN = (asan_loadN_t)dlsym(RTLD_DEFAULT, "__asan_loadN");
   asan_storeN = (asan_loadN_t)dlsym(RTLD_DEFAULT, "__asan_storeN");
   if (asan_loadN == NULL || asan_storeN == NULL) {
-
     FFATAL("Frida ASAN failed to find '__asan_loadN' or '__asan_storeN'");
-
   }
 
   asan_exclude_module_by_symbol("__asan_loadN");
-
 }
 
 #endif
-

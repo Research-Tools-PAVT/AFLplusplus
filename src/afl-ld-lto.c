@@ -56,23 +56,22 @@
 
 #define MAX_PARAM_COUNT 4096
 
-static u8 **ld_params;              /* Parameters passed to the real 'ld'   */
+static u8 **ld_params; /* Parameters passed to the real 'ld'   */
 
 static u8 *afl_path = AFL_PATH;
 static u8 *real_ld = AFL_REAL_LD;
 
-static u8 be_quiet,                 /* Quiet mode (no stderr output)        */
-    debug,                          /* AFL_DEBUG                            */
-    passthrough,                    /* AFL_LD_PASSTHROUGH - no link+optimize*/
-    just_version;                   /* Just show version?                   */
+static u8 be_quiet, /* Quiet mode (no stderr output)        */
+    debug,          /* AFL_DEBUG                            */
+    passthrough,    /* AFL_LD_PASSTHROUGH - no link+optimize*/
+    just_version;   /* Just show version?                   */
 
-static u32 ld_param_cnt = 1;        /* Number of params to 'ld'             */
+static u32 ld_param_cnt = 1; /* Number of params to 'ld'             */
 
 /* Examine and modify parameters to pass to 'ld', 'llvm-link' and 'llmv-ar'.
    Note that the file name is always the last parameter passed by GCC,
    so we exploit this property to keep the code "simple". */
 static void edit_params(int argc, char **argv) {
-
   u32 i, gold_pos = 0, gold_present = 0, rt_present = 0, rt_lto_present = 0,
          inst_present = 0;
   char *ptr;
@@ -82,46 +81,31 @@ static void edit_params(int argc, char **argv) {
   ld_params[0] = (u8 *)real_ld;
 
   if (!passthrough) {
-
     for (i = 1; i < (u32)argc; i++) {
-
       if (strstr(argv[i], "/afl-llvm-rt-lto.o") != NULL) rt_lto_present = 1;
       if (strstr(argv[i], "/afl-compiler-rt.o") != NULL) rt_present = 1;
       if (strstr(argv[i], "/afl-llvm-lto-instr") != NULL) inst_present = 1;
-
     }
 
     for (i = 1; i < (u32)argc && !gold_pos; i++) {
-
       if (strcmp(argv[i], "-plugin") == 0) {
-
         if (strncmp(argv[i], "-plugin=", strlen("-plugin=")) == 0) {
-
           if (strcasestr(argv[i], "LLVMgold.so") != NULL)
             gold_present = gold_pos = i + 1;
 
         } else if (i < (u32)argc &&
 
                    strcasestr(argv[i + 1], "LLVMgold.so") != NULL) {
-
           gold_present = gold_pos = i + 2;
-
         }
-
       }
-
     }
 
     if (!gold_pos) {
-
       for (i = 1; i + 1 < (u32)argc && !gold_pos; i++) {
-
         if (argv[i][0] != '-') {
-
           if (argv[i - 1][0] == '-') {
-
             switch (argv[i - 1][1]) {
-
               case 'b':
                 break;
               case 'd':
@@ -158,32 +142,25 @@ static void edit_params(int argc, char **argv) {
               case 'z':
                 break;
               case '-': {
-
                 if (strcmp(argv[i - 1], "--oformat") == 0) break;
                 if (strcmp(argv[i - 1], "--output") == 0) break;
                 if (strncmp(argv[i - 1], "--opt-remarks-", 14) == 0) break;
                 gold_pos = i;
                 break;
-
               }
 
               default:
                 gold_pos = i;
-
             }
 
           } else
 
             gold_pos = i;
-
         }
-
       }
-
     }
 
     if (!gold_pos) gold_pos = 1;
-
   }
 
   if (getenv("AFL_LLVM_INSTRIM") ||
@@ -202,38 +179,30 @@ static void edit_params(int argc, char **argv) {
         rt_present ? "true" : "false", rt_lto_present ? "true" : "false");
 
   for (i = 1; i < (u32)argc; i++) {
-
     if (ld_param_cnt >= MAX_PARAM_COUNT)
       FATAL(
           "Too many command line parameters because of unpacking .a archives, "
           "this would need to be done by hand ... sorry! :-(");
 
     if (strcmp(argv[i], "--afl") == 0) {
-
       if (!be_quiet) OKF("AFL++ test command line flag detected, exiting.");
       exit(0);
-
     }
 
     if (i == gold_pos && !passthrough) {
-
       ld_params[ld_param_cnt++] = alloc_printf("-L%s/../lib", LLVM_BINDIR);
 
       if (!gold_present) {
-
         ld_params[ld_param_cnt++] = "-plugin";
         ld_params[ld_param_cnt++] =
             alloc_printf("%s/../lib/LLVMgold.so", LLVM_BINDIR);
-
       }
 
       ld_params[ld_param_cnt++] = "--allow-multiple-definition";
 
       if (!inst_present) {
-
         ld_params[ld_param_cnt++] = alloc_printf(
             "-mllvm=-load=%s/afl-llvm-lto-instrumentation.so", afl_path);
-
       }
 
       if (!rt_present)
@@ -242,32 +211,25 @@ static void edit_params(int argc, char **argv) {
       if (!rt_lto_present)
         ld_params[ld_param_cnt++] =
             alloc_printf("%s/afl-llvm-rt-lto.o", afl_path);
-
     }
 
     ld_params[ld_param_cnt++] = argv[i];
-
   }
 
   ld_params[ld_param_cnt] = NULL;
-
 }
 
 /* Main entry point */
 
 int main(int argc, char **argv) {
-
   s32  pid, i, status;
   char thecwd[PATH_MAX];
 
   if (getenv("AFL_LD_CALLER") != NULL) {
-
     FATAL("ld loop detected! Set AFL_REAL_LD!\n");
-
   }
 
   if (isatty(2) && !getenv("AFL_QUIET") && !getenv("AFL_DEBUG")) {
-
     SAYF(cCYA "afl-ld-to" VERSION cRST
               " by Marc \"vanHauser\" Heuse <mh@mh-sec.de>\n");
 
@@ -285,18 +247,15 @@ int main(int argc, char **argv) {
   setenv("AFL_LD_CALLER", "1", 1);
 
   if (debug) {
-
     if (getcwd(thecwd, sizeof(thecwd)) != 0) strcpy(thecwd, ".");
 
     DEBUGF("cd \"%s\";", thecwd);
     for (i = 0; i < argc; i++)
       SAYF(" \"%s\"", argv[i]);
     SAYF("\n");
-
   }
 
   if (argc < 2) {
-
     SAYF(
         "\n"
         "This is a helper application for afl-clang-lto.\n"
@@ -315,26 +274,21 @@ int main(int argc, char **argv) {
         real_ld, LLVM_BINDIR);
 
     exit(1);
-
   }
 
   edit_params(argc, argv);  // here most of the magic happens :-)
 
   if (debug) {
-
     DEBUGF("cd \"%s\";", thecwd);
     for (i = 0; i < (s32)ld_param_cnt; i++)
       SAYF(" \"%s\"", ld_params[i]);
     SAYF("\n");
-
   }
 
   if (!(pid = fork())) {
-
     if (strlen(real_ld) > 1) execvp(real_ld, (char **)ld_params);
     execvp("ld", (char **)ld_params);  // fallback
     FATAL("Oops, failed to execute 'ld' - check your PATH");
-
   }
 
   if (pid < 0) PFATAL("fork() failed");
@@ -343,23 +297,16 @@ int main(int argc, char **argv) {
   if (debug) DEBUGF("linker result: %d\n", status);
 
   if (!just_version) {
-
     if (status == 0) {
-
       if (!be_quiet) OKF("Linker was successful");
 
     } else {
-
       SAYF(cLRD "[-] " cRST
                 "Linker failed, please investigate and send a bug report. Most "
                 "likely an 'ld' option is incompatible with %s.\n",
            AFL_CLANG_FLTO);
-
     }
-
   }
 
   exit(WEXITSTATUS(status));
-
 }
-

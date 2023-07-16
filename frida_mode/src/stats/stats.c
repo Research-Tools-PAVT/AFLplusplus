@@ -22,16 +22,13 @@ static int           stats_fd = -1;
 static stats_data_t *stats_data = MAP_FAILED;
 
 void stats_write(void) {
-
   if (stats_filename == NULL) { return; }
 
   if (stats_interval == 0) { return; }
 
   guint64 current_time = g_get_monotonic_time();
   if ((current_time - stats_data->prev.stats_time) < stats_interval_us) {
-
     return;
-
   }
 
   IGNORED_RETURN(ftruncate(stats_fd, 0));
@@ -61,230 +58,184 @@ void stats_write(void) {
   stats_write_arch(stats_data);
 
   memcpy(&stats_data->prev, &stats_data->curr, sizeof(stats_t));
-
 }
 
 static void gum_afl_stalker_stats_increment_total(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.total++;
-
 }
 
 static void gum_afl_stalker_stats_increment_call_imm(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.call_imm++;
-
 }
 
 static void gum_afl_stalker_stats_increment_call_reg(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.call_reg++;
-
 }
 
 static void gum_afl_stalker_stats_increment_call_mem(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.call_mem++;
-
 }
 
 static void gum_afl_stalker_stats_increment_excluded_call_reg(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.excluded_call_reg++;
-
 }
 
 static void gum_afl_stalker_stats_increment_ret_slow_path(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.ret_slow_path++;
-
 }
 
 static void gum_afl_stalker_stats_increment_ret(GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.ret++;
-
 }
 
 static void gum_afl_stalker_stats_increment_post_call_invoke(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.post_call_invoke++;
-
 }
 
 static void gum_afl_stalker_stats_increment_excluded_call_imm(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.excluded_call_imm++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_imm(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_imm++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_reg(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_reg++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_mem(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_mem++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_cond_imm(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_cond_imm++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_cond_mem(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_cond_mem++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_cond_reg(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_cond_reg++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_cond_jcxz(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_cond_jcxz++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_cond_cc(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_cond_cc++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_cond_cbz(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_cond_cbz++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_cond_cbnz(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_cond_cbnz++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_cond_tbz(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_cond_tbz++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_cond_tbnz(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_cond_tbnz++;
-
 }
 
 static void gum_afl_stalker_stats_increment_jmp_continuation(
     GumStalkerObserver *observer) {
-
   UNUSED_PARAMETER(observer);
 
   if (!entry_compiled) { return; }
   stats_data->curr.jmp_continuation++;
-
 }
 
 static void stats_observer_init(GumStalkerObserver *observer) {
-
   GumStalkerObserverInterface *iface = GUM_STALKER_OBSERVER_GET_IFACE(observer);
   iface->increment_total = gum_afl_stalker_stats_increment_total;
   iface->increment_call_imm = gum_afl_stalker_stats_increment_call_imm;
@@ -316,18 +267,14 @@ static void stats_observer_init(GumStalkerObserver *observer) {
       gum_afl_stalker_stats_increment_jmp_cond_tbnz;
   iface->increment_jmp_continuation =
       gum_afl_stalker_stats_increment_jmp_continuation;
-
 }
 
 void stats_config(void) {
-
   stats_filename = getenv("AFL_FRIDA_STATS_FILE");
   stats_interval = util_read_num("AFL_FRIDA_STATS_INTERVAL", 10);
-
 }
 
 void stats_init(void) {
-
   FOKF(cBLU "Stats" cRST " - " cGRN "file:" cYEL " [%s]",
        stats_filename == NULL ? " " : stats_filename);
   FOKF(cBLU "Stats" cRST " - " cGRN "interval:" cYEL " [%" G_GINT64_MODIFIER
@@ -336,11 +283,9 @@ void stats_init(void) {
 
   if (getenv("AFL_FRIDA_STATS_INTERVAL") != NULL &&
       getenv("AFL_FRIDA_STATS_FILE") == NULL) {
-
     FFATAL(
         "AFL_FRIDA_STATS_FILE must be specified if "
         "AFL_FRIDA_STATS_INTERVAL is");
-
   }
 
   stats_interval_us = stats_interval * MICRO_TO_SEC;
@@ -365,11 +310,9 @@ void stats_init(void) {
   stats_data = shm_create(sizeof(stats_data_t));
 
   starts_arch_init();
-
 }
 
 void stats_print(char *format, ...) {
-
   char buffer[4096] = {0};
   int  len;
 
@@ -381,20 +324,14 @@ void stats_print(char *format, ...) {
   len = strnlen(buffer, sizeof(buffer));
   IGNORED_RETURN(write(stats_fd, buffer, len));
   va_end(ap);
-
 }
 
 void stats_on_fork(void) {
-
   stats_write();
-
 }
 
 void stats_collect(const cs_insn *instr, gboolean begin) {
-
   if (!entry_compiled) { return; }
   if (stats_filename == NULL) { return; }
   stats_collect_arch(instr, begin);
-
 }
-

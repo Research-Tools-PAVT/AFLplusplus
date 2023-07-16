@@ -4,7 +4,6 @@
 #include "frida-gumjs.h"
 
 typedef struct {
-
   guint64 stats_time;
   guint64 total;
   guint64 call_imm;
@@ -32,7 +31,6 @@ typedef struct {
 } stats_t;
 
 typedef struct {
-
   /* transitions */
   stats_t curr;
   stats_t prev;
@@ -57,4 +55,3 @@ void stats_write_arch(stats_data_t *data);
 void stats_on_fork(void);
 
 #endif
-

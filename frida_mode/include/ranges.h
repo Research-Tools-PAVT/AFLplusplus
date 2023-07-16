@@ -21,4 +21,3 @@ void ranges_add_include(GumMemoryRange *range);
 void ranges_add_exclude(GumMemoryRange *range);
 
 #endif
-

@@ -36,4 +36,3 @@ void persistent_epilogue(GumStalkerOutput *output);
 void persistent_epilogue_arch(GumStalkerOutput *output);
 
 #endif
-

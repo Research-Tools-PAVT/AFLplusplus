@@ -16,7 +16,6 @@ __AFL_FUZZ_INIT();
    one of the arguments.
  */
 int main(int argc, char **argv) {
-
 #ifdef __AFL_HAVE_MANUAL_CONTROL
   __AFL_INIT();
 #endif
@@ -26,7 +25,6 @@ int main(int argc, char **argv) {
      the loop and allowing the program to terminate. It protects against
      accidental memory leaks and similar issues. */
   while (__AFL_LOOP(100000)) {
-
     int len = __AFL_FUZZ_TESTCASE_LEN;
 
     // Check that the length of the test case is at least 8 bytes
@@ -39,21 +37,15 @@ int main(int argc, char **argv) {
        If so, call the "abort" function to terminate the program.
        Otherwise, print an error message. */
     if (argc > 1 && strcmp(argv[1], "XYZ") == 0) {
-
       if (strcmp(argv[2], "TEST2") == 0) { abort(); }
 
     } else {
-
       printf("Bad number of arguments!\n");
-
     }
-
   }
 
   /* Exiting the loop allows the program to terminate normally. AFL will restart
      the process with a clean slate for allocated memory, file descriptors, etc.
   */
   return 0;
-
 }
-

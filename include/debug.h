@@ -110,7 +110,7 @@
   #define bgLCY ""
   #define bgBRI ""
 
-#endif                                                        /* ^USE_COLOR */
+#endif /* ^USE_COLOR */
 
 /*************************
  * Box drawing sequences *
@@ -118,21 +118,21 @@
 
 #ifdef FANCY_BOXES
 
-  #define SET_G1 "\x1b)0"                      /* Set G1 for box drawing    */
-  #define RESET_G1 "\x1b)B"                    /* Reset G1 to ASCII         */
-  #define bSTART "\x0e"                        /* Enter G1 drawing mode     */
-  #define bSTOP "\x0f"                         /* Leave G1 drawing mode     */
-  #define bH "q"                               /* Horizontal line           */
-  #define bV "x"                               /* Vertical line             */
-  #define bLT "l"                              /* Left top corner           */
-  #define bRT "k"                              /* Right top corner          */
-  #define bLB "m"                              /* Left bottom corner        */
-  #define bRB "j"                              /* Right bottom corner       */
-  #define bX "n"                               /* Cross                     */
-  #define bVR "t"                              /* Vertical, branch right    */
-  #define bVL "u"                              /* Vertical, branch left     */
-  #define bHT "v"                              /* Horizontal, branch top    */
-  #define bHB "w"                              /* Horizontal, branch bottom */
+  #define SET_G1 "\x1b)0"   /* Set G1 for box drawing    */
+  #define RESET_G1 "\x1b)B" /* Reset G1 to ASCII         */
+  #define bSTART "\x0e"     /* Enter G1 drawing mode     */
+  #define bSTOP "\x0f"      /* Leave G1 drawing mode     */
+  #define bH "q"            /* Horizontal line           */
+  #define bV "x"            /* Vertical line             */
+  #define bLT "l"           /* Left top corner           */
+  #define bRT "k"           /* Right top corner          */
+  #define bLB "m"           /* Left bottom corner        */
+  #define bRB "j"           /* Right bottom corner       */
+  #define bX "n"            /* Cross                     */
+  #define bVR "t"           /* Vertical, branch right    */
+  #define bVL "u"           /* Vertical, branch left     */
+  #define bHT "v"           /* Horizontal, branch top    */
+  #define bHB "w"           /* Horizontal, branch bottom */
 
 #else
 
@@ -152,7 +152,7 @@
   #define bHT "+"
   #define bHB "+"
 
-#endif                                                      /* ^FANCY_BOXES */
+#endif /* ^FANCY_BOXES */
 
 /***********************
  * Misc terminal codes *
@@ -172,12 +172,10 @@
   #include <unistd.h>
   #pragma GCC diagnostic ignored "-Wformat-security"
 static inline const char *colorfilter(const char *x) {
-
   static int once = 1;
   static int disabled = 0;
 
   if (once) {
-
     /* when there is no tty -> we always want filtering
      * when AFL_NO_UI is set filtering depends on AFL_NO_COLOR
      * otherwise we want always colors
@@ -186,7 +184,6 @@ static inline const char *colorfilter(const char *x) {
         isatty(2) && (!getenv("AFL_NO_UI") ||
                       (!getenv("AFL_NO_COLOR") && !getenv("AFL_NO_COLOUR")));
     once = 0;
-
   }
 
   if (likely(disabled)) return x;
@@ -196,29 +193,23 @@ static inline const char *colorfilter(const char *x) {
   int         in_seq = 0;
 
   while (*x) {
-
     if (in_seq && *x == 'm') {
-
       in_seq = 0;
 
     } else {
-
       if (!in_seq && *x == '\x1b') { in_seq = 1; }
       if (!in_seq) { *d++ = *x; }
-
     }
 
     ++x;
-
   }
 
   *d = '\0';
   return monochromestring;
-
 }
 
 #else
-  #define colorfilter(x) x                        /* no filtering necessary */
+  #define colorfilter(x) x /* no filtering necessary */
 #endif
 
 /* macro magic to transform the first parameter to SAYF
@@ -246,13 +237,12 @@ static inline const char *colorfilter(const char *x) {
   #define MY_SAYF(x...) printf(x)
 #else
   #define MY_SAYF(x...) fprintf(stderr, x)
-#endif                                               /* ^MESSAGES_TO_STDOUT */
+#endif /* ^MESSAGES_TO_STDOUT */
 
 /* Show a prefixed warning. */
 
 #define WARNF(x...)                            \
   do {                                         \
-                                               \
     SAYF(cYEL "[!] " cBRI "WARNING: " cRST x); \
     SAYF(cRST "\n");                           \
                                                \
@@ -262,7 +252,6 @@ static inline const char *colorfilter(const char *x) {
 
 #define ACTF(x...)            \
   do {                        \
-                              \
     SAYF(cLBL "[*] " cRST x); \
     SAYF(cRST "\n");          \
                               \
@@ -272,7 +261,6 @@ static inline const char *colorfilter(const char *x) {
 
 #define OKF(x...)             \
   do {                        \
-                              \
     SAYF(cLGN "[+] " cRST x); \
     SAYF(cRST "\n");          \
                               \
@@ -282,7 +270,6 @@ static inline const char *colorfilter(const char *x) {
 
 #define BADF(x...)              \
   do {                          \
-                                \
     SAYF(cLRD "\n[-] " cRST x); \
     SAYF(cRST "\n");            \
                                 \
@@ -292,7 +279,6 @@ static inline const char *colorfilter(const char *x) {
 
 #define FATAL(x...)                                                      \
   do {                                                                   \
-                                                                         \
     SAYF(bSTOP RESET_G1 CURSOR_SHOW cRST cLRD                            \
          "\n[-] PROGRAM ABORT : " cRST   x);                               \
     SAYF(cLRD "\n         Location : " cRST "%s(), %s:%u\n\n", __func__, \
@@ -305,7 +291,6 @@ static inline const char *colorfilter(const char *x) {
 
 #define ABORT(x...)                                                      \
   do {                                                                   \
-                                                                         \
     SAYF(bSTOP RESET_G1 CURSOR_SHOW cRST cLRD                            \
          "\n[-] PROGRAM ABORT : " cRST   x);                               \
     SAYF(cLRD "\n    Stop location : " cRST "%s(), %s:%u\n\n", __func__, \
@@ -318,7 +303,6 @@ static inline const char *colorfilter(const char *x) {
 
 #define PFATAL(x...)                                                   \
   do {                                                                 \
-                                                                       \
     fflush(stdout);                                                    \
     SAYF(bSTOP RESET_G1 CURSOR_SHOW cRST cLRD                          \
          "\n[-]  SYSTEM ERROR : " cRST   x);                             \
@@ -334,7 +318,6 @@ static inline const char *colorfilter(const char *x) {
 
 #define RPFATAL(res, x...) \
   do {                     \
-                           \
     if (res < 0)           \
       PFATAL(x);           \
     else                   \
@@ -346,7 +329,6 @@ static inline const char *colorfilter(const char *x) {
 
 #define DEBUGF(x...)                                    \
   do {                                                  \
-                                                        \
     fprintf(stderr, cMGN "[D] " cBRI "DEBUG: " cRST x); \
     fprintf(stderr, cRST "");                           \
                                                         \
@@ -357,49 +339,37 @@ static inline const char *colorfilter(const char *x) {
 
 #define ck_write(fd, buf, len, fn)                                            \
   do {                                                                        \
-                                                                              \
     if (len <= 0) break;                                                      \
     int _fd = (fd);                                                           \
     s32 _written = 0, _off = 0, _len = (s32)(len);                            \
                                                                               \
     do {                                                                      \
-                                                                              \
       s32 _res = write(_fd, (buf) + _off, _len);                              \
       if (_res != _len && (_res > 0 && _written + _res != _len)) {            \
-                                                                              \
         if (_res > 0) {                                                       \
-                                                                              \
           _written += _res;                                                   \
           _len -= _res;                                                       \
           _off += _res;                                                       \
                                                                               \
         } else {                                                              \
-                                                                              \
           RPFATAL(_res, "Short write to %s, fd %d (%d of %d bytes)", fn, _fd, \
                   _res, _len);                                                \
-                                                                              \
         }                                                                     \
                                                                               \
       } else {                                                                \
-                                                                              \
         break;                                                                \
-                                                                              \
       }                                                                       \
                                                                               \
     } while (1);                                                              \
-                                                                              \
-                                                                              \
                                                                               \
   } while (0)
 
 #define ck_read(fd, buf, len, fn)                              \
   do {                                                         \
-                                                               \
     s32 _len = (s32)(len);                                     \
     s32 _res = read(fd, buf, _len);                            \
     if (_res != _len) RPFATAL(_res, "Short read from %s", fn); \
                                                                \
   } while (0)
 
-#endif                                                   /* ! _HAVE_DEBUG_H */
-
+#endif /* ! _HAVE_DEBUG_H */

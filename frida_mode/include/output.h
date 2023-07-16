@@ -10,4 +10,3 @@ void output_config(void);
 void output_init(void);
 
 #endif
-

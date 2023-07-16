@@ -23,51 +23,39 @@ static long page_mask = 0;
 
 static gboolean cmplog_range(const GumRangeDetails *details,
                              gpointer               user_data) {
-
   GArray        *cmplog_ranges = (GArray *)user_data;
   GumMemoryRange range = *details->range;
   g_array_append_val(cmplog_ranges, range);
   return TRUE;
-
 }
 
 static gint cmplog_sort(gconstpointer a, gconstpointer b) {
-
   GumMemoryRange *ra = (GumMemoryRange *)a;
   GumMemoryRange *rb = (GumMemoryRange *)b;
 
   if (ra->base_address < rb->base_address) {
-
     return -1;
 
   } else if (ra->base_address > rb->base_address) {
-
     return 1;
 
   } else {
-
     return 0;
-
   }
-
 }
 
 static void cmplog_get_ranges(void) {
-
   FVERBOSE("CMPLOG - Collecting ranges");
 
   cmplog_ranges = g_array_sized_new(false, false, sizeof(GumMemoryRange), 100);
   gum_process_enumerate_ranges(GUM_PAGE_READ, cmplog_range, cmplog_ranges);
   g_array_sort(cmplog_ranges, cmplog_sort);
-
 }
 
 void cmplog_config(void) {
-
 }
 
 void cmplog_init(void) {
-
   FOKF(cBLU "Instrumentation" cRST " - " cGRN "cmplog:" cYEL " [%c]",
        __afl_cmp_map == NULL ? ' ' : 'X');
 
@@ -78,12 +66,10 @@ void cmplog_init(void) {
   FVERBOSE("Cmplog Ranges");
 
   for (guint i = 0; i < cmplog_ranges->len; i++) {
-
     GumMemoryRange *range = &g_array_index(cmplog_ranges, GumMemoryRange, i);
     FVERBOSE("\t%3u: 0x%016" G_GINT64_MODIFIER "X - 0x%016" G_GINT64_MODIFIER
              "X",
              i, range->base_address, range->base_address + range->size);
-
   }
 
   page_size = sysconf(_SC_PAGE_SIZE);
@@ -92,29 +78,21 @@ void cmplog_init(void) {
 
   hash_yes = g_hash_table_new(g_direct_hash, g_direct_equal);
   if (hash_yes == NULL) {
-
     FFATAL("Failed to g_hash_table_new, errno: %d", errno);
-
   }
 
   hash_no = g_hash_table_new(g_direct_hash, g_direct_equal);
   if (hash_no == NULL) {
-
     FFATAL("Failed to g_hash_table_new, errno: %d", errno);
-
   }
-
 }
 
 static gboolean cmplog_contains(GumAddress inner_base, GumAddress inner_limit,
                                 GumAddress outer_base, GumAddress outer_limit) {
-
   return (inner_base >= outer_base && inner_limit <= outer_limit);
-
 }
 
 gboolean cmplog_test_addr(guint64 addr, size_t size) {
-
   if (g_hash_table_contains(hash_yes, GSIZE_TO_POINTER(addr))) { return true; }
   if (g_hash_table_contains(hash_no, GSIZE_TO_POINTER(addr))) { return false; }
 
@@ -129,31 +107,22 @@ gboolean cmplog_test_addr(guint64 addr, size_t size) {
    * validate our address.
    */
   if (msync(page_addr, page_offset + size, MS_ASYNC) < 0) {
-
     if (!g_hash_table_add(hash_no, GSIZE_TO_POINTER(addr))) {
-
       FFATAL("Failed - g_hash_table_add");
-
     }
 
     return false;
 
   } else {
-
     if (!g_hash_table_add(hash_yes, GSIZE_TO_POINTER(addr))) {
-
       FFATAL("Failed - g_hash_table_add");
-
     }
 
     return true;
-
   }
-
 }
 
 gboolean cmplog_is_readable(guint64 addr, size_t size) {
-
   if (cmplog_ranges == NULL) FFATAL("CMPLOG not initialized");
 
   /*
@@ -173,7 +142,6 @@ gboolean cmplog_is_readable(guint64 addr, size_t size) {
   GumAddress inner_limit = inner_base + size;
 
   for (guint i = 0; i < cmplog_ranges->len; i++) {
-
     GumMemoryRange *range = &g_array_index(cmplog_ranges, GumMemoryRange, i);
 
     GumAddress outer_base = range->base_address;
@@ -181,12 +149,9 @@ gboolean cmplog_is_readable(guint64 addr, size_t size) {
 
     if (cmplog_contains(inner_base, inner_limit, outer_base, outer_limit))
       return true;
-
   }
 
   if (cmplog_test_addr(addr, size)) { return true; }
 
   return false;
-
 }
-

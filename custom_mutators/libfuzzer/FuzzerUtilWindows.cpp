@@ -31,9 +31,7 @@ namespace fuzzer {
 static const FuzzingOptions *HandlerOpt = nullptr;
 
 static LONG CALLBACK ExceptionHandler(PEXCEPTION_POINTERS ExceptionInfo) {
-
   switch (ExceptionInfo->ExceptionRecord->ExceptionCode) {
-
     case EXCEPTION_ACCESS_VIOLATION:
     case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
     case EXCEPTION_STACK_OVERFLOW:
@@ -59,88 +57,64 @@ static LONG CALLBACK ExceptionHandler(PEXCEPTION_POINTERS ExceptionInfo) {
       if (HandlerOpt->HandleFpe) Fuzzer::StaticCrashSignalCallback();
       break;
       // TODO: handle (Options.HandleXfsz)
-
   }
 
   return EXCEPTION_CONTINUE_SEARCH;
-
 }
 
 BOOL WINAPI CtrlHandler(DWORD dwCtrlType) {
-
   switch (dwCtrlType) {
-
     case CTRL_C_EVENT:
       if (HandlerOpt->HandleInt) Fuzzer::StaticInterruptCallback();
       return TRUE;
     case CTRL_BREAK_EVENT:
       if (HandlerOpt->HandleTerm) Fuzzer::StaticInterruptCallback();
       return TRUE;
-
   }
 
   return FALSE;
-
 }
 
 void CALLBACK AlarmHandler(PVOID, BOOLEAN) {
-
   Fuzzer::StaticAlarmCallback();
-
 }
 
 class TimerQ {
-
   HANDLE TimerQueue;
 
  public:
   TimerQ() : TimerQueue(NULL) {
-
   }
 
   ~TimerQ() {
-
     if (TimerQueue) DeleteTimerQueueEx(TimerQueue, NULL);
-
   }
 
   void SetTimer(int Seconds) {
-
     if (!TimerQueue) {
-
       TimerQueue = CreateTimerQueue();
       if (!TimerQueue) {
-
         Printf("libFuzzer: CreateTimerQueue failed.\n");
         exit(1);
-
       }
-
     }
 
     HANDLE Timer;
     if (!CreateTimerQueueTimer(&Timer, TimerQueue, AlarmHandler, NULL,
                                Seconds * 1000, Seconds * 1000, 0)) {
-
       Printf("libFuzzer: CreateTimerQueueTimer failed.\n");
       exit(1);
-
     }
-
   }
-
 };
 
 static TimerQ Timer;
 
 static void CrashHandler(int) {
-
   Fuzzer::StaticCrashSignalCallback();
-
 }
 
 void SetSignalHandler(const FuzzingOptions &Options) {
-
   HandlerOpt = &Options;
 
   if (Options.HandleAlrm && Options.UnitTimeoutSec > 0)
@@ -148,12 +122,10 @@ void SetSignalHandler(const FuzzingOptions &Options) {
 
   if (Options.HandleInt || Options.HandleTerm)
     if (!SetConsoleCtrlHandler(CtrlHandler, TRUE)) {
-
       DWORD LastError = GetLastError();
       Printf("libFuzzer: SetConsoleCtrlHandler failed (Error code: %lu).\n",
              LastError);
       exit(1);
-
     }
 
   if (Options.HandleSegv || Options.HandleBus || Options.HandleIll ||
@@ -162,73 +134,53 @@ void SetSignalHandler(const FuzzingOptions &Options) {
 
   if (Options.HandleAbrt)
     if (SIG_ERR == signal(SIGABRT, CrashHandler)) {
-
       Printf("libFuzzer: signal failed with %d\n", errno);
       exit(1);
-
     }
-
 }
 
 void SleepSeconds(int Seconds) {
-
   Sleep(Seconds * 1000);
-
 }
 
 unsigned long GetPid() {
-
   return GetCurrentProcessId();
-
 }
 
 size_t GetPeakRSSMb() {
-
   PROCESS_MEMORY_COUNTERS info;
   if (!GetProcessMemoryInfo(GetCurrentProcess(), &info, sizeof(info))) return 0;
   return info.PeakWorkingSetSize >> 20;
-
 }
 
 FILE *OpenProcessPipe(const char *Command, const char *Mode) {
-
   return _popen(Command, Mode);
-
 }
 
 int CloseProcessPipe(FILE *F) {
-
   return _pclose(F);
-
 }
 
 int ExecuteCommand(const Command &Cmd) {
-
   std::string CmdLine = Cmd.toString();
   return system(CmdLine.c_str());
-
 }
 
 bool ExecuteCommand(const Command &Cmd, std::string *CmdOutput) {
-
   FILE *Pipe = _popen(Cmd.toString().c_str(), "r");
   if (!Pipe) return false;
 
   if (CmdOutput) {
-
     char TmpBuffer[128];
     while (fgets(TmpBuffer, sizeof(TmpBuffer), Pipe))
       CmdOutput->append(TmpBuffer);
-
   }
 
   return _pclose(Pipe) == 0;
-
 }
 
 const void *SearchMemory(const void *Data, size_t DataLen, const void *Patt,
                          size_t PattLen) {
-
   // TODO: make this implementation more efficient.
   const char *Cdata = (const char *)Data;
   const char *Cpatt = (const char *)Patt;
@@ -244,36 +196,28 @@ const void *SearchMemory(const void *Data, size_t DataLen, const void *Patt,
     if (It[0] == Cpatt[0] && memcmp(It, Cpatt, PattLen) == 0) return It;
 
   return NULL;
-
 }
 
 std::string DisassembleCmd(const std::string &FileName) {
-
   Vector<std::string> command_vector;
   command_vector.push_back("dumpbin /summary > nul");
   if (ExecuteCommand(Command(command_vector)) == 0)
     return "dumpbin /disasm " + FileName;
   Printf("libFuzzer: couldn't find tool to disassemble (dumpbin)\n");
   exit(1);
-
 }
 
 std::string SearchRegexCmd(const std::string &Regex) {
-
   return "findstr /r \"" + Regex + "\"";
-
 }
 
 void DiscardOutput(int Fd) {
-
   FILE *Temp = fopen("nul", "w");
   if (!Temp) return;
   _dup2(_fileno(Temp), Fd);
   fclose(Temp);
-
 }
 
 }  // namespace fuzzer
 
 #endif  // LIBFUZZER_WINDOWS
-

@@ -7,43 +7,31 @@
 
   #define X86_REG_8L(LABEL, REG)  \
     case LABEL: {                 \
-                                  \
       return REG & GUM_INT8_MASK; \
-                                  \
     }
 
   #define X86_REG_8H(LABEL, REG)          \
     case LABEL: {                         \
-                                          \
       return (REG & GUM_INT16_MASK) >> 8; \
-                                          \
     }
 
   #define X86_REG_16(LABEL, REG)     \
     case LABEL: {                    \
-                                     \
       return (REG & GUM_INT16_MASK); \
-                                     \
     }
 
   #define X86_REG_32(LABEL, REG)     \
     case LABEL: {                    \
-                                     \
       return (REG & GUM_INT32_MASK); \
-                                     \
     }
 
   #define X86_REG_64(LABEL, REG) \
     case LABEL: {                \
-                                 \
       return (REG);              \
-                                 \
     }
 
 gsize ctx_read_reg(GumX64CpuContext *ctx, x86_reg reg) {
-
   switch (reg) {
-
     X86_REG_8L(X86_REG_AL, ctx->rax)
     X86_REG_8L(X86_REG_BL, ctx->rbx)
     X86_REG_8L(X86_REG_CL, ctx->rcx)
@@ -122,10 +110,7 @@ gsize ctx_read_reg(GumX64CpuContext *ctx, x86_reg reg) {
     default:
       FFATAL("Failed to read register: %d", reg);
       return 0;
-
   }
-
 }
 
 #endif
-

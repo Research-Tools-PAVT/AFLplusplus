@@ -58,7 +58,7 @@ char  *get_afl_env(char *env);
 bool extract_and_set_env(u8 *env_str);
 
 extern u8  be_quiet;
-extern u8 *doc_path;                    /* path to documentation dir        */
+extern u8 *doc_path; /* path to documentation dir        */
 
 /* Find binary, used by analyze, showmap, tmin
    @returns the path, allocating the string */
@@ -154,4 +154,3 @@ void  remove_nyx_tmp_workdir(afl_forkserver_t *fsrv, char *nyx_out_dir_path);
 #endif
 
 #endif
-

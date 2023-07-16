@@ -54,19 +54,19 @@
 #include <sys/wait.h>
 #include <sys/time.h>
 
-static u8 **as_params;              /* Parameters passed to the real 'as'   */
+static u8 **as_params; /* Parameters passed to the real 'as'   */
 
-static u8 *input_file;              /* Originally specified input file      */
-static u8 *modified_file;           /* Instrumented file for the real 'as'  */
+static u8 *input_file;    /* Originally specified input file      */
+static u8 *modified_file; /* Instrumented file for the real 'as'  */
 
-static u8 be_quiet,                 /* Quiet mode (no stderr output)        */
-    clang_mode,                     /* Running in clang mode?               */
-    pass_thru,                      /* Just pass data through?              */
-    just_version,                   /* Just show version?                   */
-    sanitizer;                      /* Using ASAN / MSAN                    */
+static u8 be_quiet, /* Quiet mode (no stderr output)        */
+    clang_mode,     /* Running in clang mode?               */
+    pass_thru,      /* Just pass data through?              */
+    just_version,   /* Just show version?                   */
+    sanitizer;      /* Using ASAN / MSAN                    */
 
-static u32 inst_ratio = 100,        /* Instrumentation probability (%)      */
-    as_par_cnt = 1;                 /* Number of params to 'as'             */
+static u32 inst_ratio = 100, /* Instrumentation probability (%)      */
+    as_par_cnt = 1;          /* Number of params to 'as'             */
 
 /* If we don't find --32 or --64 in the command line, default to
    instrumentation for whichever mode we were compiled with. This is not
@@ -82,16 +82,15 @@ static u8 use_64bit = 0;
 
   #ifdef __APPLE__
     #error "Sorry, 32-bit Apple platforms are not supported."
-  #endif                                                       /* __APPLE__ */
+  #endif /* __APPLE__ */
 
-#endif                                                     /* ^WORD_SIZE_64 */
+#endif /* ^WORD_SIZE_64 */
 
 /* Examine and modify parameters to pass to 'as'. Note that the file name
    is always the last parameter passed by GCC, so we exploit this property
    to keep the code simple. */
 
 static void edit_params(int argc, char **argv) {
-
   u8 *tmp_dir = getenv("TMPDIR"), *afl_as = getenv("AFL_AS");
   u32 i, input_index;
 
@@ -112,16 +111,14 @@ static void edit_params(int argc, char **argv) {
      to Nico Weber for the idea. */
 
   if (clang_mode && !afl_as) {
-
     use_clang_as = 1;
 
     afl_as = getenv("AFL_CC");
     if (!afl_as) afl_as = getenv("AFL_CXX");
     if (!afl_as) afl_as = "clang";
-
   }
 
-#endif                                                         /* __APPLE__ */
+#endif /* __APPLE__ */
 
   /* Although this is not documented, GCC also uses TEMP and TMP when TMPDIR
      is not set. We need to check these non-standard variables to properly
@@ -133,9 +130,7 @@ static void edit_params(int argc, char **argv) {
 
   as_params = ck_alloc((argc + 32) * sizeof(u8 *));
   if (unlikely((INT_MAX - 32) < argc || !as_params)) {
-
     FATAL("Too many parameters passed to as");
-
   }
 
   as_params[0] = afl_as ? afl_as : (u8 *)"as";
@@ -146,28 +141,22 @@ static void edit_params(int argc, char **argv) {
      Assume there won't be any arguments referring to files after the input
      file, e.g. as input.s -o output.o */
   for (input_index = argc - 1; input_index > 0; input_index--) {
-
     input_file = argv[input_index];
     /* Clang may add debug arguments after the input file. */
     if (strncmp(input_file, "-g", 2)) break;
-
   }
 
   if (input_index == 0)
     FATAL("Could not find input file (not called through afl-gcc?)");
 
   for (i = 1; (s32)i < argc; i++) {
-
     if (i == input_index) continue;
 
     if (!strcmp(argv[i], "--64")) {
-
       use_64bit = 1;
 
     } else if (!strcmp(argv[i], "--32")) {
-
       use_64bit = 0;
-
     }
 
 #ifdef __APPLE__
@@ -175,12 +164,10 @@ static void edit_params(int argc, char **argv) {
     /* The Apple case is a bit different... */
 
     if (!strcmp(argv[i], "-arch") && i + 1 < (u32)argc) {
-
       if (!strcmp(argv[i + 1], "x86_64"))
         use_64bit = 1;
       else if (!strcmp(argv[i + 1], "i386"))
         FATAL("Sorry, 32-bit Apple platforms are not supported.");
-
     }
 
     /* Strip options that set the preference for a particular upstream
@@ -189,10 +176,9 @@ static void edit_params(int argc, char **argv) {
     if (clang_mode && (!strcmp(argv[i], "-q") || !strcmp(argv[i], "-Q")))
       continue;
 
-#endif                                                         /* __APPLE__ */
+#endif /* __APPLE__ */
 
     as_params[as_par_cnt++] = argv[i];
-
   }
 
 #ifdef __APPLE__
@@ -201,37 +187,28 @@ static void edit_params(int argc, char **argv) {
      and hope for the best. */
 
   if (use_clang_as) {
-
     as_params[as_par_cnt++] = "-c";
     as_params[as_par_cnt++] = "-x";
     as_params[as_par_cnt++] = "assembler";
-
   }
 
-#endif                                                         /* __APPLE__ */
+#endif /* __APPLE__ */
 
   if (input_file[0] == '-') {
-
     if (!strcmp(input_file + 1, "-version")) {
-
       just_version = 1;
       modified_file = input_file;
       goto wrap_things_up;
-
     }
 
     if (input_file[1]) {
-
       FATAL("Incorrect use (not called through afl-gcc?)");
 
     } else {
-
       input_file = NULL;
-
     }
 
   } else {
-
     /* Check if this looks like a standard invocation as a part of an attempt
        to compile a program, rather than using gcc on an ad-hoc .s file in
        a format we may not understand. This works around an issue compiling
@@ -241,15 +218,11 @@ static void edit_params(int argc, char **argv) {
         strncmp(input_file, "/var/tmp/", 9) &&
         strncmp(input_file, "/tmp/", 5) &&
         getenv("AFL_AS_FORCE_INSTRUMENT") == NULL) {
-
       pass_thru = 1;
 
     } else if (getenv("AFL_AS_FORCE_INSTRUMENT")) {
-
       unsetenv("AFL_AS_FORCE_INSTRUMENT");
-
     }
-
   }
 
   modified_file = alloc_printf("%s/.afl-%u-%u-%u.s", tmp_dir, (u32)getpid(),
@@ -259,14 +232,12 @@ wrap_things_up:
 
   as_params[as_par_cnt++] = modified_file;
   as_params[as_par_cnt] = NULL;
-
 }
 
 /* Process input file, generate modified_file. Insert instrumentation in all
    the appropriate places. */
 
 static void add_instrumentation(void) {
-
   static u8 line[MAX_LINE];
 
   FILE *inf;
@@ -281,17 +252,14 @@ static void add_instrumentation(void) {
 
   u8 *colon_pos;
 
-#endif                                                         /* __APPLE__ */
+#endif /* __APPLE__ */
 
   if (input_file) {
-
     inf = fopen(input_file, "r");
     if (!inf) { PFATAL("Unable to read '%s'", input_file); }
 
   } else {
-
     inf = stdin;
-
   }
 
   outfd = open(modified_file, O_WRONLY | O_EXCL | O_CREAT, DEFAULT_PERMISSION);
@@ -303,7 +271,6 @@ static void add_instrumentation(void) {
   if (!outf) { PFATAL("fdopen() failed"); }
 
   while (fgets(line, MAX_LINE, inf)) {
-
     /* In some cases, we want to defer writing the instrumentation trampoline
        until after all the labels, macros, comments, etc. If we're in this
        mode, and if the line starts with a tab followed by a character, dump
@@ -311,13 +278,11 @@ static void add_instrumentation(void) {
 
     if (!pass_thru && !skip_intel && !skip_app && !skip_csect && instr_ok &&
         instrument_next && line[0] == '\t' && isalpha(line[1])) {
-
       fprintf(outf, use_64bit ? trampoline_fmt_64 : trampoline_fmt_32,
               R(MAP_SIZE));
 
       instrument_next = 0;
       ins_lines++;
-
     }
 
     /* Output the actual line, call it a day in pass-thru mode. */
@@ -331,37 +296,29 @@ static void add_instrumentation(void) {
        files - and let's set instr_ok accordingly. */
 
     if (line[0] == '\t' && line[1] == '.') {
-
       /* OpenBSD puts jump tables directly inline with the code, which is
          a bit annoying. They use a specific format of p2align directives
          around them, so we use that as a signal. */
 
       if (!clang_mode && instr_ok && !strncmp(line + 2, "p2align ", 8) &&
           isdigit(line[10]) && line[11] == '\n') {
-
         skip_next_label = 1;
-
       }
 
       if (!strncmp(line + 2, "text\n", 5) ||
           !strncmp(line + 2, "section\t.text", 13) ||
           !strncmp(line + 2, "section\t__TEXT,__text", 21) ||
           !strncmp(line + 2, "section __TEXT,__text", 21)) {
-
         instr_ok = 1;
         continue;
-
       }
 
       if (!strncmp(line + 2, "section\t", 8) ||
           !strncmp(line + 2, "section ", 8) || !strncmp(line + 2, "bss\n", 4) ||
           !strncmp(line + 2, "data\n", 5)) {
-
         instr_ok = 0;
         continue;
-
       }
-
     }
 
     /* Detect off-flavor assembly (rare, happens in gdb). When this is
@@ -369,10 +326,8 @@ static void add_instrumentation(void) {
        seen, and we do not instrument. */
 
     if (strstr(line, ".code")) {
-
       if (strstr(line, ".code32")) { skip_csect = use_64bit; }
       if (strstr(line, ".code64")) { skip_csect = !use_64bit; }
-
     }
 
     /* Detect syntax changes, as could happen with hand-written assembly.
@@ -384,10 +339,8 @@ static void add_instrumentation(void) {
     /* Detect and skip ad-hoc __asm__ blocks, likewise skipping them. */
 
     if (line[0] == '#' || line[1] == '#') {
-
       if (strstr(line, "#APP")) { skip_app = 1; }
       if (strstr(line, "#NO_APP")) { skip_app = 0; }
-
     }
 
     /* If we're in the right mood for instrumenting, check for function
@@ -416,9 +369,7 @@ static void add_instrumentation(void) {
 
     if (skip_intel || skip_app || skip_csect || !instr_ok || line[0] == '#' ||
         line[0] == ' ') {
-
       continue;
-
     }
 
     /* Conditional branch instruction (jnz, etc). We append the instrumentation
@@ -426,18 +377,14 @@ static void add_instrumentation(void) {
        branch destination label (handled later on). */
 
     if (line[0] == '\t') {
-
       if (line[1] == 'j' && line[2] != 'm' && R(100) < (long)inst_ratio) {
-
         fprintf(outf, use_64bit ? trampoline_fmt_64 : trampoline_fmt_32,
                 R(MAP_SIZE));
 
         ins_lines++;
-
       }
 
       continue;
-
     }
 
     /* Label of some sort. This may be a branch destination, but we need to
@@ -449,18 +396,15 @@ static void add_instrumentation(void) {
     /* Apple: L<whatever><digit>: */
 
     if ((colon_pos = strstr(line, ":"))) {
-
       if (line[0] == 'L' && isdigit(*(colon_pos - 1))) {
-
 #else
 
     /* Everybody else: .L<whatever>: */
 
     if (strstr(line, ":")) {
-
       if (line[0] == '.') {
 
-#endif                                                         /* __APPLE__ */
+#endif /* __APPLE__ */
 
         /* .L0: or LBB0_0: style jump destination */
 
@@ -470,7 +414,6 @@ static void add_instrumentation(void) {
 
         if ((isdigit(line[1]) || (clang_mode && !strncmp(line, "LBB", 3))) &&
             R(100) < (long)inst_ratio) {
-
 #else
 
         /* Apple: .L<num> / .LBB<num> */
@@ -479,7 +422,7 @@ static void add_instrumentation(void) {
              (clang_mode && !strncmp(line + 1, "LBB", 3))) &&
             R(100) < (long)inst_ratio) {
 
-#endif                                                         /* __APPLE__ */
+#endif /* __APPLE__ */
 
           /* An optimization is possible here by adding the code only if the
              label is mentioned in the code in contexts other than call / jmp.
@@ -493,27 +436,19 @@ static void add_instrumentation(void) {
              MacOS X). */
 
           if (!skip_next_label) {
-
             instrument_next = 1;
 
           } else {
-
             skip_next_label = 0;
-
           }
-
         }
 
       } else {
-
         /* Function label (always instrumented, deferred mode). */
 
         instrument_next = 1;
-
       }
-
     }
-
   }
 
   if (ins_lines) { fputs(use_64bit ? main_payload_64 : main_payload_32, outf); }
@@ -522,14 +457,11 @@ static void add_instrumentation(void) {
   fclose(outf);
 
   if (!be_quiet) {
-
     if (!ins_lines) {
-
       WARNF("No instrumentation targets found%s.",
             pass_thru ? " (pass-thru mode)" : "");
 
     } else {
-
       char modeline[100];
       snprintf(modeline, sizeof(modeline), "%s%s%s%s%s%s",
                getenv("AFL_HARDEN") ? "hardened" : "non-hardened",
@@ -541,17 +473,13 @@ static void add_instrumentation(void) {
 
       OKF("Instrumented %u locations (%s-bit, %s mode, ratio %u%%).", ins_lines,
           use_64bit ? "64" : "32", modeline, inst_ratio);
-
     }
-
   }
-
 }
 
 /* Main entry point */
 
 int main(int argc, char **argv) {
-
   s32 pid;
   u32 rand_seed, i, j;
   int status;
@@ -563,17 +491,13 @@ int main(int argc, char **argv) {
   clang_mode = !!getenv(CLANG_ENV_VAR);
 
   if ((isatty(2) && !getenv("AFL_QUIET")) || getenv("AFL_DEBUG") != NULL) {
-
     SAYF(cCYA "afl-as" VERSION cRST " by Michal Zalewski\n");
 
   } else {
-
     be_quiet = 1;
-
   }
 
   if (argc < 2 || (argc == 2 && strcmp(argv[1], "-h") == 0)) {
-
     fprintf(
         stdout,
         "afl-as" VERSION
@@ -606,7 +530,6 @@ int main(int argc, char **argv) {
         argv[0]);
 
     exit(1);
-
   }
 
   gettimeofday(&tv, &tz);
@@ -622,19 +545,13 @@ int main(int argc, char **argv) {
   edit_params(argc, argv);
 
   if (inst_ratio_str) {
-
     if (sscanf(inst_ratio_str, "%u", &inst_ratio) != 1 || inst_ratio > 100) {
-
       FATAL("Bad value of AFL_INST_RATIO (must be between 0 and 100)");
-
     }
-
   }
 
   if (getenv(AS_LOOP_ENV_VAR)) {
-
     FATAL("Endless loop when calling 'as' (remove '.' from your PATH)");
-
   }
 
   setenv(AS_LOOP_ENV_VAR, "1", 1);
@@ -644,19 +561,15 @@ int main(int argc, char **argv) {
      that... */
 
   if (getenv("AFL_USE_ASAN") || getenv("AFL_USE_MSAN")) {
-
     sanitizer = 1;
     if (!getenv("AFL_INST_RATIO")) { inst_ratio /= 3; }
-
   }
 
   if (!just_version) { add_instrumentation(); }
 
   if (!(pid = fork())) {
-
     execvp(as_params[0], (char **)as_params);
     FATAL("Oops, failed to execute '%s' - check your PATH", as_params[0]);
-
   }
 
   if (pid < 0) { PFATAL("fork() failed"); }
@@ -666,6 +579,4 @@ int main(int argc, char **argv) {
   if (!getenv("AFL_KEEP_ASSEMBLY")) { unlink(modified_file); }
 
   exit(WEXITSTATUS(status));
-
 }
-

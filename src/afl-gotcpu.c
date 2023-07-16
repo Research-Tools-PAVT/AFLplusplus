@@ -70,25 +70,22 @@
   #elif defined(__sun)
     #include <sys/pset.h>
   #endif
-#endif               /* __linux__ || __FreeBSD__ || __NetBSD__ || __APPLE__ */
+#endif /* __linux__ || __FreeBSD__ || __NetBSD__ || __APPLE__ */
 
 /* Get CPU usage in microseconds. */
 
 static u64 get_cpu_usage_us(void) {
-
   struct rusage u;
 
   getrusage(RUSAGE_SELF, &u);
 
   return (u.ru_utime.tv_sec * 1000000ULL) + u.ru_utime.tv_usec +
          (u.ru_stime.tv_sec * 1000000ULL) + u.ru_stime.tv_usec;
-
 }
 
 /* Measure preemption rate. */
 
 static u32 measure_preemption(u32 target_ms) {
-
   volatile u32 v1, v2 = 0;
 
   u64 st_t, en_t, st_c, en_c, real_delta, slice_delta;
@@ -102,9 +99,7 @@ repeat_loop:
   v1 = CTEST_BUSY_CYCLES;
 
   while (v1--) {
-
     v2++;
-
   }
 
   sched_yield();
@@ -112,10 +107,8 @@ repeat_loop:
   en_t = get_cur_time_us();
 
   if (en_t - st_t < target_ms * 1000) {
-
     // loop_repeats++;
     goto repeat_loop;
-
   }
 
   /* Let's see what percentage of this time we actually had a chance to
@@ -127,21 +120,17 @@ repeat_loop:
   slice_delta = (en_c - st_c) / 1000;
 
   return real_delta * 100 / slice_delta;
-
 }
 
 /* Do the benchmark thing. */
 
 int main(int argc, char **argv) {
-
   if (argc > 1) {
-
     printf("afl-gotcpu" VERSION " by Michal Zalewski\n");
     printf("\n%s \n\n", argv[0]);
     printf("afl-gotcpu does not have command line options\n");
     printf("afl-gotcpu prints out which CPUs are available\n");
     return -1;
-
   }
 
 #ifdef HAVE_AFFINITY
@@ -154,13 +143,11 @@ int main(int argc, char **argv) {
        ((double)CTEST_CORE_TRG_MS) / 1000);
 
   for (i = 0; i < cpu_cnt; i++) {
-
     s32 fr = fork();
 
     if (fr < 0) { PFATAL("fork failed"); }
 
     if (!fr) {
-
       u32 util_perc;
   #if defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__)
       cpu_set_t c;
@@ -213,7 +200,6 @@ int main(int argc, char **argv) {
 
   #if defined(__linux__)
       if (sched_setaffinity(0, sizeof(c), &c)) {
-
         const char *error_code = "Unkown error code";
         if (errno == EFAULT) error_code = "EFAULT";
         if (errno == EINVAL) error_code = "EINVAL";
@@ -221,7 +207,6 @@ int main(int argc, char **argv) {
         if (errno == ESRCH) error_code = "ESRCH";
 
         PFATAL("sched_setaffinity failed for cpu %d, error: %s", i, error_code);
-
       }
 
   #endif
@@ -229,63 +214,49 @@ int main(int argc, char **argv) {
       util_perc = measure_preemption(CTEST_CORE_TRG_MS);
 
       if (util_perc < 110) {
-
         SAYF("    Core #%u: " cLGN "AVAILABLE" cRST "(%u%%)\n", i, util_perc);
         exit(0);
 
       } else if (util_perc < 250) {
-
         SAYF("    Core #%u: " cYEL "CAUTION " cRST "(%u%%)\n", i, util_perc);
         exit(1);
-
       }
 
       SAYF("    Core #%u: " cLRD "OVERBOOKED " cRST "(%u%%)\n" cRST, i,
            util_perc);
       exit(2);
-
     }
-
   }
 
   for (i = 0; i < cpu_cnt; i++) {
-
     int ret;
     if (waitpid(-1, &ret, 0) < 0) { PFATAL("waitpid failed"); }
 
     if (WEXITSTATUS(ret) == 0) { idle_cpus++; }
     if (WEXITSTATUS(ret) <= 1) { maybe_cpus++; }
-
   }
 
   SAYF(cGRA "\n>>> ");
 
   if (idle_cpus) {
-
     if (maybe_cpus == idle_cpus) {
-
       SAYF(cLGN "PASS: " cRST "You can run more processes on %u core%s.",
            idle_cpus, idle_cpus > 1 ? "s" : "");
 
     } else {
-
       SAYF(cLGN "PASS: " cRST "You can run more processes on %u to %u core%s.",
            idle_cpus, maybe_cpus, maybe_cpus > 1 ? "s" : "");
-
     }
 
     SAYF(cGRA " <<<" cRST "\n\n");
     return 0;
-
   }
 
   if (maybe_cpus) {
-
     SAYF(cYEL "CAUTION: " cRST "You may still have %u core%s available.",
          maybe_cpus, maybe_cpus > 1 ? "s" : "");
     SAYF(cGRA " <<<" cRST "\n\n");
     return 1;
-
   }
 
   SAYF(cLRD "FAIL: " cRST "All cores are overbooked.");
@@ -310,25 +281,19 @@ int main(int argc, char **argv) {
   SAYF(cGRA "\n>>> ");
 
   if (util_perc < 105) {
-
     SAYF(cLGN "PASS: " cRST "You can probably run additional processes.");
 
   } else if (util_perc < 130) {
-
     SAYF(cYEL "CAUTION: " cRST "Your CPU may be somewhat overbooked (%u%%).",
          util_perc);
 
   } else {
-
     SAYF(cLRD "FAIL: " cRST "Your CPU is overbooked (%u%%).", util_perc);
-
   }
 
   SAYF(cGRA " <<<" cRST "\n\n");
 
   return (util_perc > 105) + (util_perc > 130);
 
-#endif                                                    /* ^HAVE_AFFINITY */
-
+#endif /* ^HAVE_AFFINITY */
 }
-

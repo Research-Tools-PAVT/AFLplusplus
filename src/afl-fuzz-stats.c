@@ -740,6 +740,9 @@ void show_stats_normal(afl_state_t *afl) {
   SAYF("%s" cGRA "Bitmap Usage: %s%4u / %4lld" cGRA "" cRST, SP5, cBRI,
        afl->queue_cur->bitmap_size, afl->total_bitmap_size);
 
+  SAYF("%s" cGRA "Extra Args:%s%3d" cGRA "" cRST, SP5, cBRI,
+       afl->shm_fm_extra->map[0]);
+
   SAYF(bSTG "\t      " bV bSTOP "\n");
 
   SAYF(SET_G1 bSTG bLB bH bSTOP                  cCYA

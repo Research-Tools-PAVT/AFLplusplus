@@ -43,12 +43,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define QASAN_LOG(msg...)                   \
   do {                                      \
-                                            \
     if (__qasan_log) {                      \
-                                            \
       fprintf(stderr, "==%d== ", getpid()); \
       fprintf(stderr, msg);                 \
-                                            \
     }                                       \
                                             \
   } while (0)
@@ -56,12 +53,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef DEBUG
   #define QASAN_DEBUG(msg...)                 \
     do {                                      \
-                                              \
       if (__qasan_debug) {                    \
-                                              \
         fprintf(stderr, "==%d== ", getpid()); \
         fprintf(stderr, msg);                 \
-                                              \
       }                                       \
                                               \
     } while (0)
@@ -69,23 +63,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #else
   #define QASAN_DEBUG(msg...) \
     do {                      \
-                              \
     } while (0)
 #endif
 
 #define ASSERT_DLSYM(name)                                              \
   ({                                                                    \
-                                                                        \
     void *a = (void *)dlsym(RTLD_NEXT, #name);                          \
     if (!a) {                                                           \
-                                                                        \
       fprintf(stderr,                                                   \
               "FATAL ERROR: failed dlsym of " #name " in libqasan!\n"); \
       abort();                                                          \
-                                                                        \
     }                                                                   \
     a;                                                                  \
-                                                                        \
   })
 
 extern int __qasan_debug;
@@ -129,4 +118,3 @@ wchar_t *__libqasan_wcscpy(wchar_t *d, const wchar_t *s);
 int      __libqasan_wcscmp(const wchar_t *s1, const wchar_t *s2);
 
 #endif
-

@@ -22,17 +22,16 @@
   #define TESTINSTR_SECTION __attribute__((section(".testinstr")))
 #endif
 
-void LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-
+void LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   if (size < 1) return;
 
   struct timeval tv = {0};
   if (gettimeofday(&tv, NULL) < 0) return;
 
   if ((tv.tv_usec % 2) == 0) {
-    printf ("Hooray all even\n");
+    printf("Hooray all even\n");
   } else {
-    printf ("Hmm that's odd\n");
+    printf("Hmm that's odd\n");
   }
 
   // we support three input cases
@@ -42,18 +41,17 @@ void LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     printf("Pretty sure that is a one!\n");
   else
     printf("Neither one or zero? How quaint!\n");
-
 }
 
-void run_test(char * file) {
+void run_test(char *file) {
   fprintf(stderr, "Running: %s\n", file);
   FILE *f = fopen(file, "r");
   assert(f);
   fseek(f, 0, SEEK_END);
   size_t len = ftell(f);
   fseek(f, 0, SEEK_SET);
-  unsigned char *buf = (unsigned char*)malloc(len);
-  size_t n_read = fread(buf, 1, len, f);
+  unsigned char *buf = (unsigned char *)malloc(len);
+  size_t         n_read = fread(buf, 1, len, f);
   fclose(f);
   assert(n_read == len);
   LLVMFuzzerTestOneInput(buf, len);

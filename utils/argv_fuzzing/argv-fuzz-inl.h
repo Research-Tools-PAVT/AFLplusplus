@@ -44,14 +44,12 @@
 
 #define AFL_INIT_ARGV()          \
   do {                           \
-                                 \
     argv = afl_init_argv(&argc); \
                                  \
   } while (0)
 
 #define AFL_INIT_SET0(_p)        \
   do {                           \
-                                 \
     argv = afl_init_argv(&argc); \
     argv[0] = (_p);              \
     if (!argc) argc = 1;         \
@@ -60,14 +58,12 @@
 
 #define AFL_INIT_ARGV_PERSISTENT(persistent_buff)            \
   do {                                                       \
-                                                             \
     argv = afl_init_argv_persistent(&argc, persistent_buff); \
                                                              \
   } while (0)
 
 #define AFL_INIT_SET0_PERSISTENT(_p, persistent_buff)        \
   do {                                                       \
-                                                             \
     argv = afl_init_argv_persistent(&argc, persistent_buff); \
     argv[0] = (_p);                                          \
     if (!argc) argc = 1;                                     \
@@ -78,7 +74,6 @@
 #define MAX_CMDLINE_PAR 50000
 
 static char **afl_init_argv(int *argc) {
-
   static char  in_buf[MAX_CMDLINE_LEN];
   static char *ret[MAX_CMDLINE_PAR];
 
@@ -91,7 +86,6 @@ static char **afl_init_argv(int *argc) {
   in_buf[num + 1] = '\0';
 
   while (*ptr && rc < MAX_CMDLINE_PAR) {
-
     ret[rc] = ptr;
     if (ret[rc][0] == 0x02 && !ret[rc][1]) ret[rc]++;
     rc++;
@@ -99,25 +93,21 @@ static char **afl_init_argv(int *argc) {
     while (*ptr)
       ptr++;
     ptr++;
-
   }
 
   *argc = rc;
 
   return ret;
-
 }
 
 static char **afl_init_argv_persistent(int           *argc,
                                        unsigned char *persistent_buff) {
-
   static char *ret[MAX_CMDLINE_PAR];
 
   unsigned char *ptr = persistent_buff;
   int            rc = 0;
 
   while (*ptr && rc < MAX_CMDLINE_PAR) {
-
     ret[rc] = (char *)ptr;
     if (ret[rc][0] == 0x02 && !ret[rc][1]) ret[rc]++;
     rc++;
@@ -125,17 +115,14 @@ static char **afl_init_argv_persistent(int           *argc,
     while (*ptr)
       ptr++;
     ptr++;
-
   }
 
   *argc = rc;
 
   return ret;
-
 }
 
 #undef MAX_CMDLINE_LEN
 #undef MAX_CMDLINE_PAR
 
-#endif                                              /* !_HAVE_ARGV_FUZZ_INL */
-
+#endif /* !_HAVE_ARGV_FUZZ_INL */

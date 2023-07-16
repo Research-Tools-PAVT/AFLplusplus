@@ -17,8 +17,7 @@
 #include <unistd.h>
 
 void LLVMFuzzerTestOneInput(char *buf, int len) {
-
-  printf (">>> LLVMFuzzerTestOneInput >>>\n");
+  printf(">>> LLVMFuzzerTestOneInput >>>\n");
   if (len < 1) return;
   buf[len] = 0;
 
@@ -29,69 +28,54 @@ void LLVMFuzzerTestOneInput(char *buf, int len) {
     printf("Pretty sure that is a one!\n");
   else
     printf("Neither one or zero? How quaint!\n");
-
 }
 
 void slow() {
-
   usleep(100000);
-
 }
 
 int main(int argc, char **argv) {
-
-  char * file;
+  char  *file;
   int    fd = -1;
   off_t  len;
-  char * buf = NULL;
+  char  *buf = NULL;
   size_t n_read;
   int    result = -1;
 
   if (argc != 2) { return 1; }
 
   do {
-
     file = argv[1];
 
     dprintf(STDERR_FILENO, "Running: %s\n", file);
 
     fd = open(file, O_RDONLY);
     if (fd < 0) {
-
       perror("open");
       break;
-
     }
 
     len = lseek(fd, 0, SEEK_END);
     if (len < 0) {
-
       perror("lseek (SEEK_END)");
       break;
-
     }
 
     if (lseek(fd, 0, SEEK_SET) != 0) {
-
       perror("lseek (SEEK_SET)");
       break;
-
     }
 
     buf = malloc(len);
     if (buf == NULL) {
-
       perror("malloc");
       break;
-
     }
 
     n_read = read(fd, buf, len);
     if (n_read != len) {
-
       perror("read");
       break;
-
     }
 
     dprintf(STDERR_FILENO, "Running:    %s: (%zd bytes)\n", file, n_read);
@@ -110,6 +94,4 @@ int main(int argc, char **argv) {
   if (fd != -1) { close(fd); }
 
   return result;
-
 }
-

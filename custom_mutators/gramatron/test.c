@@ -6,10 +6,9 @@
 #define NUMINPUTS 50
 
 state *create_pda(u8 *automaton_file) {
-
   struct json_object *parsed_json;
-  state *             pda;
-  json_object *       source_obj, *attr;
+  state              *pda;
+  json_object        *source_obj, *attr;
   int                 arraylen, ii, ii2, trigger_len, error;
 
   printf("\n[GF] Automaton file passed:%s", automaton_file);
@@ -40,8 +39,7 @@ state *create_pda(u8 *automaton_file) {
   source_obj = json_object_object_get(parsed_json, "pda");
   enum json_type type;
   json_object_object_foreach(source_obj, key, val) {
-
-    state *  state_ptr;
+    state   *state_ptr;
     trigger *trigger_ptr;
     int      offset;
 
@@ -61,7 +59,6 @@ state *create_pda(u8 *automaton_file) {
     printf("\nName:%d Trigger:%d", offset, trigger_len);
 
     for (ii = 0; ii < trigger_len; ii++) {
-
       json_object *obj = json_object_array_get_idx(val, ii);
       // Get all the trigger trigger attributes
       attr = json_object_array_get_idx(obj, 0);
@@ -72,83 +69,64 @@ state *create_pda(u8 *automaton_file) {
 
       attr = json_object_array_get_idx(obj, 2);
       if (!strcmp("\\n", json_object_get_string(attr))) {
-
         trigger_ptr->term = strdup("\n");
 
       } else {
-
         trigger_ptr->term = strdup(json_object_get_string(attr));
-
       }
 
       trigger_ptr->term_len = strlen(trigger_ptr->term);
       trigger_ptr++;
-
     }
-
   }
 
   // Delete the JSON object
   json_object_put(parsed_json);
 
   return pda;
-
 }
 
 void SanityCheck(char *automaton_path) {
-
-  state *        pda = create_pda(automaton_path);
+  state         *pda = create_pda(automaton_path);
   int            count = 0, state;
   Get_Dupes_Ret *getdupesret;
-  IdxMap_new *   statemap;
-  IdxMap_new *   statemap_ptr;
-  terminal *     term_ptr;
+  IdxMap_new    *statemap;
+  IdxMap_new    *statemap_ptr;
+  terminal      *term_ptr;
 
   while (count < NUMINPUTS) {
-
     // Perform input generation
     Array *generated = gen_input(pda, NULL);
     print_repr(generated, "Gen");
     count += 1;
-
   }
-
 }
 
 int main(int argc, char *argv[]) {
-
-  char *         mode;
-  char *         automaton_path;
-  char *         output_dir = NULL;
+  char          *mode;
+  char          *automaton_path;
+  char          *output_dir = NULL;
   struct timeval tv;
   struct timeval tz;
   // gettimeofday(&tv, &tz);
   srand(1337);
   if (argc == 3) {
-
     mode = argv[1];
     automaton_path = strdup(argv[2]);
     printf("\nMode:%s Path:%s", mode, automaton_path);
 
   } else {
-
     printf("\nUsage: ./test <mode> <automaton_path>");
     return -1;
-
   }
 
   if (!strcmp(mode, "SanityCheck")) {
-
     SanityCheck(automaton_path);
 
   } else {
-
     printf("\nUnrecognized mode");
     return -1;
-
   }
 
   return 0;
-
 }
-

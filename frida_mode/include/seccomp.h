@@ -49,38 +49,30 @@
   #define SECCOMP_USER_NOTIF_FLAG_CONTINUE (1UL << 0)
 
 struct seccomp_notif_resp {
-
   __u64 id;
   __s64 val;
   __s32 error;
   __u32 flags;
-
 };
 
 struct seccomp_data {
-
   int   nr;
   __u32 arch;
   __u64 instruction_pointer;
   __u64 args[6];
-
 };
 
 struct seccomp_notif {
-
   __u64               id;
   __u32               pid;
   __u32               flags;
   struct seccomp_data data;
-
 };
 
 struct seccomp_notif_sizes {
-
   __u16 seccomp_notif;
   __u16 seccomp_notif_resp;
   __u16 seccomp_data;
-
 };
 
   /******************************************************************************/
@@ -441,4 +433,3 @@ void seccomp_init(void);
 void seccomp_on_fork(void);
 
 #endif
-

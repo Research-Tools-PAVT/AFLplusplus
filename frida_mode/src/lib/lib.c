@@ -28,7 +28,6 @@ typedef Elf64_Addr Elf_Addr;
   #endif
 
 typedef struct {
-
   gchar      name[PATH_MAX + 1];
   gchar      path[PATH_MAX + 1];
   GumAddress base_address;
@@ -41,7 +40,6 @@ static guint64 text_limit = 0;
 
 static gboolean lib_find_exe(const GumModuleDetails *details,
                              gpointer                user_data) {
-
   lib_details_t *lib_details = (lib_details_t *)user_data;
 
   memcpy(lib_details->name, details->name, PATH_MAX);
@@ -49,21 +47,17 @@ static gboolean lib_find_exe(const GumModuleDetails *details,
   lib_details->base_address = details->range->base_address;
   lib_details->size = details->range->size;
   return FALSE;
-
 }
 
 static void lib_validate_hdr(Elf_Ehdr *hdr) {
-
   if (hdr->e_ident[0] != ELFMAG0) FFATAL("Invalid e_ident[0]");
   if (hdr->e_ident[1] != ELFMAG1) FFATAL("Invalid e_ident[1]");
   if (hdr->e_ident[2] != ELFMAG2) FFATAL("Invalid e_ident[2]");
   if (hdr->e_ident[3] != ELFMAG3) FFATAL("Invalid e_ident[3]");
   if (hdr->e_ident[4] != ELFCLASS) FFATAL("Invalid class");
-
 }
 
 static void lib_read_text_section(lib_details_t *lib_details, Elf_Ehdr *hdr) {
-
   Elf_Phdr *phdr;
   gboolean  found_preferred_base = FALSE;
   Elf_Addr  preferred_base;
@@ -76,21 +70,15 @@ static void lib_read_text_section(lib_details_t *lib_details, Elf_Ehdr *hdr) {
 
   phdr = (Elf_Phdr *)((char *)hdr + hdr->e_phoff);
   for (size_t i = 0; i < hdr->e_phnum; i++) {
-
     if (phdr[i].p_type == PT_LOAD) {
-
       preferred_base = phdr[i].p_vaddr;
       found_preferred_base = TRUE;
       break;
-
     }
-
   }
 
   if (!found_preferred_base) {
-
     FFATAL("Failed to find preferred load address");
-
   }
 
   FVERBOSE("\tpreferred load address: 0x%016" G_GSIZE_MODIFIER "x",
@@ -106,7 +94,6 @@ static void lib_read_text_section(lib_details_t *lib_details, Elf_Ehdr *hdr) {
 
   FVERBOSE("Sections:");
   for (size_t i = 0; i < hdr->e_shnum; i++) {
-
     curr = &shdr[i];
 
     if (curr->sh_name == 0) continue;
@@ -117,22 +104,17 @@ static void lib_read_text_section(lib_details_t *lib_details, Elf_Ehdr *hdr) {
              i, curr->sh_addr, curr->sh_size, section_name);
     if (memcmp(section_name, text_name, sizeof(text_name)) == 0 &&
         text_base == 0) {
-
       text_base = lib_details->base_address + curr->sh_addr - preferred_base;
       text_limit = text_base + curr->sh_size;
-
     }
-
   }
 
   FVERBOSE(".text\n");
   FVERBOSE("\taddr: 0x%016" G_GINT64_MODIFIER "X", text_base);
   FVERBOSE("\tlimit: 0x%016" G_GINT64_MODIFIER "X", text_limit);
-
 }
 
 static void lib_get_text_section(lib_details_t *details) {
-
   int       fd = -1;
   off_t     len;
   Elf_Ehdr *hdr;
@@ -154,15 +136,12 @@ static void lib_get_text_section(lib_details_t *details) {
 
   munmap(hdr, len);
   close(fd);
-
 }
 
 void lib_config(void) {
-
 }
 
 void lib_init(void) {
-
   lib_details_t lib_details;
   gum_process_enumerate_modules(lib_find_exe, &lib_details);
   FVERBOSE("Image");
@@ -170,22 +149,16 @@ void lib_init(void) {
            lib_details.base_address);
   FVERBOSE("\tpath:                   %s", lib_details.path);
   lib_get_text_section(&lib_details);
-
 }
 
 guint64 lib_get_text_base(void) {
-
   if (text_base == 0) FFATAL("Lib not initialized");
   return text_base;
-
 }
 
 guint64 lib_get_text_limit(void) {
-
   if (text_limit == 0) FFATAL("Lib not initialized");
   return text_limit;
-
 }
 
 #endif
-

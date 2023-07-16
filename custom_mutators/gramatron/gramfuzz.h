@@ -26,16 +26,14 @@
 afl_state_t *global_afl;
 
 typedef struct trigger {
-
-  char * id;
+  char  *id;
   int    dest;
-  char * term;
+  char  *term;
   size_t term_len;
 
 } trigger;
 
 typedef struct state {
-
   int      state_name;   // Integer State name
   int      trigger_len;  // Number of triggers associated with this state
   trigger *ptr;          // Pointer to beginning of the list of triggers
@@ -43,16 +41,14 @@ typedef struct state {
 } state;
 
 typedef struct terminal {
-
   int    state;
   int    trigger_idx;
   size_t symbol_len;
-  char * symbol;
+  char  *symbol;
 
 } terminal;
 
 typedef struct buckethash {
-
   int freq;
 
 } buckethash;
@@ -67,7 +63,6 @@ int numstates;
 *****************/
 
 typedef struct {
-
   size_t    used;
   size_t    size;
   size_t    inputlen;
@@ -80,44 +75,38 @@ typedef struct {
 *****************/
 
 typedef struct {
-
-  int *  array;
+  int   *array;
   size_t used;
   size_t size;
 
 } IdxMap;
 
 typedef struct {
-
   UT_array *nums;
 
 } IdxMap_new;
 
 typedef struct {
-
   IdxMap_new *idxmap;
-  UT_array ** recurIdx;
+  UT_array  **recurIdx;
 
 } Get_Dupes_Ret;
 
 /* Candidate Struct */
 typedef struct {
-
-  Array *     walk;
+  Array      *walk;
   IdxMap_new *statemap;
 
 } Candidate;
 
 /* Splice Mutation helpers*/
 typedef struct {
-
   Candidate *splice_cand;
   int        idx;
 
 } SpliceCand;
 
 typedef struct {
-
   SpliceCand *start;
   size_t      used;
   size_t      size;
@@ -128,7 +117,6 @@ typedef struct {
 SpliceCand potential[SPLICE_CORPUS];
 
 typedef struct {
-
   int orig_idx;
   int splice_idx;
 
@@ -139,28 +127,28 @@ typedef struct {
 // IdxMap_new* rcuridx[STATES];
 
 /* Prototypes*/
-Array *    slice(Array *, int);
-state *    create_pda(u8 *);
-Array *    gen_input(state *, Array *);
-Array *    gen_input_count(state *, Array *, int *);
+Array     *slice(Array *, int);
+state     *create_pda(u8 *);
+Array     *gen_input(state *, Array *);
+Array     *gen_input_count(state *, Array *, int *);
 int        updatebucket(map_t, int);
 void       itoa(int, char *, int);
 void       strrreverse(char *, char *);
 void       dbg_hashmap(map_t);
 void       print_repr(Array *, char *);
 int        isSatisfied(map_t);
-char *     get_state(char *);
+char      *get_state(char *);
 Candidate *gen_candidate(Array *);
 
 Array *spliceGF(Array *, Array *, int);
 Array *performSpliceOne(Array *, IdxMap_new *, Array *);
 /* Mutation Methods*/
-Array *    performRandomMutation(state *, Array *);
-Array *    performRandomMutationCount(state *, Array *, int *);
-Array *    performSpliceMutationBench(state *, Array *, Candidate **);
+Array     *performRandomMutation(state *, Array *);
+Array     *performRandomMutationCount(state *, Array *, int *);
+Array     *performSpliceMutationBench(state *, Array *, Candidate **);
 UT_array **get_dupes(Array *, int *);
-Array *    doMult(Array *, UT_array **, int);
-Array *    doMultBench(Array *, UT_array **, int);
+Array     *doMult(Array *, UT_array **, int);
+Array     *doMultBench(Array *, UT_array **, int);
 
 /* Benchmarks*/
 void SpaceBenchmark(char *);
@@ -196,7 +184,7 @@ void                add_to_corpus(struct json_object *, Array *);
 struct json_object *term_to_json(terminal *);
 
 /* Gramatron specific prototypes */
-u8 *   unparse_walk(Array *);
+u8    *unparse_walk(Array *);
 Array *performSpliceGF(state *, Array *, afl_state_t *);
 void   dump_input(u8 *, char *, int *);
 void   write_input(Array *, u8 *);
@@ -252,4 +240,3 @@ state *pda;
 // };
 
 #endif
-

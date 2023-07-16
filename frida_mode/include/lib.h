@@ -12,4 +12,3 @@ guint64 lib_get_text_base(void);
 guint64 lib_get_text_limit(void);
 
 #endif
-

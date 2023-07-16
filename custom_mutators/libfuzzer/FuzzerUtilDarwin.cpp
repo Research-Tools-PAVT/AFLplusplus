@@ -39,58 +39,47 @@ static sigset_t         OldBlockedSignalsSet;
 // thread finishes execution of the function and ensures this is not racey by
 // using a mutex.
 int ExecuteCommand(const Command &Cmd) {
-
   std::string       CmdLine = Cmd.toString();
   posix_spawnattr_t SpawnAttributes;
   if (posix_spawnattr_init(&SpawnAttributes)) return -1;
   // Block and ignore signals of the current process when the first thread
   // enters.
   {
-
     std::lock_guard<std::mutex> Lock(SignalMutex);
     if (ActiveThreadCount == 0) {
-
       static struct sigaction IgnoreSignalAction;
       sigset_t                BlockedSignalsSet;
       memset(&IgnoreSignalAction, 0, sizeof(IgnoreSignalAction));
       IgnoreSignalAction.sa_handler = SIG_IGN;
 
       if (sigaction(SIGINT, &IgnoreSignalAction, &OldSigIntAction) == -1) {
-
         Printf("Failed to ignore SIGINT\n");
         (void)posix_spawnattr_destroy(&SpawnAttributes);
         return -1;
-
       }
 
       if (sigaction(SIGQUIT, &IgnoreSignalAction, &OldSigQuitAction) == -1) {
-
         Printf("Failed to ignore SIGQUIT\n");
         // Try our best to restore the signal handlers.
         (void)sigaction(SIGINT, &OldSigIntAction, NULL);
         (void)posix_spawnattr_destroy(&SpawnAttributes);
         return -1;
-
       }
 
       (void)sigemptyset(&BlockedSignalsSet);
       (void)sigaddset(&BlockedSignalsSet, SIGCHLD);
       if (sigprocmask(SIG_BLOCK, &BlockedSignalsSet, &OldBlockedSignalsSet) ==
           -1) {
-
         Printf("Failed to block SIGCHLD\n");
         // Try our best to restore the signal handlers.
         (void)sigaction(SIGQUIT, &OldSigQuitAction, NULL);
         (void)sigaction(SIGINT, &OldSigIntAction, NULL);
         (void)posix_spawnattr_destroy(&SpawnAttributes);
         return -1;
-
       }
-
     }
 
     ++ActiveThreadCount;
-
   }
 
   // NOTE: Do not introduce any new `return` statements past this
@@ -110,7 +99,7 @@ int ExecuteCommand(const Command &Cmd) {
   (void)posix_spawnattr_setflags(&SpawnAttributes, SpawnFlags);
 
   pid_t       Pid;
-  char **     Environ = environ;  // Read from global
+  char      **Environ = environ;  // Read from global
   const char *CommandCStr = CmdLine.c_str();
   char *const Argv[] = {strdup("sh"), strdup("-c"), strdup(CommandCStr), NULL};
   int         ErrorCode = 0, ProcessStatus = 0;
@@ -119,32 +108,25 @@ int ExecuteCommand(const Command &Cmd) {
       posix_spawn(&Pid, "/bin/sh", NULL, &SpawnAttributes, Argv, Environ);
   (void)posix_spawnattr_destroy(&SpawnAttributes);
   if (!ErrorCode) {
-
     pid_t SavedPid = Pid;
     do {
-
       // Repeat until call completes uninterrupted.
       Pid = waitpid(SavedPid, &ProcessStatus, /*options=*/0);
 
     } while (Pid == -1 && errno == EINTR);
 
     if (Pid == -1) {
-
       // Fail for some other reason.
       ProcessStatus = -1;
-
     }
 
   } else if (ErrorCode == ENOMEM || ErrorCode == EAGAIN) {
-
     // Fork failure.
     ProcessStatus = -1;
 
   } else {
-
     // Shell execution failure.
     ProcessStatus = W_EXITCODE(127, 0);
-
   }
 
   for (unsigned i = 0, n = sizeof(Argv) / sizeof(Argv[0]); i < n; ++i)
@@ -153,53 +135,39 @@ int ExecuteCommand(const Command &Cmd) {
   // Restore the signal handlers of the current process when the last thread
   // using this function finishes.
   {
-
     std::lock_guard<std::mutex> Lock(SignalMutex);
     --ActiveThreadCount;
     if (ActiveThreadCount == 0) {
-
       bool FailedRestore = false;
       if (sigaction(SIGINT, &OldSigIntAction, NULL) == -1) {
-
         Printf("Failed to restore SIGINT handling\n");
         FailedRestore = true;
-
       }
 
       if (sigaction(SIGQUIT, &OldSigQuitAction, NULL) == -1) {
-
         Printf("Failed to restore SIGQUIT handling\n");
         FailedRestore = true;
-
       }
 
       if (sigprocmask(SIG_BLOCK, &OldBlockedSignalsSet, NULL) == -1) {
-
         Printf("Failed to unblock SIGCHLD\n");
         FailedRestore = true;
-
       }
 
       if (FailedRestore) ProcessStatus = -1;
-
     }
-
   }
 
   return ProcessStatus;
-
 }
 
 void DiscardOutput(int Fd) {
-
   FILE *Temp = fopen("/dev/null", "w");
   if (!Temp) return;
   dup2(fileno(Temp), Fd);
   fclose(Temp);
-
 }
 
 }  // namespace fuzzer
 
 #endif  // LIBFUZZER_APPLE
-

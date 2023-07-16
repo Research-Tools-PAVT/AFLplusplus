@@ -133,27 +133,22 @@ static GumBacktracer        *seccomp_filter_backtracer = NULL;
 
 static void seccomp_filter_child_handler(int sig, siginfo_t *info,
                                          void *ucontext) {
-
   UNUSED_PARAMETER(sig);
   UNUSED_PARAMETER(info);
   UNUSED_PARAMETER(ucontext);
 
   if (seccomp_filter_backtracer == NULL) {
-
     seccomp_filter_backtracer = gum_backtracer_make_fuzzy();
-
   }
 
   gum_backtracer_generate(seccomp_filter_backtracer,
                           &seccomp_filter_cpu_context, &seccomp_filter_frames);
 
   seccomp_atomic_set(&seccomp_filter_child_done, true);
-
 }
 
 static void seccomp_filter_parent_handler(int sig, siginfo_t *info,
                                           void *ucontext) {
-
   UNUSED_PARAMETER(sig);
   UNUSED_PARAMETER(info);
 
@@ -162,26 +157,20 @@ static void seccomp_filter_parent_handler(int sig, siginfo_t *info,
 
   if (syscall(SYS_tgkill, seccomp_filter_child, seccomp_filter_child, SIGUSR1) <
       0) {
-
     FFATAL("kill");
-
   }
 
   seccomp_atomic_wait(&seccomp_filter_child_done, true);
   seccomp_atomic_set(&seccomp_filter_parent_done, true);
-
 }
 
 void seccomp_filter_child_install(void) {
-
   const struct sigaction sa = {.sa_sigaction = seccomp_filter_child_handler,
                                .sa_flags = SA_SIGINFO | SA_RESTART};
   if (sigaction(SIGUSR1, &sa, NULL) < 0) { FFATAL("sigaction"); }
-
 }
 
 int seccomp_filter_install(pid_t child) {
-
   seccomp_filter_child = child;
 
   const struct sigaction sa = {.sa_sigaction = seccomp_filter_parent_handler,
@@ -194,9 +183,7 @@ int seccomp_filter_install(pid_t child) {
   if (sigaction(SIGUSR1, &sa, NULL) < 0) { FFATAL("sigaction"); }
 
   if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
-
     FFATAL("PR_SET_NO_NEW_PRIVS %d", errno);
-
   }
 
   int fd = syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER,
@@ -204,68 +191,49 @@ int seccomp_filter_install(pid_t child) {
   if (fd < 0) { FFATAL("SYS_seccomp %d", fd); }
 
   return fd;
-
 }
 
 void seccomp_filter_run(int fd, seccomp_filter_callback_t callback) {
-
   struct seccomp_notif      *req = NULL;
   struct seccomp_notif_resp *resp = NULL;
   struct seccomp_notif_sizes sizes;
 
   if (syscall(SYS_seccomp, SECCOMP_GET_NOTIF_SIZES, 0, &sizes) == -1) {
-
     FFATAL("seccomp-SECCOMP_GET_NOTIF_SIZES");
-
   }
 
   if (sizes.seccomp_notif != sizeof(struct seccomp_notif)) {
-
     FFATAL("size - seccomp_notif");
-
   }
 
   if (sizes.seccomp_notif_resp != sizeof(struct seccomp_notif_resp)) {
-
     FFATAL("size - seccomp_notif");
-
   }
 
   req = alloca(sizes.seccomp_notif);
   resp = alloca(sizes.seccomp_notif_resp);
 
   while (true) {
-
     memset(req, 0, sizes.seccomp_notif);
 
     if (ioctl(fd, SECCOMP_IOCTL_NOTIF_RECV, req) < 0) {
-
       if (errno == EINTR) { continue; }
       FFATAL("SECCOMP_IOCTL_NOTIF_RECV: %d\n", fd);
-
     }
 
     if (seccomp_atomic_try_set(&seccomp_filter_parent_done, false)) {
-
       callback(req, resp, &seccomp_filter_frames);
 
     } else {
-
       if (kill(req->pid, SIGUSR1) < 0) { FFATAL("kill"); }
-
     }
 
     if (ioctl(fd, SECCOMP_IOCTL_NOTIF_SEND, resp) < 0) {
-
       if (errno == ENOENT) { continue; }
       FVERBOSE("SECCOMP_IOCTL_NOTIF_SEND");
       continue;
-
     }
-
   }
-
 }
 
 #endif
-

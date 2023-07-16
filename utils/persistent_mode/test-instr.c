@@ -27,7 +27,6 @@ __AFL_FUZZ_INIT();
 #pragma GCC            optimize("O0")
 
 int main(int argc, char **argv) {
-
   __AFL_INIT();
   unsigned char *buf = __AFL_FUZZ_TESTCASE_BUF;
 
@@ -41,16 +40,12 @@ int main(int argc, char **argv) {
     sprintf(fn, "%09u:test-instr", counter);
     int fd_doc = open(fn, O_WRONLY | O_CREAT | O_TRUNC, 0600);
     if (fd_doc >= 0) {
-
       if (write(fd_doc, buf, len) != __afl_fuzz_len) {
-
         fprintf(stderr, "write of mutation file failed: %s\n", fn);
         unlink(fn);
-
       }
 
       close(fd_doc);
-
     }
 
     counter++;
@@ -66,10 +61,7 @@ int main(int argc, char **argv) {
       printf("Pretty sure that is a one!\n");
     else
       printf("Neither one or zero? How quaint!\n");
-
   }
 
   return 0;
-
 }
-

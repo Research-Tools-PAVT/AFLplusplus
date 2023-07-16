@@ -16,7 +16,6 @@
 #define BP_SIZE 524288
 
 typedef struct {
-
   size_t count;
   void  *entry[PREFETCH_ENTRIES];
 
@@ -35,7 +34,6 @@ static GHashTable *cant_prefetch = NULL;
 static void gum_afl_stalker_backpatcher_notify(GumStalkerObserver *self,
                                                const GumBackpatch *backpatch,
                                                gsize               size) {
-
   UNUSED_PARAMETER(self);
   if (!entry_run) { return; }
   gsize remaining =
@@ -47,9 +45,7 @@ static void gum_afl_stalker_backpatcher_notify(GumStalkerObserver *self,
   /* Stop reporting patches which can't be prefetched */
   if (g_hash_table_contains(cant_prefetch, GSIZE_TO_POINTER(from)) ||
       g_hash_table_contains(cant_prefetch, GSIZE_TO_POINTER(to))) {
-
     return;
-
   }
 
   if (sizeof(gsize) + size > remaining) { return; }
@@ -62,7 +58,6 @@ static void gum_afl_stalker_backpatcher_notify(GumStalkerObserver *self,
   memcpy(&prefetch_data->backpatch_data[prefetch_data->backpatch_size],
          backpatch, size);
   prefetch_data->backpatch_size += size;
-
 }
 
 /*
@@ -70,7 +65,6 @@ static void gum_afl_stalker_backpatcher_notify(GumStalkerObserver *self,
  * saves the need to use an event sink.
  */
 void prefetch_write(void *addr) {
-
 #if defined(__aarch64__)
   if (!entry_compiled) { return; }
 #else
@@ -96,11 +90,9 @@ void prefetch_write(void *addr) {
 
   prefetch_data->entry[prefetch_data->count] = addr;
   prefetch_data->count++;
-
 }
 
 typedef struct {
-
   GumAddress address;
   gboolean   executable;
 
@@ -108,44 +100,34 @@ typedef struct {
 
 static gboolean prefetch_find_executable(const GumRangeDetails *details,
                                          gpointer               user_data) {
-
   check_executable_t *ctx = (check_executable_t *)user_data;
   if (GUM_MEMORY_RANGE_INCLUDES(details->range, ctx->address)) {
-
     ctx->executable = TRUE;
     return FALSE;
-
   }
 
   return TRUE;
-
 }
 
 static gboolean prefetch_is_executable(void *address) {
-
   check_executable_t ctx = {.address = GUM_ADDRESS(address),
                             .executable = FALSE};
   gum_process_enumerate_ranges(GUM_PAGE_EXECUTE, prefetch_find_executable,
                                &ctx);
   return ctx.executable;
-
 }
 
 static void prefetch_read_blocks(void) {
-
   GumStalker *stalker = stalker_get();
   if (prefetch_data == NULL) return;
 
   for (size_t i = 0; i < prefetch_data->count; i++) {
-
     void *addr = prefetch_data->entry[i];
 
     if (prefetch_is_executable(addr)) {
-
       gum_stalker_prefetch(stalker, addr, 1);
 
     } else {
-
       /*
        * If our child process creates a new executable mapping, e.g. by
        * dynamically loading a new DSO, then this won't appear in our parent
@@ -155,9 +137,7 @@ static void prefetch_read_blocks(void) {
        * used to pass new blocks from the child back to the parent.
        */
       g_hash_table_add(cant_prefetch, GSIZE_TO_POINTER(addr));
-
     }
-
   }
 
   /*
@@ -165,11 +145,9 @@ static void prefetch_read_blocks(void) {
    * refilled by the child.
    */
   prefetch_data->count = 0;
-
 }
 
 static void prefetch_read_patches(void) {
-
   gsize         offset = 0;
   GumStalker   *stalker = stalker_get();
   GumBackpatch *backpatch = NULL;
@@ -177,15 +155,12 @@ static void prefetch_read_patches(void) {
   for (gsize remaining = prefetch_data->backpatch_size - offset;
        remaining > sizeof(gsize);
        remaining = prefetch_data->backpatch_size - offset) {
-
     gsize *src_backpatch_data = (gsize *)&prefetch_data->backpatch_data[offset];
     gsize  size = *src_backpatch_data;
     offset += sizeof(gsize);
 
     if (prefetch_data->backpatch_size - offset < size) {
-
       FFATAL("Incomplete backpatch entry");
-
     }
 
     backpatch = (GumBackpatch *)&prefetch_data->backpatch_data[offset];
@@ -202,75 +177,55 @@ static void prefetch_read_patches(void) {
      * used to pass new blocks from the child back to the parent.
      */
     if (!prefetch_is_executable(from)) {
-
       g_hash_table_add(cant_prefetch, GSIZE_TO_POINTER(from));
-
     }
 
     if (!prefetch_is_executable(to)) {
-
       g_hash_table_add(cant_prefetch, GSIZE_TO_POINTER(to));
-
     }
 
     if (prefetch_is_executable(from) && prefetch_is_executable(to)) {
-
       gum_stalker_prefetch_backpatch(stalker, backpatch);
-
     }
 
     offset += size;
-
   }
 
   prefetch_data->backpatch_size = 0;
-
 }
 
 /*
  * Read the IPC region one block at the time and prefetch it
  */
 void prefetch_read(void) {
-
   prefetch_read_blocks();
   prefetch_read_patches();
-
 }
 
 void prefetch_config(void) {
-
   prefetch_enable = (getenv("AFL_FRIDA_INST_NO_PREFETCH") == NULL);
 
   if (prefetch_enable) {
-
     prefetch_backpatch =
         (getenv("AFL_FRIDA_INST_NO_PREFETCH_BACKPATCH") == NULL);
 
   } else {
-
     prefetch_backpatch = FALSE;
-
   }
-
 }
 
 static int prefetch_on_fork(void) {
-
   prefetch_read();
   return fork();
-
 }
 
 static void prefetch_hook_fork(void) {
-
   void *fork_addr =
       GSIZE_TO_POINTER(gum_module_find_export_by_name(NULL, "fork"));
   intercept_hook(fork_addr, prefetch_on_fork, NULL);
-
 }
 
 void prefetch_init(void) {
-
   FOKF(cBLU "Instrumentation" cRST " - " cGRN "prefetch:" cYEL " [%c]",
        prefetch_enable ? 'X' : ' ');
   FOKF(cBLU "Instrumentation" cRST " - " cGRN "prefetch_backpatch:" cYEL
@@ -289,9 +244,7 @@ void prefetch_init(void) {
 
   cant_prefetch = g_hash_table_new(g_direct_hash, g_direct_equal);
   if (cant_prefetch == NULL) {
-
     FFATAL("Failed to g_hash_table_new, errno: %d", errno);
-
   }
 
   if (!prefetch_backpatch) { return; }
@@ -299,6 +252,4 @@ void prefetch_init(void) {
   GumStalkerObserver          *observer = stalker_get_observer();
   GumStalkerObserverInterface *iface = GUM_STALKER_OBSERVER_GET_IFACE(observer);
   iface->notify_backpatch = gum_afl_stalker_backpatcher_notify;
-
 }
-

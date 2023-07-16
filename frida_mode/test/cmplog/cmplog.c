@@ -26,20 +26,15 @@
 #include <string.h>
 
 int main(int argc, char **argv) {
-
   char buffer[44] = {/* zero padding */};
 
   FILE *file = stdin;
 
   if (argc > 1) {
-
     if ((file = fopen(argv[1], "r")) == NULL) {
-
       perror(argv[1]);
       exit(-1);
-
     }
-
   }
 
   fread(buffer, 1, sizeof(buffer) - 1, file);
@@ -47,20 +42,16 @@ int main(int argc, char **argv) {
   if (memcmp(&buffer[0], "The quick brown fox ", 20) != 0 ||
       strncmp(&buffer[20], "jumps over ", 11) != 0 ||
       strcmp(&buffer[31], "the lazy dog") != 0) {
-
     if (argc > 1) { fclose(file); }
     return 1;
-
   }
 
 #if defined(__x86_64__) || defined(__aarch64__)
   uint64_t x = 0;
   fread(&x, sizeof(x), 1, file);
   if (x != 0xCAFEBABECAFEBABE) {
-
     if (argc > 1) { fclose(file); }
     return 2;
-
   }
 
 #endif
@@ -69,24 +60,20 @@ int main(int argc, char **argv) {
   fread(&y, sizeof(y), 1, file);
 
   if (y != 0xDEADC0DE) {
-
     if (argc > 1) { fclose(file); }
     return 3;
-
   }
 
   uint16_t z = 0;
   fread(&z, sizeof(z), 1, file);
 
   switch (z) {
-
     case 0xBEEF:
       break;
 
     default:
       if (argc > 1) { fclose(file); }
       return 4;
-
   }
 
   printf("Puzzle solved, congrats!\n");
@@ -95,6 +82,4 @@ int main(int argc, char **argv) {
   if (argc > 1) { fclose(file); }
 
   return 0;
-
 }
-

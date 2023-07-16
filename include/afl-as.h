@@ -187,14 +187,14 @@ static const u8 *main_payload_32 =
   "  movl %ecx, __afl_prev_loc\n"
 #else
   "  movl %ecx, %edi\n"
-#endif                                                   /* ^!COVERAGE_ONLY */
+#endif /* ^!COVERAGE_ONLY */
   "\n"
 #ifdef SKIP_COUNTS
   "  orb  $1, (%edx, %edi, 1)\n"
 #else
   "  addb $1, (%edx, %edi, 1)\n"
   "  adcb $0, (%edx, %edi, 1)\n" // never zero counter implementation. slightly better path discovery and little performance impact
-#endif                                                      /* ^SKIP_COUNTS */
+#endif /* ^SKIP_COUNTS */
   "\n"
   "__afl_return:\n"
   "\n"
@@ -384,7 +384,7 @@ static const u8 *main_payload_32 =
   "  .comm   __afl_setup_failure, 1, 32\n"
 #ifndef COVERAGE_ONLY
   "  .comm   __afl_prev_loc, 4, 32\n"
-#endif                                                    /* !COVERAGE_ONLY */
+#endif /* !COVERAGE_ONLY */
   "  .comm   __afl_final_loc, 4, 32\n"
   "  .comm   __afl_fork_pid, 4, 32\n"
   "  .comm   __afl_temp, 4, 32\n"
@@ -407,7 +407,7 @@ static const u8 *main_payload_32 =
   #define CALL_L64(str) "call _" str "\n"
 #else
   #define CALL_L64(str) "call " str "@PLT\n"
-#endif                                                        /* ^__APPLE__ */
+#endif /* ^__APPLE__ */
 
 static const u8 *main_payload_64 = 
 
@@ -425,7 +425,7 @@ static const u8 *main_payload_64 =
   "  .byte 0x9f /* lahf */\n"
 #else
   "  lahf\n"
-#endif                                                 /* ^__OpenBSD__, etc */
+#endif /* ^__OpenBSD__, etc */
   "  seto  %al\n"
   "\n"
   "  /* Check if SHM region is already mapped. */\n"
@@ -442,14 +442,14 @@ static const u8 *main_payload_64 =
   "  xorq __afl_prev_loc(%rip), %rcx\n"
   "  xorq %rcx, __afl_prev_loc(%rip)\n"
   "  shrq $1, __afl_prev_loc(%rip)\n"
-#endif                                                   /* ^!COVERAGE_ONLY */
+#endif /* ^!COVERAGE_ONLY */
   "\n"
 #ifdef SKIP_COUNTS
   "  orb  $1, (%rdx, %rcx, 1)\n"
 #else
   "  addb $1, (%rdx, %rcx, 1)\n"
   "  adcb $0, (%rdx, %rcx, 1)\n" // never zero counter implementation. slightly better path discovery and little performance impact
-#endif                                                      /* ^SKIP_COUNTS */
+#endif /* ^SKIP_COUNTS */
   "\n"
   "__afl_return:\n"
   "\n"
@@ -458,7 +458,7 @@ static const u8 *main_payload_64 =
   "  .byte 0x9e /* sahf */\n"
 #else
   "  sahf\n"
-#endif                                                 /* ^__OpenBSD__, etc */
+#endif /* ^__OpenBSD__, etc */
   "  ret\n"
   "\n"
   ".align 8\n"
@@ -477,7 +477,7 @@ static const u8 *main_payload_64 =
   "  movq  (%rdx), %rdx\n"
 #else
   "  movq  __afl_global_area_ptr(%rip), %rdx\n"
-#endif                                                       /* !^__APPLE__ */
+#endif /* !^__APPLE__ */
   "  testq %rdx, %rdx\n"
   "  je    __afl_setup_first\n"
   "\n"
@@ -577,7 +577,7 @@ static const u8 *main_payload_64 =
 #else
   "  movq __afl_global_area_ptr@GOTPCREL(%rip), %rdx\n"
   "  movq %rax, (%rdx)\n"
-#endif                                                        /* ^__APPLE__ */
+#endif /* ^__APPLE__ */
   "  movq %rax, %rdx\n"
   "\n"
   "__afl_forkserver:\n"
@@ -746,7 +746,7 @@ static const u8 *main_payload_64 =
   "  .comm   __afl_area_ptr, 8\n"
   #ifndef COVERAGE_ONLY
   "  .comm   __afl_prev_loc, 8\n"
-  #endif                                                  /* !COVERAGE_ONLY */
+  #endif /* !COVERAGE_ONLY */
   "  .comm   __afl_fork_pid, 4\n"
   "  .comm   __afl_temp, 4\n"
   "  .comm   __afl_setup_failure, 1\n"
@@ -756,12 +756,12 @@ static const u8 *main_payload_64 =
   "  .lcomm   __afl_area_ptr, 8\n"
   #ifndef COVERAGE_ONLY
   "  .lcomm   __afl_prev_loc, 8\n"
-  #endif                                                  /* !COVERAGE_ONLY */
+  #endif /* !COVERAGE_ONLY */
   "  .lcomm   __afl_fork_pid, 4\n"
   "  .lcomm   __afl_temp, 4\n"
   "  .lcomm   __afl_setup_failure, 1\n"
 
-#endif                                                        /* ^__APPLE__ */
+#endif /* ^__APPLE__ */
 
   "  .comm    __afl_global_area_ptr, 8, 8\n"
   "\n"
@@ -771,5 +771,4 @@ static const u8 *main_payload_64 =
   "/* --- END --- */\n"
   "\n";
 
-#endif                                                   /* !_HAVE_AFL_AS_H */
-
+#endif /* !_HAVE_AFL_AS_H */

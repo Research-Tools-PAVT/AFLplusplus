@@ -16,7 +16,6 @@
   #define ASHMEM_DEVICE "/dev/ashmem"
 
 void *shm_create(size_t size) {
-
   int               fd = -1;
   char              ourkey[11] = {0};
   void             *addr = MAP_FAILED;
@@ -26,21 +25,15 @@ void *shm_create(size_t size) {
   if (fd < 0) { FFATAL("Failed open /dev/ashmem: %d", errno); }
 
   if (snprintf(ourkey, sizeof(ourkey) - 1, "%d", IPC_PRIVATE) < 0) {
-
     FFATAL("Failed to generate key: %d", errno);
-
   }
 
   if (ioctl(fd, ASHMEM_SET_NAME, ourkey) < 0) {
-
     FFATAL("ioctl(ASHMEM_SET_NAME) errno: %d\n", errno);
-
   }
 
   if (ioctl(fd, ASHMEM_SET_SIZE, size) < 0) {
-
     FFATAL("ioctl(ASHMEM_SET_SIZE) errno: %d\n", errno);
-
   }
 
   addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -53,12 +46,10 @@ void *shm_create(size_t size) {
   close(fd);
 
   return addr;
-
 }
 
 #else
 void *shm_create(size_t size) {
-
   int shm_id =
       shmget(IPC_PRIVATE, size, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
   if (shm_id < 0) { FFATAL("shm_id < 0 - errno: %d\n", errno); }
@@ -71,17 +62,13 @@ void *shm_create(size_t size) {
    * dies.
    */
   if (shmctl(shm_id, IPC_RMID, NULL) < 0) {
-
     FFATAL("shmctl (IPC_RMID) < 0 - errno: %d\n", errno);
-
   }
 
   /* Clear it, not sure it's necessary, just seems like good practice */
   memset(addr, '\0', size);
 
   return addr;
-
 }
 
 #endif
-

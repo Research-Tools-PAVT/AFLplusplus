@@ -18,7 +18,6 @@
 typedef void (*seccomp_child_func_t)(int event_fd, void *ctx);
 
 typedef struct {
-
   seccomp_child_func_t func;
   int                  event_fd;
   void                *ctx;
@@ -26,17 +25,14 @@ typedef struct {
 } seccomp_child_func_ctx_t;
 
 static int seccomp_child_func(void *ctx) {
-
   seccomp_child_func_ctx_t *args = (seccomp_child_func_ctx_t *)ctx;
   args->func(args->event_fd, args->ctx);
   _exit(0);
   return 0;
-
 }
 
 void seccomp_child_run(seccomp_child_func_t child_func, void *ctx, pid_t *child,
                        int *event_fd) {
-
   int fd = seccomp_event_create();
 
   seccomp_child_func_ctx_t *child_ctx =
@@ -58,15 +54,11 @@ void seccomp_child_run(seccomp_child_func_t child_func, void *ctx, pid_t *child,
 
   if (child != NULL) { *child = child_pid; }
   if (event_fd != NULL) { *event_fd = fd; }
-
 }
 
 void seccomp_child_wait(int event_fd) {
-
   seccomp_event_wait(event_fd);
   seccomp_event_destroy(event_fd);
-
 }
 
 #endif
-

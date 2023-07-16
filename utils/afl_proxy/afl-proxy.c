@@ -55,18 +55,15 @@ __thread u32 __afl_map_size = MAP_SIZE;
 /* Error reporting to forkserver controller */
 
 void send_forkserver_error(int error) {
-
   u32 status;
   if (!error || error > 0xffff) return;
   status = (FS_OPT_ERROR | FS_OPT_SET_ERROR(error));
   if (write(FORKSRV_FD + 1, (char *)&status, 4) != 4) return;
-
 }
 
 /* SHM setup. */
 
 static void __afl_map_shm(void) {
-
   char *id_str = getenv(SHM_ENV_VAR);
   char *ptr;
 
@@ -84,33 +81,25 @@ static void __afl_map_shm(void) {
   */
 
   if (__afl_map_size > MAP_SIZE) {
-
     if (__afl_map_size > FS_OPT_MAX_MAPSIZE) {
-
       fprintf(stderr,
               "Error: AFL++ tools *require* to set AFL_MAP_SIZE to %u to "
               "be able to run this instrumented program!\n",
               __afl_map_size);
       if (id_str) {
-
         send_forkserver_error(FS_ERROR_MAP_SIZE);
         exit(-1);
-
       }
 
     } else {
-
       fprintf(stderr,
               "Warning: AFL++ tools will need to set AFL_MAP_SIZE to %u to "
               "be able to run this instrumented program!\n",
               __afl_map_size);
-
     }
-
   }
 
   if (id_str) {
-
 #ifdef USEMMAP
     const char    *shm_file_path = id_str;
     int            shm_fd = -1;
@@ -119,11 +108,9 @@ static void __afl_map_shm(void) {
     /* create the shared memory segment as if it was a file */
     shm_fd = shm_open(shm_file_path, O_RDWR, 0600);
     if (shm_fd == -1) {
-
       fprintf(stderr, "shm_open() failed\n");
       send_forkserver_error(FS_ERROR_SHM_OPEN);
       exit(1);
-
     }
 
     /* map the shared memory segment to the address space of the process */
@@ -131,14 +118,12 @@ static void __afl_map_shm(void) {
         mmap(0, __afl_map_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
     if (shm_base == MAP_FAILED) {
-
       close(shm_fd);
       shm_fd = -1;
 
       fprintf(stderr, "mmap() failed\n");
       send_forkserver_error(FS_ERROR_MMAP);
       exit(2);
-
     }
 
     __afl_area_ptr = shm_base;
@@ -150,24 +135,19 @@ static void __afl_map_shm(void) {
 #endif
 
     if (__afl_area_ptr == (void *)-1) {
-
       send_forkserver_error(FS_ERROR_SHMAT);
       exit(1);
-
     }
 
     /* Write something into the bitmap so that the parent doesn't give up */
 
     __afl_area_ptr[0] = 1;
-
   }
-
 }
 
 /* Fork server logic. */
 
 static void __afl_start_forkserver(void) {
-
   u8  tmp[4] = {0, 0, 0, 0};
   u32 status = 0;
 
@@ -179,11 +159,9 @@ static void __afl_start_forkserver(void) {
   /* Phone home and tell the parent that we're OK. */
 
   if (write(FORKSRV_FD + 1, tmp, 4) != 4) return;
-
 }
 
 static u32 __afl_next_testcase(u8 *buf, u32 max_len) {
-
   s32 status, res = 0xffffff;
 
   /* Wait for parent by reading from the pipe. Abort if read fails. */
@@ -196,21 +174,17 @@ static u32 __afl_next_testcase(u8 *buf, u32 max_len) {
   if (write(FORKSRV_FD + 1, &res, 4) != 4) return 0;
 
   return status;
-
 }
 
 static void __afl_end_testcase(void) {
-
   int status = 0xffffff;
 
   if (write(FORKSRV_FD + 1, &status, 4) != 4) exit(1);
-
 }
 
 /* you just need to modify the while() loop in this main() */
 
 int main(int argc, char *argv[]) {
-
   /* This is were the testcase data is written into */
   u8  buf[1024];  // this is the maximum size for a test case! set it!
   s32 len;
@@ -224,7 +198,6 @@ int main(int argc, char *argv[]) {
   __afl_start_forkserver();
 
   while ((len = __afl_next_testcase(buf, sizeof(buf))) > 0) {
-
     if (len > 4) {  // the minimum data size you need for the target
 
       /* here you have to create the magic that feeds the buf/len to the
@@ -237,15 +210,11 @@ int main(int argc, char *argv[]) {
         __afl_area_ptr[1] = 1;
       else
         __afl_area_ptr[2] = 2;
-
     }
 
     /* report the test case is done and wait for the next */
     __afl_end_testcase();
-
   }
 
   return 0;
-
 }
-

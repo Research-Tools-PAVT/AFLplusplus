@@ -87,10 +87,8 @@
   ".var_byte_count%s:%u|g\n" METRIC_PREFIX ".havoc_expansion%s:%u|g\n"
 
 void statsd_setup_format(afl_state_t *afl) {
-
   if (afl->afl_env.afl_statsd_tags_flavor &&
       strcmp(afl->afl_env.afl_statsd_tags_flavor, "dogstatsd") == 0) {
-
     afl->statsd_tags_format = DOGSTATSD_TAGS_FORMAT;
     afl->statsd_metric_format = STATSD_TAGS_SUFFIX_METRICS;
     afl->statsd_metric_format_type = STATSD_TAGS_TYPE_SUFFIX;
@@ -98,7 +96,6 @@ void statsd_setup_format(afl_state_t *afl) {
   } else if (afl->afl_env.afl_statsd_tags_flavor &&
 
              strcmp(afl->afl_env.afl_statsd_tags_flavor, "librato") == 0) {
-
     afl->statsd_tags_format = LIBRATO_TAGS_FORMAT;
     afl->statsd_metric_format = STATSD_TAGS_MID_METRICS;
     afl->statsd_metric_format_type = STATSD_TAGS_TYPE_MID;
@@ -106,7 +103,6 @@ void statsd_setup_format(afl_state_t *afl) {
   } else if (afl->afl_env.afl_statsd_tags_flavor &&
 
              strcmp(afl->afl_env.afl_statsd_tags_flavor, "influxdb") == 0) {
-
     afl->statsd_tags_format = INFLUXDB_TAGS_FORMAT;
     afl->statsd_metric_format = STATSD_TAGS_MID_METRICS;
     afl->statsd_metric_format_type = STATSD_TAGS_TYPE_MID;
@@ -114,26 +110,21 @@ void statsd_setup_format(afl_state_t *afl) {
   } else if (afl->afl_env.afl_statsd_tags_flavor &&
 
              strcmp(afl->afl_env.afl_statsd_tags_flavor, "signalfx") == 0) {
-
     afl->statsd_tags_format = SIGNALFX_TAGS_FORMAT;
     afl->statsd_metric_format = STATSD_TAGS_MID_METRICS;
     afl->statsd_metric_format_type = STATSD_TAGS_TYPE_MID;
 
   } else {
-
     // No tags at all.
     afl->statsd_tags_format = "";
     // Still need to pick a format. Doesn't change anything since if will be
     // replaced by the empty string anyway.
     afl->statsd_metric_format = STATSD_TAGS_MID_METRICS;
     afl->statsd_metric_format_type = STATSD_TAGS_TYPE_MID;
-
   }
-
 }
 
 int statsd_socket_init(afl_state_t *afl) {
-
   /* Default port and host.
   Will be overwritten by AFL_STATSD_PORT and AFL_STATSD_HOST environment
   variable, if they exists.
@@ -142,18 +133,14 @@ int statsd_socket_init(afl_state_t *afl) {
   char *host = STATSD_DEFAULT_HOST;
 
   if (afl->afl_env.afl_statsd_port) {
-
     port = atoi(afl->afl_env.afl_statsd_port);
-
   }
 
   if (afl->afl_env.afl_statsd_host) { host = afl->afl_env.afl_statsd_host; }
 
   int sock;
   if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
-
     FATAL("Failed to create socket");
-
   }
 
   memset(&afl->statsd_server, 0, sizeof(afl->statsd_server));
@@ -168,9 +155,7 @@ int statsd_socket_init(afl_state_t *afl) {
   hints.ai_socktype = SOCK_DGRAM;
 
   if ((getaddrinfo(host, NULL, &hints, &result))) {
-
     FATAL("Fail to getaddrinfo");
-
   }
 
   memcpy(&(afl->statsd_server.sin_addr),
@@ -179,11 +164,9 @@ int statsd_socket_init(afl_state_t *afl) {
   freeaddrinfo(result);
 
   return sock;
-
 }
 
 int statsd_send_metric(afl_state_t *afl) {
-
   char buff[MAX_STATSD_PACKET_SIZE] = {0};
 
   /* afl->statsd_sock is set once in the initialisation of afl-fuzz and reused
@@ -191,48 +174,37 @@ int statsd_send_metric(afl_state_t *afl) {
   it.
   */
   if (!afl->statsd_sock) {
-
     afl->statsd_sock = statsd_socket_init(afl);
     if (!afl->statsd_sock) {
-
       WARNF("Cannot create socket");
       return -1;
-
     }
-
   }
 
   statsd_format_metric(afl, buff, MAX_STATSD_PACKET_SIZE);
   if (sendto(afl->statsd_sock, buff, strlen(buff), 0,
              (struct sockaddr *)&afl->statsd_server,
              sizeof(afl->statsd_server)) == -1) {
-
     if (!close(afl->statsd_sock)) { PFATAL("Cannot close socket"); }
     afl->statsd_sock = 0;
     WARNF("Cannot sendto");
     return -1;
-
   }
 
   return 0;
-
 }
 
 int statsd_format_metric(afl_state_t *afl, char *buff, size_t bufflen) {
-
   char tags[MAX_TAG_LEN * 2] = {0};
   if (afl->statsd_tags_format) {
-
     snprintf(tags, MAX_TAG_LEN * 2, afl->statsd_tags_format, afl->use_banner,
              VERSION);
-
   }
 
   /* Sends multiple metrics with one UDP Packet.
   bufflen will limit to the max safe size.
   */
   if (afl->statsd_metric_format_type == STATSD_TAGS_TYPE_SUFFIX) {
-
     snprintf(
         buff, bufflen, afl->statsd_metric_format,
         afl->queue_cycle ? (afl->queue_cycle - 1) : 0, tags,
@@ -250,7 +222,6 @@ int statsd_format_metric(afl_state_t *afl, char *buff, size_t bufflen) {
         tags, afl->expand_havoc, tags);
 
   } else if (afl->statsd_metric_format_type == STATSD_TAGS_TYPE_MID) {
-
     snprintf(
         buff, bufflen, afl->statsd_metric_format, tags,
         afl->queue_cycle ? (afl->queue_cycle - 1) : 0, tags,
@@ -266,10 +237,7 @@ int statsd_format_metric(afl_state_t *afl, char *buff, size_t bufflen) {
         tags, afl->slowest_exec_ms, tags,
         count_non_255_bytes(afl, afl->virgin_bits), tags, afl->var_byte_count,
         tags, afl->expand_havoc);
-
   }
 
   return 0;
-
 }
-

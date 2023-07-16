@@ -12,4 +12,3 @@ void prefetch_write(void *addr);
 void prefetch_read(void);
 
 #endif
-

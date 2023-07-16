@@ -58,56 +58,43 @@ __thread u32 __afl_map_size = MAP_SIZE;
 /* Error reporting to forkserver controller */
 
 void send_forkserver_error(int error) {
-
   u32 status;
   if (!error || error > 0xffff) return;
   status = (FS_OPT_ERROR | FS_OPT_SET_ERROR(error));
   if (write(FORKSRV_FD + 1, (char *)&status, 4) != 4) return;
-
 }
 
 /* SHM setup. */
 
 static void __afl_map_shm(void) {
-
   char *id_str = getenv(SHM_ENV_VAR);
   char *ptr;
 
   if ((ptr = getenv("AFL_MAP_SIZE")) != NULL) {
-
     u32 val = atoi(ptr);
     if (val > 0) __afl_map_size = val;
-
   }
 
   if (__afl_map_size > MAP_SIZE) {
-
     if (__afl_map_size > FS_OPT_MAX_MAPSIZE) {
-
       fprintf(stderr,
               "Error: AFL++ tools *require* to set AFL_MAP_SIZE to %u to "
               "be able to run this instrumented program!\n",
               __afl_map_size);
       if (id_str) {
-
         send_forkserver_error(FS_ERROR_MAP_SIZE);
         exit(-1);
-
       }
 
     } else {
-
       fprintf(stderr,
               "Warning: AFL++ tools will need to set AFL_MAP_SIZE to %u to "
               "be able to run this instrumented program!\n",
               __afl_map_size);
-
     }
-
   }
 
   if (id_str) {
-
 #ifdef USEMMAP
     const char    *shm_file_path = id_str;
     int            shm_fd = -1;
@@ -116,11 +103,9 @@ static void __afl_map_shm(void) {
     /* create the shared memory segment as if it was a file */
     shm_fd = shm_open(shm_file_path, O_RDWR, 0600);
     if (shm_fd == -1) {
-
       fprintf(stderr, "shm_open() failed\n");
       send_forkserver_error(FS_ERROR_SHM_OPEN);
       exit(1);
-
     }
 
     /* map the shared memory segment to the address space of the process */
@@ -128,14 +113,12 @@ static void __afl_map_shm(void) {
         mmap(0, __afl_map_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
     if (shm_base == MAP_FAILED) {
-
       close(shm_fd);
       shm_fd = -1;
 
       fprintf(stderr, "mmap() failed\n");
       send_forkserver_error(FS_ERROR_MMAP);
       exit(2);
-
     }
 
     __afl_area_ptr = shm_base;
@@ -147,24 +130,19 @@ static void __afl_map_shm(void) {
 #endif
 
     if (__afl_area_ptr == (void *)-1) {
-
       send_forkserver_error(FS_ERROR_SHMAT);
       exit(1);
-
     }
 
     /* Write something into the bitmap so that the parent doesn't give up */
 
     __afl_area_ptr[0] = 1;
-
   }
-
 }
 
 /* Fork server logic. */
 
 static void __afl_start_forkserver(void) {
-
   u8  tmp[4] = {0, 0, 0, 0};
   u32 status = 0;
 
@@ -176,11 +154,9 @@ static void __afl_start_forkserver(void) {
   /* Phone home and tell the parent that we're OK. */
 
   if (write(FORKSRV_FD + 1, tmp, 4) != 4) return;
-
 }
 
 static u32 __afl_next_testcase(u8 *buf, u32 max_len) {
-
   s32 status, res = 0x0fffffff;  // res is a dummy pid
 
   /* Wait for parent by reading from the pipe. Abort if read fails. */
@@ -196,19 +172,15 @@ static u32 __afl_next_testcase(u8 *buf, u32 max_len) {
     return 0;
   else
     return status;
-
 }
 
 static void __afl_end_testcase(int status) {
-
   if (write(FORKSRV_FD + 1, &status, 4) != 4) exit(1);
-
 }
 
 /* you just need to modify the while() loop in this main() */
 
 int main(int argc, char *argv[]) {
-
   u8             *interface, *buf, *ptr;
   s32             s = -1;
   struct addrinfo hints, *hres, *aip;
@@ -220,7 +192,6 @@ int main(int argc, char *argv[]) {
 #endif
 
   if (argc < 3 || argc > 4) {
-
     printf("Syntax: %s host port [max-input-size]\n\n", argv[0]);
     printf("Requires host and port of the remote afl-proxy-server instance.\n");
     printf(
@@ -232,7 +203,6 @@ int main(int argc, char *argv[]) {
         "AFL_MAP_SIZE.\n",
         __afl_map_size);
     exit(-1);
-
   }
 
   if ((interface = strchr(argv[1], '%')) != NULL) *interface++ = 0;
@@ -266,9 +236,7 @@ int main(int argc, char *argv[]) {
     PFATAL("could not resolve target %s", argv[1]);
 
   for (aip = hres; aip != NULL && s == -1; aip = aip->ai_next) {
-
     if ((s = socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol)) >= 0) {
-
 #ifdef SO_BINDTODEVICE
       if (interface != NULL)
         if (setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, interface,
@@ -283,20 +251,16 @@ int main(int argc, char *argv[]) {
       int priority = 7;
       if (setsockopt(s, SOL_SOCKET, SO_PRIORITY, &priority, sizeof(priority)) <
           0) {
-
         priority = 6;
         if (setsockopt(s, SOL_SOCKET, SO_PRIORITY, &priority,
                        sizeof(priority)) < 0)
           WARNF("could not set priority on socket");
-
       }
 
 #endif
 
       if (connect(s, aip->ai_addr, aip->ai_addrlen) == -1) s = -1;
-
     }
-
   }
 
 #ifdef USE_DEFLATE
@@ -320,13 +284,11 @@ int main(int argc, char *argv[]) {
 
   // fprintf(stderr, "Waiting for first testcase\n");
   while ((*lenptr = __afl_next_testcase(buf + 4, max_len)) > 0) {
-
     // fprintf(stderr, "Sending testcase with len %u\n", *lenptr);
 #ifdef USE_DEFLATE
   #ifdef COMPRESS_TESTCASES
     // we only compress the testcase if it does not fit in the TCP packet
     if (*lenptr > 1500 - 20 - 32 - 4) {
-
       // set highest byte to signify compression
       *lenptr1 = (*lenptr | 0xff000000);
       *lenptr2 = (u32)libdeflate_deflate_compress(compressor, buf + 4, *lenptr,
@@ -342,7 +304,6 @@ int main(int argc, char *argv[]) {
       // fprintf(stderr, "\n");
 
     } else {
-
   #endif
 #endif
       if (send(s, buf, *lenptr + 4, 0) != *lenptr + 4)
@@ -350,7 +311,6 @@ int main(int argc, char *argv[]) {
 #ifdef USE_DEFLATE
   #ifdef COMPRESS_TESTCASES
       // fprintf(stderr, "unCOMPRESS (%u)\n", *lenptr);
-
     }
 
   #endif
@@ -401,7 +361,6 @@ int main(int argc, char *argv[]) {
     /* report the test case is done and wait for the next */
     __afl_end_testcase(status);
     // fprintf(stderr, "Waiting for next testcase %d\n", ++i);
-
   }
 
 #ifdef USE_DEFLATE
@@ -412,6 +371,4 @@ int main(int argc, char *argv[]) {
   free(buf);
 
   return 0;
-
 }
-

@@ -6,7 +6,6 @@
   #include "util.h"
 
 static void seccomp_print_v(int fd, char *format, va_list ap) {
-
   char buffer[4096] = {0};
   int  len;
 
@@ -14,17 +13,13 @@ static void seccomp_print_v(int fd, char *format, va_list ap) {
 
   len = strnlen(buffer, sizeof(buffer));
   IGNORED_RETURN(write(fd, buffer, len));
-
 }
 
 void seccomp_print(char *format, ...) {
-
   va_list ap;
   va_start(ap, format);
   seccomp_print_v(SECCOMP_OUTPUT_FILE_FD, format, ap);
   va_end(ap);
-
 }
 
 #endif
-

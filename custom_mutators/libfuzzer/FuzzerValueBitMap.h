@@ -22,10 +22,12 @@ struct ValueBitMap {
   static const size_t kMapPrimeMod = 65371;  // Largest Prime < kMapSizeInBits;
   static const size_t kBitsInWord = (sizeof(uintptr_t) * 8);
   static const size_t kMapSizeInWords = kMapSizeInBits / kBitsInWord;
- public:
 
+ public:
   // Clears all bits.
-  void Reset() { memset(Map, 0, sizeof(Map)); }
+  void Reset() {
+    memset(Map, 0, sizeof(Map));
+  }
 
   // Computes a hash function of Value and sets the corresponding bit.
   // Returns true if the bit was changed from 0 to 1.
@@ -52,16 +54,16 @@ struct ValueBitMap {
     return Map[WordIdx] & (1ULL << BitIdx);
   }
 
-  size_t SizeInBits() const { return kMapSizeInBits; }
+  size_t SizeInBits() const {
+    return kMapSizeInBits;
+  }
 
   template <class Callback>
-  ATTRIBUTE_NO_SANITIZE_ALL
-  void ForEach(Callback CB) const {
+  ATTRIBUTE_NO_SANITIZE_ALL void ForEach(Callback CB) const {
     for (size_t i = 0; i < kMapSizeInWords; i++)
       if (uintptr_t M = Map[i])
         for (size_t j = 0; j < sizeof(M) * 8; j++)
-          if (M & ((uintptr_t)1 << j))
-            CB(i * sizeof(M) * 8 + j);
+          if (M & ((uintptr_t)1 << j)) CB(i * sizeof(M) * 8 + j);
   }
 
  private:

@@ -20,7 +20,6 @@ guint64                persistent_ret = 0;
 gboolean               persistent_debug = FALSE;
 
 void persistent_config(void) {
-
   hook_name = getenv("AFL_FRIDA_PERSISTENT_HOOK");
   persistent_start = util_read_address("AFL_FRIDA_PERSISTENT_ADDR", 0);
   persistent_count = util_read_num("AFL_FRIDA_PERSISTENT_CNT", 0);
@@ -29,11 +28,9 @@ void persistent_config(void) {
   if (getenv("AFL_FRIDA_PERSISTENT_DEBUG") != NULL) { persistent_debug = TRUE; }
 
   if (persistent_count != 0 && persistent_start == 0) {
-
     FFATAL(
         "AFL_FRIDA_PERSISTENT_ADDR must be specified if "
         "AFL_FRIDA_PERSISTENT_CNT is");
-
   }
 
   if (persistent_start != 0 && persistent_count == 0) persistent_count = 1000;
@@ -42,11 +39,9 @@ void persistent_config(void) {
     FFATAL("Persistent mode not supported on this architecture");
 
   if (persistent_ret != 0 && persistent_start == 0) {
-
     FFATAL(
         "AFL_FRIDA_PERSISTENT_ADDR must be specified if "
         "AFL_FRIDA_PERSISTENT_RET is");
-
   }
 
   if (hook_name == NULL) { return; }
@@ -67,11 +62,9 @@ void persistent_config(void) {
       (afl_persistent_hook_fn)dlsym(hook_obj, "afl_persistent_hook");
   if (persistent_hook == NULL)
     FFATAL("Failed to find afl_persistent_hook in %s", hook_name);
-
 }
 
 void persistent_init(void) {
-
   FOKF(cBLU "Instrumentation" cRST " - " cGRN "persistent mode:" cYEL
             " [%c] (0x%016" G_GINT64_MODIFIER "X)",
        persistent_start == 0 ? ' ' : 'X', persistent_start);
@@ -85,23 +78,17 @@ void persistent_init(void) {
        persistent_ret == 0 ? ' ' : 'X', persistent_ret);
 
   if (persistent_hook != NULL) { __afl_sharedmem_fuzzing = 1; }
-
 }
 
 void persistent_prologue(GumStalkerOutput *output) {
-
   FVERBOSE("AFL_FRIDA_PERSISTENT_ADDR reached");
   entry_compiled = TRUE;
   ranges_exclude();
   stalker_trust();
   persistent_prologue_arch(output);
-
 }
 
 void persistent_epilogue(GumStalkerOutput *output) {
-
   FVERBOSE("AFL_FRIDA_PERSISTENT_RET reached");
   persistent_epilogue_arch(output);
-
 }
-

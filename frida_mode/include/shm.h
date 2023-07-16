@@ -6,4 +6,3 @@
 void *shm_create(size_t size);
 
 #endif
-

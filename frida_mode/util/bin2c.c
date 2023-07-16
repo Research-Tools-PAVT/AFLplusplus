@@ -4,14 +4,11 @@
 #include <unistd.h>
 
 void fatal(char *msg) {
-
   perror(msg);
   exit(1);
-
 }
 
 void bin2c_write(char *name, char *output, unsigned char *buff, size_t size) {
-
   int fd = open(output, O_CREAT | O_WRONLY | O_TRUNC, 00660);
   if (fd < 0) { fatal("open"); }
 
@@ -20,9 +17,7 @@ void bin2c_write(char *name, char *output, unsigned char *buff, size_t size) {
 
   /* 12 bytes per row, just like xxd means we fit an 80 character width */
   for (size_t i = 0; i < size; i += 12) {
-
     for (size_t j = 0; j < 12; j++) {
-
       size_t idx = i + j;
 
       /* If we get to the end of the input, then break */
@@ -42,7 +37,6 @@ void bin2c_write(char *name, char *output, unsigned char *buff, size_t size) {
        * and a newline
        */
       if (j == 11) {
-
         dprintf(fd, ",\n");
 
         /*
@@ -50,13 +44,9 @@ void bin2c_write(char *name, char *output, unsigned char *buff, size_t size) {
          */
 
       } else {
-
         dprintf(fd, ", ");
-
       }
-
     }
-
   }
 
   /* Write the closing brace for the array */
@@ -66,11 +56,9 @@ void bin2c_write(char *name, char *output, unsigned char *buff, size_t size) {
   dprintf(fd, "unsigned int %s_len = %lu;\n", name, size);
 
   if (close(fd) < 0) { fatal("close"); }
-
 }
 
 void bin2c(char *name, char *input, char *output) {
-
   int fd = open(input, O_RDONLY);
   if (fd < 0) { fatal("open(input)"); }
 
@@ -88,16 +76,12 @@ void bin2c(char *name, char *input, char *output) {
 
   free(buff);
   if (close(fd) < 0) { fatal("close(fd_in)"); }
-
 }
 
 int main(int argc, char **argv) {
-
   if (argc < 4) {
-
     dprintf(STDERR_FILENO, "%s <name> <input> <output>\n", argv[0]);
     return 1;
-
   }
 
   char *name = argv[1];
@@ -112,6 +96,4 @@ int main(int argc, char **argv) {
   bin2c(name, input, output);
 
   return 0;
-
 }
-

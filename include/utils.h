@@ -54,10 +54,10 @@ __thread u32 afl_map_size = MAP_SIZE;
 
 /* SHM setup. */
 
-u8 *get_fm_shmem(void) {
+u32 *get_fm_ptr(void) {
   char *id_str = getenv(FM_SHM_ENV_VAR);
   u32   shm_id = atoi(id_str);
-  return shmat(shm_id, 0, 0);
+  return (u32 *)shmat(shm_id, 0, 0);
 }
 
 u8 *get_afl_area_ptr(void) {
@@ -122,7 +122,7 @@ u8 *get_afl_area_ptr(void) {
     afl_area_ptr = shm_base;
 #else
     u32 shm_id = atoi(id_str);
-    afl_area_ptr = shmat(shm_id, 0, 0);
+    afl_area_ptr = (u8 *)shmat(shm_id, 0, 0);
 #endif
   }
 

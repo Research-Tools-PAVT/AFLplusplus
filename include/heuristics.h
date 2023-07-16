@@ -43,13 +43,13 @@ double energy_f2(uint8_t *heuf, afl_state_t *afl, uint64_t NUM_PREDS) {
     arr[k] = global_histogram_val[k];
   }
 
-  // Perform min-max like normalization on the array. 
+  // Perform min-max like normalization on the array.
   min_max_scaler(arr, NUM_PREDS);
-  
+
   double histogram_energy = 0.00;
   double run_energy = (double)global_histogram_val[0];
 
-//   FILE *fptr = fopen("histogram.log", "a");
+  //   FILE *fptr = fopen("histogram.log", "a");
 
   for (uint64_t i = 0; i < NUM_PREDS; i++) {
     // fprintf(fptr, "%lu, ", global_histogram_val[i]);
@@ -59,10 +59,9 @@ double energy_f2(uint8_t *heuf, afl_state_t *afl, uint64_t NUM_PREDS) {
     }
   }
 
-
-//   fprintf(fptr, "\n");
-//   fflush(fptr);
-//   fclose(fptr);
+  //   fprintf(fptr, "\n");
+  //   fflush(fptr);
+  //   fclose(fptr);
 
   return histogram_energy;
 }

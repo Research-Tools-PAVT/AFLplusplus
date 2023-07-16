@@ -12,7 +12,6 @@
 #if defined(__x86_64__) || defined(__i386__)
 
 typedef struct {
-
   guint64 num_blocks;
   guint64 num_instructions;
 
@@ -45,34 +44,26 @@ typedef struct {
 static stats_data_arch_t *stats_data_arch = NULL;
 
 void starts_arch_init(void) {
-
   stats_data_arch = shm_create(sizeof(stats_data_arch_t));
-
 }
 
 static void stats_write_arch_stat(char *label, guint64 value, guint64 total) {
-
   stats_print("%-30s ", label);
   stats_print("%10" G_GINT64_MODIFIER "u ", value);
   if (total == 0) {
-
     stats_print("(--.--%%), ");
 
   } else {
-
     stats_print("(%5.2f%%) ", ((float)value * 100) / total);
-
   }
 
   stats_print("\n");
-
 }
 
 static void stats_write_arch_stat_delta(char *label, guint64 prev_value,
                                         guint64 curr_value, guint elapsed,
                                         guint64 prev_total,
                                         guint64 curr_total) {
-
   guint64 delta = curr_value - prev_value;
   guint64 delta_total = curr_total - prev_total;
   guint64 per_sec = delta / elapsed;
@@ -81,33 +72,25 @@ static void stats_write_arch_stat_delta(char *label, guint64 prev_value,
 
   stats_print("%10" G_GINT64_MODIFIER "u ", curr_value);
   if (curr_total == 0) {
-
     stats_print("(--.--%%), ");
 
   } else {
-
     stats_print("(%5.2f%%) ", ((float)curr_value * 100) / curr_total);
-
   }
 
   stats_print("%10" G_GINT64_MODIFIER "u ", delta);
   if (delta_total == 0) {
-
     stats_print("(--.--%%), ");
 
   } else {
-
     stats_print("(%5.2f%%) ", ((float)delta * 100) / delta_total);
-
   }
 
   stats_print("[%10" G_GINT64_MODIFIER "u/s]", per_sec);
   stats_print("\n");
-
 }
 
 void stats_write_arch(stats_data_t *data) {
-
   guint elapsed =
       (data->curr.stats_time - data->prev.stats_time) / MICRO_TO_SEC;
   stats_print("%-30s %10s %19s\n", "Transitions", "cumulative", "delta");
@@ -165,11 +148,9 @@ void stats_write_arch(stats_data_t *data) {
               stats_data_arch->num_blocks);
 
   if (stats_data_arch->num_blocks != 0) {
-
     stats_print(
         "%-30s %10" G_GINT64_MODIFIER "u\n", "Avg Instructions / Block ",
         stats_data_arch->num_instructions / stats_data_arch->num_blocks);
-
   }
 
   stats_print("\n");
@@ -213,58 +194,43 @@ void stats_write_arch(stats_data_t *data) {
                         num_instructions);
 
   for (size_t i = 0; i < X86_INS_ENDING; i++) {
-
     if (stats_data_arch->num_rip_relative_type[i] != 0) {
-
       stats_write_arch_stat(stats_data_arch->name_rip_relative_type[i],
                             stats_data_arch->num_rip_relative_type[i],
                             stats_data_arch->num_rip_relative);
-
     }
-
   }
 
   stats_print("\n");
   stats_print("\n");
-
 }
 
 static x86_op_type stats_get_operand_type(const cs_insn *instr) {
-
   cs_x86    *x86 = &instr->detail->x86;
   cs_x86_op *operand;
 
   if (x86->op_count != 1) {
-
     FFATAL("Unexpected operand count (%d): %s %s\n", x86->op_count,
            instr->mnemonic, instr->op_str);
-
   }
 
   operand = &x86->operands[0];
 
   return operand->type;
-
 }
 
 static void stats_collect_call_imm_excluded_arch(const cs_insn *instr) {
-
   cs_x86    *x86 = &instr->detail->x86;
   cs_x86_op *operand = &x86->operands[0];
 
   if (range_is_excluded(GUM_ADDRESS(operand->imm))) {
-
     stats_data_arch->num_call_imm_excluded++;
-
   }
-
 }
 
 static void stats_collect_call_arch(const cs_insn *instr) {
-
   x86_op_type type = stats_get_operand_type(instr);
   switch (type) {
-
     case X86_OP_IMM:
       stats_data_arch->num_call_imm++;
       stats_collect_call_imm_excluded_arch(instr);
@@ -277,16 +243,12 @@ static void stats_collect_call_arch(const cs_insn *instr) {
       break;
     default:
       FFATAL("Invalid operand type: %s %s\n", instr->mnemonic, instr->op_str);
-
   }
-
 }
 
 static void stats_collect_jump_arch(const cs_insn *instr) {
-
   x86_op_type type = stats_get_operand_type(instr);
   switch (type) {
-
     case X86_OP_IMM:
       stats_data_arch->num_jmp_imm++;
       break;
@@ -298,16 +260,12 @@ static void stats_collect_jump_arch(const cs_insn *instr) {
       break;
     default:
       FFATAL("Invalid operand type: %s %s\n", instr->mnemonic, instr->op_str);
-
   }
-
 }
 
 static void stats_collect_jump_cond_arch(const cs_insn *instr) {
-
   x86_op_type type = stats_get_operand_type(instr);
   switch (type) {
-
     case X86_OP_IMM:
       stats_data_arch->num_jmp_cond_imm++;
       break;
@@ -319,13 +277,10 @@ static void stats_collect_jump_cond_arch(const cs_insn *instr) {
       break;
     default:
       FFATAL("Invalid operand type: %s %s\n", instr->mnemonic, instr->op_str);
-
   }
-
 }
 
 static void stats_collect_rip_relative_arch(const cs_insn *instr) {
-
   cs_x86 *x86 = &instr->detail->x86;
   guint   mod;
   guint   rm;
@@ -342,17 +297,14 @@ static void stats_collect_rip_relative_arch(const cs_insn *instr) {
   stats_data_arch->num_rip_relative_type[instr->id]++;
   memcpy(stats_data_arch->name_rip_relative_type[instr->id], instr->mnemonic,
          CS_MNEMONIC_SIZE);
-
 }
 
 void stats_collect_arch(const cs_insn *instr, gboolean begin) {
-
   if (stats_data_arch == NULL) { return; }
   if (begin) { stats_data_arch->num_blocks++; }
   stats_data_arch->num_instructions++;
 
   switch (instr->id) {
-
     case X86_INS_CALL:
       stats_collect_call_arch(instr);
       stats_data_arch->num_eob++;
@@ -392,10 +344,7 @@ void stats_collect_arch(const cs_insn *instr, gboolean begin) {
     default:
       stats_collect_rip_relative_arch(instr);
       break;
-
   }
-
 }
 
 #endif
-

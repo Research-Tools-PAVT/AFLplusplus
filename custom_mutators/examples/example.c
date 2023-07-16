@@ -25,7 +25,6 @@ static const char *commands[] = {
 };
 
 typedef struct my_mutator {
-
   afl_state_t *afl;
 
   // any additional data here!
@@ -49,42 +48,32 @@ typedef struct my_mutator {
  *         Return NULL on error.
  */
 my_mutator_t *afl_custom_init(afl_state_t *afl, unsigned int seed) {
-
   srand(seed);  // needed also by surgical_havoc_mutate()
 
   my_mutator_t *data = calloc(1, sizeof(my_mutator_t));
   if (!data) {
-
     perror("afl_custom_init alloc");
     return NULL;
-
   }
 
   if ((data->mutated_out = (u8 *)malloc(MAX_FILE)) == NULL) {
-
     perror("afl_custom_init malloc");
     return NULL;
-
   }
 
   if ((data->post_process_buf = (u8 *)malloc(MAX_FILE)) == NULL) {
-
     perror("afl_custom_init malloc");
     return NULL;
-
   }
 
   if ((data->trim_buf = (u8 *)malloc(MAX_FILE)) == NULL) {
-
     perror("afl_custom_init malloc");
     return NULL;
-
   }
 
   data->afl = afl;
 
   return data;
-
 }
 
 /**
@@ -107,7 +96,6 @@ size_t afl_custom_fuzz(my_mutator_t *data, uint8_t *buf, size_t buf_size,
                        u8 **out_buf, uint8_t *add_buf,
                        size_t add_buf_size,  // add_buf can be NULL
                        size_t max_size) {
-
   // Make sure that the packet size does not exceed the maximum size expected by
   // the fuzzer
   size_t mutated_size = DATA_SIZE <= max_size ? DATA_SIZE : max_size;
@@ -121,7 +109,6 @@ size_t afl_custom_fuzz(my_mutator_t *data, uint8_t *buf, size_t buf_size,
 
   *out_buf = data->mutated_out;
   return mutated_size;
-
 }
 
 /**
@@ -142,7 +129,6 @@ size_t afl_custom_fuzz(my_mutator_t *data, uint8_t *buf, size_t buf_size,
  */
 size_t afl_custom_post_process(my_mutator_t *data, uint8_t *buf,
                                size_t buf_size, uint8_t **out_buf) {
-
   if (buf_size + 5 > MAX_FILE) { buf_size = MAX_FILE - 5; }
 
   memcpy(data->post_process_buf + 5, buf, buf_size);
@@ -155,7 +141,6 @@ size_t afl_custom_post_process(my_mutator_t *data, uint8_t *buf,
   *out_buf = data->post_process_buf;
 
   return buf_size + 5;
-
 }
 
 /**
@@ -182,7 +167,6 @@ size_t afl_custom_post_process(my_mutator_t *data, uint8_t *buf,
  */
 int32_t afl_custom_init_trim(my_mutator_t *data, uint8_t *buf,
                              size_t buf_size) {
-
   // We simply trim once
   data->trimmming_steps = 1;
 
@@ -193,7 +177,6 @@ int32_t afl_custom_init_trim(my_mutator_t *data, uint8_t *buf,
   data->trim_size_current = buf_size;
 
   return data->trimmming_steps;
-
 }
 
 /**
@@ -216,12 +199,10 @@ int32_t afl_custom_init_trim(my_mutator_t *data, uint8_t *buf,
  * @return Pointer to the size of the trimmed test case
  */
 size_t afl_custom_trim(my_mutator_t *data, uint8_t **out_buf) {
-
   *out_buf = data->trim_buf;
 
   // Remove the last byte of the trimming input
   return data->trim_size_current - 1;
-
 }
 
 /**
@@ -237,16 +218,12 @@ size_t afl_custom_trim(my_mutator_t *data, uint8_t **out_buf) {
  *     steps returned in init_trim). negative ret on failure.
  */
 int32_t afl_custom_post_trim(my_mutator_t *data, int success) {
-
   if (success) {
-
     ++data->cur_step;
     return data->cur_step;
-
   }
 
   return data->trimmming_steps;
-
 }
 
 /**
@@ -267,7 +244,6 @@ int32_t afl_custom_post_trim(my_mutator_t *data, int success) {
  */
 size_t afl_custom_havoc_mutation(my_mutator_t *data, u8 *buf, size_t buf_size,
                                  u8 **out_buf, size_t max_size) {
-
   *out_buf = buf;  // in-place mutation
 
   if (buf_size <= sizeof(size_t)) { return buf_size; }
@@ -276,7 +252,6 @@ size_t afl_custom_havoc_mutation(my_mutator_t *data, u8 *buf, size_t buf_size,
   (*out_buf)[victim] += rand() % 10;
 
   return buf_size;
-
 }
 
 /**
@@ -289,9 +264,7 @@ size_t afl_custom_havoc_mutation(my_mutator_t *data, u8 *buf, size_t buf_size,
  * @return The probability (0-100).
  */
 uint8_t afl_custom_havoc_mutation_probability(my_mutator_t *data) {
-
   return 5;  // 5 %
-
 }
 
 /**
@@ -305,9 +278,7 @@ uint8_t afl_custom_havoc_mutation_probability(my_mutator_t *data) {
  *     False(0) otherwise.
  */
 uint8_t afl_custom_queue_get(my_mutator_t *data, const uint8_t *filename) {
-
   return 1;
-
 }
 
 /**
@@ -325,10 +296,8 @@ uint8_t afl_custom_queue_get(my_mutator_t *data, const uint8_t *filename) {
 uint8_t afl_custom_queue_new_entry(my_mutator_t  *data,
                                    const uint8_t *filename_new_queue,
                                    const uint8_t *filename_orig_queue) {
-
   /* Additional analysis on the original or new test case */
   return 0;
-
 }
 
 /**
@@ -337,11 +306,8 @@ uint8_t afl_custom_queue_new_entry(my_mutator_t  *data,
  * @param data The data ptr from afl_custom_init
  */
 void afl_custom_deinit(my_mutator_t *data) {
-
   free(data->post_process_buf);
   free(data->mutated_out);
   free(data->trim_buf);
   free(data);
-
 }
-

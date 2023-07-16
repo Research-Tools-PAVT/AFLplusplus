@@ -26,4 +26,3 @@ gboolean js_stalker_callback(const cs_insn *insn, gboolean begin,
                              gboolean excluded, GumStalkerOutput *output);
 
 #endif
-

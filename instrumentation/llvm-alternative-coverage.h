@@ -18,4 +18,3 @@ typedef u64 PREV_LOC_T;
 #define CTX_MAX_K 32U
 
 #endif
-

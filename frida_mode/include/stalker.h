@@ -16,4 +16,3 @@ void        stalker_trust(void);
 GumStalkerObserver *stalker_get_observer(void);
 
 #endif
-

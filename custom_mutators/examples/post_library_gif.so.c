@@ -76,30 +76,24 @@
 #define HEADER "GIF89a"
 
 typedef struct post_state {
-
   size_t size;
 
 } post_state_t;
 
 void *afl_custom_init(void *afl) {
-
   post_state_t *state = malloc(sizeof(post_state_t));
   if (!state) {
-
     perror("malloc");
     return NULL;
-
   }
 
   return state;
-
 }
 
 /* The actual postprocessor routine called by afl-fuzz: */
 
 size_t afl_custom_post_process(post_state_t *data, unsigned char *in_buf,
                                unsigned int len, unsigned char **out_buf) {
-
   /* we do in-place modification as we do not increase the size */
 
   *out_buf = in_buf;
@@ -120,13 +114,9 @@ size_t afl_custom_post_process(post_state_t *data, unsigned char *in_buf,
   /* Return the new len. It hasn't changed, so it's just len. */
 
   return len;
-
 }
 
 /* Gets called afterwards */
 void afl_custom_deinit(post_state_t *data) {
-
   free(data);
-
 }
-

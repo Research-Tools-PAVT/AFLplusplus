@@ -3691,25 +3691,25 @@ static const unsigned char heap[] = {
 
 typedef unsigned int uint;
 typedef uint8_t      byte;
-typedef uintptr_t    word;                                     /* heap cell */
-typedef uint32_t     hval;                                    /* heap value */
+typedef uintptr_t    word; /* heap cell */
+typedef uint32_t     hval; /* heap value */
 typedef intptr_t     wdiff;
 
 /*** Macros ***/
 
-#define IPOS 8                               /* offset of immediate payload */
-#define SPOS 16           /* offset of size bits in header immediate values */
-#define TPOS 2                             /* offset of type bits in header */
+#define IPOS 8  /* offset of immediate payload */
+#define SPOS 16 /* offset of size bits in header immediate values */
+#define TPOS 2  /* offset of type bits in header */
 #define V(ob) (*(word *)(ob))
 #define W ((uint)sizeof(word))
-#define LDW ((W >> 3) + 2)        /* poor man's log2(W), valid for 4, 8, 16 */
+#define LDW ((W >> 3) + 2) /* poor man's log2(W), valid for 4, 8, 16 */
 #define NWORDS \
-  1024 * 1024 * 8         /* static malloc'd heap size if used as a library */
-#define FBITS 24             /* bits in fixnum, on the way to 24 and beyond */
+  1024 * 1024 * 8 /* static malloc'd heap size if used as a library */
+#define FBITS 24  /* bits in fixnum, on the way to 24 and beyond */
 #define FMAX                                                       \
   ((1 << FBITS) - 1)  /* maximum fixnum (and most negative fixnum) \
                        */
-#define MAXOBJ 0xffff                /* max words in tuple including header */
+#define MAXOBJ 0xffff /* max words in tuple including header */
 #define MAXPAYL                                                \
   ((MAXOBJ - 1) * W) /* maximum payload in an allocated object \
                       */
@@ -3724,7 +3724,7 @@ typedef intptr_t     wdiff;
 #define immval(desc) ((hval)(desc) >> IPOS)
 #define fixnump(desc) (((desc)&255) == 2)
 #define NR \
-  98     /* FIXME: should be ~32, see owl/register.scm:/define.n-registers/ */
+  98 /* FIXME: should be ~32, see owl/register.scm:/define.n-registers/ */
 #define header(x) V(x)
 #define is_type(x, t) (((x) & (63 << TPOS | 2)) == ((t) << TPOS | 2))
 #define objsize(x) ((hval)(x) >> SPOS)
@@ -3736,14 +3736,14 @@ typedef intptr_t     wdiff;
   continue
 #define PAIRHDR make_header(3, 1)
 #define NUMHDR \
-  make_header(3, 40)    /* <- on the way to 40, see type-int+ in defmac.scm */
+  make_header(3, 40) /* <- on the way to 40, see type-int+ in defmac.scm */
 #define NUMNHDR make_header(3, 41)
 #define pairp(ob) (allocp(ob) && V(ob) == PAIRHDR)
 #define cons(a, d) mkpair(PAIRHDR, a, d)
 #define INULL make_immediate(0, 13)
 #define IFALSE make_immediate(1, 13)
 #define ITRUE make_immediate(2, 13)
-#define IEMPTY make_immediate(3, 13)                            /* empty ff */
+#define IEMPTY make_immediate(3, 13) /* empty ff */
 #define IEOF make_immediate(4, 13)
 #define IHALT make_immediate(5, 13)
 #define TNUM 0
@@ -3773,11 +3773,10 @@ typedef intptr_t     wdiff;
 #define A4 R[ip[4]]
 #define A5 R[ip[5]]
 #define G(ptr, n) (((word *)(ptr))[n])
-#define TICKS 10000              /* # of function calls in a thread quantum */
+#define TICKS 10000 /* # of function calls in a thread quantum */
 #define allocate(size, to) (to = fp, fp += size)
 #define error(opcode, a, b) \
   do {                      \
-                            \
     R[4] = F(opcode);       \
     R[5] = (word)(a);       \
     R[6] = (word)(b);       \
@@ -3789,7 +3788,7 @@ typedef intptr_t     wdiff;
   if (!(exp)) error(code, val, ITRUE)
 #define assert_not(exp, val, code) \
   if (exp) error(code, val, ITRUE)
-#define MEMPAD (NR + 2) * 8         /* space at end of heap for starting GC */
+#define MEMPAD (NR + 2) * 8 /* space at end of heap for starting GC */
 #define MINGEN 1024 * 32    /* minimum generation size before doing full GC */
 #define INITCELLS 100000
 
@@ -3801,13 +3800,13 @@ extern char **environ;
 static word *genstart;
 static word *memstart;
 static word *memend;
-static hval  max_heap_mb;                            /* max heap size in MB */
+static hval  max_heap_mb; /* max heap size in MB */
 static int
-                      breaked; /* set in signal handler, passed over to owl in thread switch */
+    breaked; /* set in signal handler, passed over to owl in thread switch */
 static word           state; /* IFALSE | previous program state across runs */
-static const byte *   hp;
-static word *         fp;
-static byte *         file_heap;
+static const byte    *hp;
+static word          *fp;
+static byte          *file_heap;
 static struct termios tsettings;
 static uint64_t       nalloc;
 static size_t         maxheap;
@@ -3816,126 +3815,92 @@ static size_t         maxheap;
  * Johannes Martin (1982) ***/
 
 static __inline__ void rev(word pos) {
-
   word val = V(pos);
   word next = cont(val);
   V(pos) = next;
   cont(val) = (pos | FLAG) ^ (val & FLAG);
-
 }
 
 static __inline__ word *chase(word *pos) {
-
   word val = cont(pos);
   while (allocp(val) && flagged(val)) {
-
     pos = (word *)val;
     val = cont(pos);
-
   }
 
   return pos;
-
 }
 
 static void mark(word *pos, word *end) {
-
   while (pos != end) {
-
     word val = *pos;
     if (allocp(val) && val >= (word)genstart) {
-
       if (flagged(val)) {
-
         pos = (word *)flag(chase((word *)val));
 
       } else {
-
         word hdr = header(val);
         rev((word)pos);
         if (!flagged_or_raw(hdr)) pos = (word *)val + objsize(hdr);
-
       }
-
     }
 
     --pos;
-
   }
-
 }
 
 static word *compact() {
-
   word *new = genstart;
   word *old = new;
   word *end = memend - 1;
   while (old < end) {
-
     word val = *old;
     if (flagged(val)) {
-
       hval h;
       *new = val;
-      do {                                                      /* unthread */
+      do { /* unthread */
         rev((word) new);
 
       } while (flagged(*new));
 
       h = objsize(*new);
       if (old == new) {
-
         old += h;
         new += h;
 
       } else {
-
         while (--h)
           *++new = *++old;
         old++;
         new ++;
-
       }
 
     } else {
-
       /* if (teardown_needed(val))
          printf("gc: would teardown\n"); */
       old += objsize(val);
-
     }
-
   }
 
   return new;
-
 }
 
 static void fix_pointers(word *pos, wdiff delta) {
-
   for (;;) {
-
     word hdr = *pos;
     hval n = objsize(hdr);
-    if (hdr == 0)    /* end marker reached. only dragons beyond this point. */
+    if (hdr == 0) /* end marker reached. only dragons beyond this point. */
       return;
     if (rawp(hdr)) {
-
-      pos += n;                               /* no pointers in raw objects */
+      pos += n; /* no pointers in raw objects */
 
     } else {
-
       for (++pos; --n; ++pos) {
-
         word val = *pos;
         if (allocp(val)) *pos = val + delta;
-
       }
-
     }
-
   }
-
 }
 
 /* emulate sbrk with malloc'd memory, because sbrk is no longer properly
@@ -3943,42 +3908,37 @@ static void fix_pointers(word *pos, wdiff delta) {
 /* n-cells-wanted → heap-delta (to be added to pointers), updates memstart and
  * memend */
 static wdiff adjust_heap(wdiff cells) {
-
   word *old = memstart;
-  word  nwords = memend - memstart + MEMPAD;      /* MEMPAD is after memend */
+  word  nwords = memend - memstart + MEMPAD; /* MEMPAD is after memend */
   word  new_words =
       nwords +
-      (cells > 0xffffff ? 0xffffff : cells);     /* limit heap growth speed */
+      (cells > 0xffffff ? 0xffffff : cells); /* limit heap growth speed */
   if (((cells > 0) && (new_words * W < nwords * W)) ||
       ((cells < 0) && (new_words * W > nwords * W)))
     return 0; /* don't try to adjust heap, if the size_t would overflow in
                  realloc */
   memstart = realloc(memstart, new_words * W);
-  if (memstart == old) {                         /* whee, no heap slide \o/ */
-    memend = memstart + new_words - MEMPAD;     /* leave MEMPAD words alone */
+  if (memstart == old) {                    /* whee, no heap slide \o/ */
+    memend = memstart + new_words - MEMPAD; /* leave MEMPAD words alone */
     return 0;
 
-  } else if (memstart) {       /* d'oh! we need to O(n) all the pointers... */
+  } else if (memstart) { /* d'oh! we need to O(n) all the pointers... */
 
     wdiff delta = (word)memstart - (word)old;
-    memend = memstart + new_words - MEMPAD;     /* leave MEMPAD words alone */
+    memend = memstart + new_words - MEMPAD; /* leave MEMPAD words alone */
     fix_pointers(memstart, delta);
     return delta;
 
   } else {
-
-    breaked |= 8;            /* will be passed over to mcp at thread switch */
+    breaked |= 8; /* will be passed over to mcp at thread switch */
     return 0;
-
   }
-
 }
 
 /* input desired allocation size and (the only) pointer to root object
    return a pointer to the same object after heap compaction, possible heap size
    change and relocation */
 static word *gc(int size, word *regs) {
-
   word *root;
   word *realend = memend;
   wdiff nfree;
@@ -3993,19 +3953,17 @@ static word *gc(int size, word *regs) {
   memend = realend;
   nfree = (word)memend - (word)regs;
   if (genstart == memstart) {
-
     word heapsize = (word)memend - (word)memstart;
     word nused = heapsize - nfree;
     if (maxheap < nused) maxheap = nused;
     if (heapsize / (1024 * 1024) > max_heap_mb)
-      breaked |= 8;          /* will be passed over to mcp at thread switch */
-    nfree -= size * W + MEMPAD;     /* how much really could be snipped off */
+      breaked |= 8; /* will be passed over to mcp at thread switch */
+    nfree -= size * W + MEMPAD; /* how much really could be snipped off */
     if (nfree < (heapsize / 5) || nfree < 0) {
-
       /* increase heap size if less than 20% is free by ~10% of heap size
        * (growth usually implies more growth) */
       regs[objsize(*regs)] =
-          0;      /* use an invalid descriptor to denote end live heap data */
+          0; /* use an invalid descriptor to denote end live heap data */
       regs = (word *)((word)regs + adjust_heap(size * W + nused / 10 + 4096));
       nfree = memend - regs;
       if (nfree <= size)
@@ -4013,36 +3971,28 @@ static word *gc(int size, word *regs) {
                          owl<->gc loop if handled poorly on lisp side! */
 
     } else if (nfree > (heapsize / 3)) {
-
       /* decrease heap size if more than 33% is free by 10% of the free space */
       wdiff dec = -(nfree / 10);
       wdiff new = nfree - dec;
       if (new > size * W * 2 + MEMPAD) {
-
-        regs[objsize(*regs)] = 0;                               /* as above */
+        regs[objsize(*regs)] = 0; /* as above */
         regs = (word *)((word)regs + adjust_heap(dec + MEMPAD * W));
         heapsize = (word)memend - (word)memstart;
         nfree = (word)memend - (word)regs;
-
       }
-
     }
 
-    genstart = regs;                         /* always start new generation */
+    genstart = regs; /* always start new generation */
 
   } else if (nfree < MINGEN || nfree < size * W * 2) {
-
-    genstart = memstart;                           /* start full generation */
+    genstart = memstart; /* start full generation */
     return gc(size, regs);
 
   } else {
-
-    genstart = regs;                                /* start new generation */
-
+    genstart = regs; /* start new generation */
   }
 
   return regs;
-
 }
 
 /*** OS Interaction and Helpers ***/
@@ -4063,17 +4013,13 @@ static word *gc(int size, word *regs) {
 
 /* list length, no overflow or valid termination checks */
 static uint llen(word *ptr) {
-
   uint len = 0;
   while (pairp(ptr)) {
-
     len++;
     ptr = (word *)ptr[2];
-
   }
 
   return len;
-
 }
 
 /*
@@ -4090,27 +4036,22 @@ static void set_signal_handler(void) {
 
 */
 static word mkpair(word h, word a, word d) {
-
   word *pair;
   allocate(3, pair);
   pair[0] = h;
   pair[1] = a;
   pair[2] = d;
   return (word)pair;
-
 }
 
 /* recursion depth does not exceed two */
 static word mkint(uint64_t x) {
-
   return mkpair(NUMHDR, F(x), x > FMAX ? mkint(x >> FBITS) : INULL);
-
 }
 
 /* make a raw object to hold len bytes (compute size, advance fp, clear padding)
  */
 static word mkraw(uint type, hval len) {
-
   word *ob;
   byte *end;
   hval  hdr = (W + len + W - 1) << FPOS | RAWBIT | make_header(0, type);
@@ -4119,17 +4060,15 @@ static word mkraw(uint type, hval len) {
   *ob = hdr;
   end = (byte *)ob + W + len;
   while (pads--)
-    *end++ = 0;                                  /* clear the padding bytes */
+    *end++ = 0; /* clear the padding bytes */
   return (word)ob;
-
 }
 
 /*** Primops called from VM and generated C-code ***/
 
 static hval prim_connect(word *host, word port, word type) {
-
   int                sock;
-  byte *             ip = (byte *)host + W;
+  byte              *ip = (byte *)host + W;
   unsigned long      ipfull;
   struct sockaddr_in addr;
   char               udp = (immval(type) == 1);
@@ -4138,7 +4077,7 @@ static hval prim_connect(word *host, word port, word type) {
                      (udp ? IPPROTO_UDP : 0))) == -1)
     return IFALSE;
   if (udp) return make_immediate(sock, TPORT);
-  if (!allocp(host))                                       /* bad host type */
+  if (!allocp(host)) /* bad host type */
     return IFALSE;
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
@@ -4146,54 +4085,43 @@ static hval prim_connect(word *host, word port, word type) {
   ipfull = ip[0] << 24 | ip[1] << 16 | ip[2] << 8 | ip[3];
   addr.sin_addr.s_addr = htonl(ipfull);
   if (connect(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
-
     close(sock);
     return IFALSE;
-
   }
 
   return make_immediate(sock, TPORT);
-
 }
 
 static word prim_less(word a, word b) {
-
   if (immediatep(a))
-    return immediatep(b) ? BOOL(a < b) : ITRUE;              /* imm < alloc */
+    return immediatep(b) ? BOOL(a < b) : ITRUE; /* imm < alloc */
   else
-    return immediatep(b) ? IFALSE : BOOL(a < b);             /* alloc > imm */
-
+    return immediatep(b) ? IFALSE : BOOL(a < b); /* alloc > imm */
 }
 
 static word prim_ref(word pword, hval pos) {
-
   hval hdr;
   if (immediatep(pword)) return IFALSE;
   hdr = header(pword);
   pos = immval(pos);
-  if (rawp(hdr)) {           /* raw data is #[hdrbyte{W} b0 .. bn 0{0,W-1}] */
+  if (rawp(hdr)) { /* raw data is #[hdrbyte{W} b0 .. bn 0{0,W-1}] */
     if (payl_len(hdr) <= pos) return IFALSE;
     return F(((byte *)pword)[W + pos]);
-
   }
 
   if (!pos || objsize(hdr) <=
-                  pos)  /* tuples are indexed from 1 (probably later 0-255) */
+                  pos) /* tuples are indexed from 1 (probably later 0-255) */
     return IFALSE;
   return G(pword, pos);
-
 }
 
 static int64_t cnum(word a) {
-
   uint64_t x;
   if (allocp(a)) {
-
     word *p = (word *)a;
     uint  shift = 0;
     x = 0;
     do {
-
       x |= (uint64_t)immval(p[1]) << shift;
       shift += FBITS;
       p = (word *)p[2];
@@ -4201,39 +4129,30 @@ static int64_t cnum(word a) {
     } while (shift < 64 && allocp(p));
 
     return header(a) == NUMNHDR ? -x : x;
-
   }
 
   x = immval(a);
   return is_type(a, TNUMN) ? -x : x;
-
 }
 
 static word onum(int64_t n, uint s) {
-
   word h = NUMHDR, t = TNUM;
   if (s && n < 0) {
-
     h = NUMNHDR;
     t = TNUMN;
     n = -n;
-
   }
 
   if (n > FMAX) {
-
     word p = mkint(n);
     header(p) = h;
     return p;
-
   }
 
   return make_immediate(n, t);
-
 }
 
 static word prim_set(word wptr, hval pos, word val) {
-
   word *ob = (word *)wptr;
   hval  hdr, p;
   word *new;
@@ -4245,46 +4164,38 @@ static word prim_set(word wptr, hval pos, word val) {
   for (p = 0; p <= hdr; ++p)
     new[p] = (pos == p && p) ? val : ob[p];
   return (word) new;
-
 }
 
 static void setdown(void) {
-
-  tcsetattr(0, TCSANOW, &tsettings);               /* return stdio settings */
-
+  tcsetattr(0, TCSANOW, &tsettings); /* return stdio settings */
 }
 
 static word do_poll(word, word, word);
 
 /* system- and io primops */
 static word prim_sys(word op, word a, word b, word c) {
-
   switch (immval(op)) {
-
-    case 0: {                       /* clock_gettime clock_id → nanoseconds */
+    case 0: { /* clock_gettime clock_id → nanoseconds */
       struct timespec ts;
       if (clock_gettime(cnum(a), &ts) != -1)
         return onum(ts.tv_sec * INT64_C(1000000000) + ts.tv_nsec, 1);
       return IFALSE;
-
     }
 
-    case 1:                             /* open path flags mode → port | #f */
+    case 1: /* open path flags mode → port | #f */
       if (stringp(a)) {
-
         int fd = open((const char *)a + W, cnum(b), immval(c));
         if (fd != -1) return make_immediate(fd, TPORT);
-
       }
 
       return IFALSE;
     case 2:
       return BOOL(close(immval(a)) == 0);
-    case 3: {                  /* 3 = sopen port 0=tcp|1=udp -> False | fd  */
+    case 3: { /* 3 = sopen port 0=tcp|1=udp -> False | fd  */
       int                port = immval(a);
       int                type = immval(b);
       int                s;
-      int                opt = 1;                                   /* TRUE */
+      int                opt = 1; /* TRUE */
       char               udp = (type == 1);
       struct sockaddr_in myaddr;
       myaddr.sin_family = AF_INET;
@@ -4294,33 +4205,25 @@ static word prim_sys(word op, word a, word b, word c) {
                  (udp ? IPPROTO_UDP : 0));
       if (s < 0) return IFALSE;
       if (type != 1) {
-
         if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&opt,
                        sizeof(opt)) ||
             bind(s, (struct sockaddr *)&myaddr, sizeof(myaddr)) != 0 ||
             listen(s, SOMAXCONN) != 0) {
-
           close(s);
           return IFALSE;
-
         }
 
       } else {
-
         if (bind(s, (struct sockaddr *)&myaddr, sizeof(myaddr)) != 0) {
-
           close(s);
           return IFALSE;
-
         }
-
       }
 
       return make_immediate(s, TPORT);
-
     }
 
-    case 4: {                    /* 4 = accept port -> rval=False|(ip . fd) */
+    case 4: { /* 4 = accept port -> rval=False|(ip . fd) */
       int                sock = immval(a);
       struct sockaddr_in addr;
       socklen_t          len = sizeof(addr);
@@ -4331,29 +4234,26 @@ static word prim_sys(word op, word a, word b, word c) {
       ipa = mkraw(TBVEC, 4);
       memcpy((word *)ipa + 1, &addr.sin_addr, 4);
       return cons(ipa, make_immediate(fd, TPORT));
-
     }
 
-    case 5:                               /* read fd len -> bvec | EOF | #f */
+    case 5: /* read fd len -> bvec | EOF | #f */
       if (is_type(a, TPORT)) {
-
         size_t       len = memend - fp;
         const size_t max = len > MAXOBJ ? MAXPAYL : (len - 1) * W;
         len = cnum(b);
         len = read(immval(a), fp + 1, len < max ? len : max);
         if (len == 0) return IEOF;
         if (len != (size_t)-1) return mkraw(TBVEC, len);
-
       }
 
       return IFALSE;
     case 6:
       setdown();
-      exit(immval(a));                                    /* stop the press */
-    case 7:                                     /* set memory limit (in mb) */
+      exit(immval(a)); /* stop the press */
+    case 7:            /* set memory limit (in mb) */
       max_heap_mb = immval(a);
       return a;
-    case 8: {                                    /* return system constants */
+    case 8: { /* return system constants */
       static const word sysconst[] = {
 
         S_IFMT,
@@ -4499,20 +4399,16 @@ static word prim_sys(word op, word a, word b, word c) {
       };
 
       return onum(sysconst[immval(a) % (sizeof sysconst / W)], 0);
-
     }
 
-    case 9:                                     /* return process variables */
-      return onum(a == F(0)
-                      ? errno
-                      : a == F(1)
-                            ? (uintptr_t)environ
-                            : a == F(8) ? nalloc + fp - memstart
-                                        : /* total allocated objects so far */
-                                  a == F(9)
-                                      ? maxheap
-                                      :  /* maximum heap size in a major gc */
-                                      max_heap_mb,
+    case 9: /* return process variables */
+      return onum(a == F(0)   ? errno
+                  : a == F(1) ? (uintptr_t)environ
+                  : a == F(8) ? nalloc + fp - memstart
+                              : /* total allocated objects so far */
+                      a == F(9) ? maxheap
+                                : /* maximum heap size in a major gc */
+                      max_heap_mb,
                   0);
     case 10: { /* receive-udp-packet sock → (ip-bvec . payload-bvec)| #false */
       struct sockaddr_in si_other;
@@ -4526,86 +4422,73 @@ static word prim_sys(word op, word a, word b, word c) {
       ipa = mkraw(TBVEC, 4);
       memcpy((word *)ipa + 1, &si_other.sin_addr, 4);
       return cons(ipa, bvec);
-
     }
 
-    case 11:                          /* open-dir path → dirobjptr | #false */
+    case 11: /* open-dir path → dirobjptr | #false */
       if (stringp(a)) {
-
         DIR *dirp = opendir((const char *)a + W);
         if (dirp != NULL) return onum((intptr_t)dirp, 1);
-
       }
 
       return IFALSE;
-    case 12: {                                   /* read-dir dirp → pointer */
+    case 12: { /* read-dir dirp → pointer */
       struct dirent *ent;
       errno = 0;
       ent = readdir((DIR *)(intptr_t)cnum(a));
       return onum(ent != NULL ? (uintptr_t)&ent->d_name : 0, 0);
-
     }
 
-    case 13:                                       /* close-dir dirp → bool */
+    case 13: /* close-dir dirp → bool */
       return BOOL(closedir((DIR *)(intptr_t)cnum(a)) == 0);
-    case 14:                                   /* strerror errnum → pointer */
+    case 14: /* strerror errnum → pointer */
       return onum((uintptr_t)strerror(immval(a)), 0);
-    case 15:                           /* fcntl port cmd arg → integer | #f */
+    case 15: /* fcntl port cmd arg → integer | #f */
       if (is_type(a, TPORT)) {
-
         int res = fcntl(immval(a), cnum(b), (intptr_t)cnum(c));
         if (res != -1) return onum(res, 1);
-
       }
 
       return IFALSE;
-    case 16:                                        /* getenv key → pointer */
+    case 16: /* getenv key → pointer */
       return onum(stringp(a) ? (uintptr_t)getenv((const char *)a + W) : 0, 0);
-    case 17: {                                     /* exec[v] path argl ret */
-      char * path = (char *)a + W;
+    case 17: { /* exec[v] path argl ret */
+      char  *path = (char *)a + W;
       int    nargs = llen((word *)b);
       char **argp, **args = realloc(NULL, (nargs + 1) * sizeof(char *));
       if (args == NULL) return IFALSE;
       for (argp = args; nargs--; ++argp) {
-
         *argp = (char *)G(b, 1) + W;
         b = G(b, 2);
-
       }
 
       *argp = NULL;
-      execv(path, args);                     /* may return -1 and set errno */
+      execv(path, args); /* may return -1 and set errno */
       free(args);
       return IFALSE;
-
     }
 
     case 18: { /* fork → #f: failed, 0: we're in child process, integer: we're
                   in parent process */
       pid_t pid = fork();
       return pid != -1 ? onum(pid, 1) : IFALSE;
-
     }
 
-    case 19: {                                    /* wait <pid> <respair> _ */
+    case 19: { /* wait <pid> <respair> _ */
       pid_t pid = a != IFALSE ? cnum(a) : -1;
       int   status;
       word *r = (word *)b;
-      pid = waitpid(pid, &status, WNOHANG | WUNTRACED);      /* |WCONTINUED */
-      if (pid == -1) return IFALSE;                                /* error */
-      if (pid == 0) return ITRUE;                /* no changes, would block */
+      pid = waitpid(pid, &status, WNOHANG | WUNTRACED); /* |WCONTINUED */
+      if (pid == -1) return IFALSE;                     /* error */
+      if (pid == 0) return ITRUE; /* no changes, would block */
       if (WIFEXITED(status)) {
-
         r[1] = F(1);
         r[2] = F(WEXITSTATUS(status));
 
       } else if (WIFSIGNALED(status)) {
-
         r[1] = F(2);
         r[2] = F(WTERMSIG(status));
 
       } else if (WIFSTOPPED(status)) {
-
         r[1] = F(3);
         r[2] = F(WSTOPSIG(status));
         /*} else if (WIFCONTINUED(status)) {
@@ -4614,47 +4497,39 @@ static word prim_sys(word op, word a, word b, word c) {
            r[2] = F(1); */
 
       } else {
-
         r = (word *)IFALSE;
-
       }
 
       return (word)r;
-
     }
 
-    case 20:                                           /* chdir path → bool */
+    case 20: /* chdir path → bool */
       return BOOL(stringp(a) && chdir((char *)a + W) == 0);
-    case 21:                                      /* kill pid signal → bool */
+    case 21: /* kill pid signal → bool */
       return BOOL(kill(cnum(a), immval(b)) == 0);
-    case 22:                                          /* unlink path → bool */
+    case 22: /* unlink path → bool */
       return BOOL(stringp(a) && unlink((char *)a + W) == 0);
-    case 23:                                           /* rmdir path → bool */
+    case 23: /* rmdir path → bool */
       return BOOL(stringp(a) && rmdir((char *)a + W) == 0);
-    case 24:                         /* mknod path (type . mode) dev → bool */
+    case 24: /* mknod path (type . mode) dev → bool */
       if (stringp(a) && pairp(b)) {
-
-        const char * path = (const char *)a + W;
+        const char  *path = (const char *)a + W;
         const mode_t type = cnum(G(b, 1)), mode = immval(G(b, 2));
         if ((type == S_IFDIR ? mkdir(path, mode)
                              : mknod(path, type | mode, cnum(c))) == 0)
           return ITRUE;
-
       }
 
       return IFALSE;
-    case 25:                      /* lseek port offset whence → offset | #f */
+    case 25: /* lseek port offset whence → offset | #f */
       if (is_type(a, TPORT)) {
-
         off_t o = lseek(immval(a), cnum(b), cnum(c));
         if (o != -1) return onum(o, 1);
-
       }
 
       return IFALSE;
     case 26:
       if (a != IFALSE) {
-
         static struct termios old;
         tcgetattr(0, &old);
         old.c_iflag &=
@@ -4664,15 +4539,14 @@ static word prim_sys(word op, word a, word b, word c) {
         old.c_cflag &= ~(CSIZE | PARENB);
         old.c_cflag |= CS8;
         return BOOL(tcsetattr(0, TCSANOW, &old) == 0);
-
       }
 
       return BOOL(tcsetattr(0, TCSANOW, &tsettings) == 0);
-    case 27: {                           /* sendmsg sock (port . ipv4) bvec */
+    case 27: { /* sendmsg sock (port . ipv4) bvec */
       int                sock = immval(a);
       int                port;
       struct sockaddr_in peer;
-      byte *             ip, *data = (byte *)c + W;
+      byte              *ip, *data = (byte *)c + W;
       size_t             len = payl_len(header(c));
       port = immval(G(b, 1));
       ip = (byte *)G(b, 2) + W;
@@ -4682,82 +4556,70 @@ static word prim_sys(word op, word a, word b, word c) {
           htonl(ip[0] << 24 | ip[1] << 16 | ip[2] << 8 | ip[3]);
       return BOOL(sendto(sock, data, len, 0, (struct sockaddr *)&peer,
                          sizeof(peer)) != -1);
-
     }
 
     case 28: /* setenv <owl-raw-bvec-or-ascii-leaf-string>
                 <owl-raw-bvec-or-ascii-leaf-string-or-#f> */
       if (stringp(a) && (b == IFALSE || stringp(b))) {
-
         const char *name = (const char *)a + W;
         if ((b != IFALSE ? setenv(name, (const char *)b + W, 1)
                          : unsetenv(name)) == 0)
           return ITRUE;
-
       }
 
       return IFALSE;
     case 29:
       return prim_connect((word *)a, b, c);
-    case 30:                        /* dup2 old-port new-fd → new-port | #f */
+    case 30: /* dup2 old-port new-fd → new-port | #f */
       if (is_type(a, TPORT)) {
-
         int fd = dup2(immval(a), immval(b));
         if (fd != -1) return make_immediate(fd, TPORT);
-
       }
 
       return IFALSE;
-    case 31: {                     /* pipe → '(read-port . write-port) | #f */
+    case 31: { /* pipe → '(read-port . write-port) | #f */
       int fd[2];
       if (pipe(fd) != 0) return IFALSE;
       return cons(make_immediate(fd[0], TPORT), make_immediate(fd[1], TPORT));
-
     }
 
-    case 32:                                       /* rename src dst → bool */
+    case 32: /* rename src dst → bool */
       return BOOL(stringp(a) && stringp(b) &&
                   rename((char *)a + W, (char *)b + W) == 0);
-    case 33:                                         /* link src dst → bool */
+    case 33: /* link src dst → bool */
       return BOOL(stringp(a) && stringp(b) &&
                   link((char *)a + W, (char *)b + W) == 0);
-    case 34:                                      /* symlink src dst → bool */
+    case 34: /* symlink src dst → bool */
       return BOOL(stringp(a) && stringp(b) &&
                   symlink((char *)a + W, (char *)b + W) == 0);
-    case 35:                          /* readlink path → raw-sting | #false */
+    case 35: /* readlink path → raw-sting | #false */
       if (stringp(a)) {
-
         size_t len = memend - fp;
         size_t max = len > MAXOBJ ? MAXPAYL + 1 : (len - 1) * W;
         /* the last byte is temporarily used to check, if the string fits */
         len = readlink((const char *)a + W, (char *)fp + W, max);
         if (len != (size_t)-1 && len != max) return mkraw(TSTRING, len);
-
       }
 
       return IFALSE;
-    case 36:                                 /* getcwd → raw-sting | #false */
+    case 36: /* getcwd → raw-sting | #false */
     {
-
       size_t len = memend - fp;
       size_t max = len > MAXOBJ ? MAXPAYL + 1 : (len - 1) * W;
       /* the last byte is temporarily used for the terminating '\0' */
       if (getcwd((char *)fp + W, max) != NULL)
         return mkraw(TSTRING, strnlen((char *)fp + W, max - 1));
-
     }
 
       return IFALSE;
-    case 37:                                           /* umask mask → mask */
+    case 37: /* umask mask → mask */
       return F(umask(immval(a)));
-    case 38:                                  /* stat fd|path follow → list */
+    case 38: /* stat fd|path follow → list */
       if (immediatep(a) || stringp(a)) {
-
         struct stat st;
         int         flg = b != IFALSE ? 0 : AT_SYMLINK_NOFOLLOW;
         if ((allocp(a) ? fstatat(AT_FDCWD, (char *)a + W, &st, flg)
                        : fstat(immval(a), &st)) == 0) {
-
           word lst = INULL;
           lst = cons(onum(st.st_blocks, 1), lst);
           lst = cons(onum(st.st_blksize, 1), lst);
@@ -4782,113 +4644,90 @@ static word prim_sys(word op, word a, word b, word c) {
           lst = cons(onum(st.st_ino, 0), lst);
           lst = cons(onum(st.st_dev, 1), lst);
           return lst;
-
         }
-
       }
 
       return INULL;
-    case 39:                            /* chmod fd|path mode follow → bool */
+    case 39: /* chmod fd|path mode follow → bool */
       if ((immediatep(a) || stringp(a)) && fixnump(b)) {
-
         mode_t mod = immval(b);
         int    flg = c != IFALSE ? 0 : AT_SYMLINK_NOFOLLOW;
         if ((allocp(a) ? fchmodat(AT_FDCWD, (char *)a + W, mod, flg)
                        : fchmod(immval(a), mod)) == 0)
           return ITRUE;
-
       }
 
       return IFALSE;
-    case 40:                     /* chown fd|path (uid . gid) follow → bool */
+    case 40: /* chown fd|path (uid . gid) follow → bool */
       if ((immediatep(a) || stringp(a)) && pairp(b)) {
-
         uid_t uid = cnum(G(b, 1));
         gid_t gid = cnum(G(b, 2));
         int   flg = c != IFALSE ? 0 : AT_SYMLINK_NOFOLLOW;
         if ((allocp(a) ? fchownat(AT_FDCWD, (char *)a + W, uid, gid, flg)
                        : fchown(immval(a), uid, gid)) == 0)
           return ITRUE;
-
       }
 
       return IFALSE;
-    case 41: {                                     /* peek mem nbytes → num */
+    case 41: { /* peek mem nbytes → num */
       const word p = cnum(a);
-      return onum(
-          b == F(1) ? *(uint8_t *)p
-                    : b == F(2) ? *(uint16_t *)p
-                                : b == F(4) ? *(uint32_t *)p
-                                            : b == F(8) ? *(uint64_t *)p : V(p),
-          0);
-
+      return onum(b == F(1)   ? *(uint8_t *)p
+                  : b == F(2) ? *(uint16_t *)p
+                  : b == F(4) ? *(uint32_t *)p
+                  : b == F(8) ? *(uint64_t *)p
+                              : V(p),
+                  0);
     }
 
-    case 42:                        /* write fd data len | #f → nbytes | #f */
+    case 42: /* write fd data len | #f → nbytes | #f */
       if (is_type(a, TPORT) && allocp(b)) {
-
         size_t len, size = payl_len(header(b));
         len = c != IFALSE ? cnum(c) : size;
         if (len <= size) {
-
           len = write(immval(a), (const word *)b + 1, len);
           if (len != (size_t)-1) return onum(len, 0);
-
         }
-
       }
 
       return IFALSE;
     case 43:
       return do_poll(a, b, c);
     case 44: {
-
-      char *           host = (char *)(word *)a + W;
+      char            *host = (char *)(word *)a + W;
       struct addrinfo *res;
       int              nth = immval(b);
       int              rv = getaddrinfo(host, NULL, NULL, &res);
       if (rv == 0) {
-
         word rv = IFALSE;
         while (nth--) {
-
           if (res) res = res->ai_next;
           if (!res) return INULL;
-
         }
 
         if (res->ai_addr->sa_family == AF_INET6) {
-
           char *n = (char *)&((struct sockaddr_in6 *)res->ai_addr)->sin6_addr;
           rv = mkraw(TBVEC, 6);
           memcpy((word *)rv + 1, n, 6);
 
         } else if (res->ai_addr->sa_family == AF_INET) {
-
           char *n = (char *)&((struct sockaddr_in *)res->ai_addr)->sin_addr;
           rv = mkraw(TBVEC, 4);
           memcpy((word *)rv + 1, n, 4);
-
         }
 
         freeaddrinfo(res);
         return rv;
-
       }
 
       return IFALSE;
-
     }
 
     default:
       return IFALSE;
-
   }
-
 }
 
 static word prim_lraw(word wptr, word type) {
-
   word *lst = (word *)wptr;
   byte *pos;
   word *ob, raw;
@@ -4901,14 +4740,12 @@ static word prim_lraw(word wptr, word type) {
   for (ob = lst; (word)ob != INULL; ob = (word *)ob[2])
     *pos++ = immval(ob[1]);
   return raw;
-
 }
 
 /* TODO: implement this in owl */
 static word do_poll(word a, word b, word c) {
-
   fd_set         rs, ws, es;
-  word *         cur;
+  word          *cur;
   hval           r1, r2;
   int            nfds = 1;
   struct timeval tv;
@@ -4917,77 +4754,59 @@ static word do_poll(word a, word b, word c) {
   FD_ZERO(&ws);
   FD_ZERO(&es);
   for (cur = (word *)a; (word)cur != INULL; cur = (word *)cur[2]) {
-
     int fd = immval(G(cur[1], 1));
     FD_SET(fd, &rs);
     FD_SET(fd, &es);
     if (fd >= nfds) nfds = fd + 1;
-
   }
 
   for (cur = (word *)b; (word)cur != INULL; cur = (word *)cur[2]) {
-
     int fd = immval(G(cur[1], 1));
     FD_SET(fd, &ws);
     FD_SET(fd, &es);
     if (fd >= nfds) nfds = fd + 1;
-
   }
 
   if (c == IFALSE) {
-
     res = select(nfds, &rs, &ws, &es, NULL);
 
   } else {
-
     hval ms = immval(c);
     tv.tv_sec = ms / 1000;
     tv.tv_usec = (ms % 1000) * 1000;
     res = select(nfds, &rs, &ws, &es, &tv);
-
   }
 
   if (res < 1) {
-
     r1 = IFALSE;
-    r2 = BOOL(res < 0);           /* 0 = timeout, otherwise error or signal */
+    r2 = BOOL(res < 0); /* 0 = timeout, otherwise error or signal */
 
   } else {
-
-    int fd;                       /* something active, wake the first thing */
+    int fd; /* something active, wake the first thing */
     for (fd = 0;; ++fd) {
-
       if (FD_ISSET(fd, &rs)) {
-
         r1 = make_immediate(fd, TPORT);
         r2 = F(1);
         break;
 
       } else if (FD_ISSET(fd, &ws)) {
-
         r1 = make_immediate(fd, TPORT);
         r2 = F(2);
         break;
 
       } else if (FD_ISSET(fd, &es)) {
-
         r1 = make_immediate(fd, TPORT);
         r2 = F(3);
         break;
-
       }
-
     }
-
   }
 
   return cons(r1, r2);
-
 }
 
 static word vm(word *ob, word arg) {
-
-  byte *         ip;
+  byte          *ip;
   uint           bank = 0;
   uint           ticker = TICKS;
   unsigned short acc;
@@ -5002,18 +4821,17 @@ static word vm(word *ob, word arg) {
   R[0] = IFALSE;
   R[3] = IHALT;
   R[4] = arg;
-  acc = 2;                                 /* boot always calls with 2 args */
+  acc = 2; /* boot always calls with 2 args */
 
-apply:  /* apply something at ob to values in regs, or maybe switch context */
+apply: /* apply something at ob to values in regs, or maybe switch context */
 
   if (allocp(ob)) {
-
-    hval hdr = *ob & 4095;           /* cut size out, take just header info */
-    if (hdr == make_header(0, TPROC)) {                             /* proc */
+    hval hdr = *ob & 4095; /* cut size out, take just header info */
+    if (hdr == make_header(0, TPROC)) { /* proc */
       R[1] = (word)ob;
       ob = (word *)ob[1];
 
-    } else if (hdr == make_header(0, TCLOS)) {                      /* clos */
+    } else if (hdr == make_header(0, TCLOS)) { /* clos */
 
       R[1] = (word)ob;
       ob = (word *)ob[1];
@@ -5022,9 +4840,8 @@ apply:  /* apply something at ob to values in regs, or maybe switch context */
 
     } else if (!is_type(hdr,
 
-                        TBYTECODE)) {   /* not even code, extend bits later */
+                        TBYTECODE)) { /* not even code, extend bits later */
       error(259, ob, INULL);
-
     }
 
     if (!ticker--) goto switch_thread;
@@ -5032,11 +4849,9 @@ apply:  /* apply something at ob to values in regs, or maybe switch context */
     goto invoke;
 
   } else if ((word)ob == IHALT) {
-
     /* it's the final continuation */
     ob = (word *)R[0];
     if (allocp(ob)) {
-
       R[0] = IFALSE;
       breaked = 0;
       R[4] = R[3];
@@ -5047,30 +4862,26 @@ apply:  /* apply something at ob to values in regs, or maybe switch context */
       bank = 0;
       acc = 4;
       goto apply;
-
     }
 
-    if (acc == 2)     /* update state when main program exits with 2 values */
+    if (acc == 2) /* update state when main program exits with 2 values */
       state = R[4];
     return R[3];
 
   } else {
-
     word *state;
     allocate(acc + 1, state);
     *state = make_header(acc + 1, TTUPLE);
-    memcpy(state + 1, R + 3, acc * W);                   /* first arg at R3 */
-    error(0, ob, state);                                    /* not callable */
-
+    memcpy(state + 1, R + 3, acc * W); /* first arg at R3 */
+    error(0, ob, state);               /* not callable */
   }
 
-switch_thread:                                      /* enter mcp if present */
-  if (R[0] == IFALSE) {                                   /* no mcp, ignore */
+switch_thread:          /* enter mcp if present */
+  if (R[0] == IFALSE) { /* no mcp, ignore */
     ticker = TICKS;
     goto apply;
 
   } else {
-
     /* save vm state and enter mcp cont at R0 */
     word *state;
     ticker = FMAX;
@@ -5082,7 +4893,7 @@ switch_thread:                                      /* enter mcp if present */
     state[acc - 1] = R[acc];
     memcpy(state + 1, R + 1, (acc - 2) * W);
     ob = (word *)R[0];
-    R[0] = IFALSE;                                       /* remove mcp cont */
+    R[0] = IFALSE; /* remove mcp cont */
     /* R3 marks the syscall to perform */
     R[3] = breaked ? (breaked & 8 ? F(14) : F(10)) : F(1);
     R[4] = (word)state;
@@ -5091,46 +4902,41 @@ switch_thread:                                      /* enter mcp if present */
     acc = 4;
     breaked = 0;
     goto apply;
-
   }
 
-invoke:                    /* nargs and regs ready, maybe gc and execute ob */
+invoke: /* nargs and regs ready, maybe gc and execute ob */
   if (((word)fp) + 1024 * 64 >= ((word)memend)) {
-
-    *fp = make_header(NR + 2, 50);                /* hdr r_0 .. r_(NR-1) ob */
+    *fp = make_header(NR + 2, 50); /* hdr r_0 .. r_(NR-1) ob */
     memcpy(fp + 1, R, NR * W);
     fp[NR + 1] = (word)ob;
     fp = gc(1024 * 64, fp);
     ob = (word *)fp[NR + 1];
     memcpy(R, fp + 1, NR * W);
     ip = (byte *)ob + W;
-
   }
 
   for (;;) {
-
     op = *ip++;
     /* main dispatch */
     switch (op & 63) {
-
       case 0:
         op = *ip << 8 | ip[1];
         goto super_dispatch;
       case 1:
         A2 = G(A0, ip[1]);
         NEXT(3);
-      case 2:                                          /* jmp-nargs a hi lo */
+      case 2: /* jmp-nargs a hi lo */
         if (acc != *ip) ip += ip[1] << 8 | ip[2];
         NEXT(3);
-      case 3:                                                       /* goto */
+      case 3: /* goto */
         ob = (word *)A0;
         acc = ip[1];
         goto apply;
-      case 5:                                   /* mov2 from1 to1 from2 to2 */
+      case 5: /* mov2 from1 to1 from2 to2 */
         A1 = A0;
         A3 = A2;
         NEXT(4);
-      case 6: {                                  /* opcodes 134, 6, 198, 70 */
+      case 6: { /* opcodes 134, 6, 198, 70 */
         word  size = *ip++, tmp;
         word *ob;
         tmp = R[op & 64 ? 1 : *ip++];
@@ -5141,30 +4947,28 @@ invoke:                    /* nargs and regs ready, maybe gc and execute ob */
           ob[tmp] = R[*ip++];
         R[*ip++] = (word)ob;
         NEXT(0);
-
       }
 
-      case 7:                                                  /* eq? a b r */
+      case 7: /* eq? a b r */
         A2 = BOOL(A0 == A1);
         NEXT(3);
-      case 8:                                   /* jeq a b o, extended jump */
+      case 8: /* jeq a b o, extended jump */
         if (A0 == A1) ip += ip[3] << 8 | ip[2];
         NEXT(4);
       case 9:
         A1 = A0;
         NEXT(2);
-      case 10:   /* ldfix n to, encoding: nnnnnnnn nsoooooo (num-1/sign/op) */
+      case 10: /* ldfix n to, encoding: nnnnnnnn nsoooooo (num-1/sign/op) */
         A1 = ((hval)*ip << 9) + (op << 1) + F(1) - 20;
         NEXT(2);
-      case 13:                                       /* ldi{2bit what} [to] */
+      case 13: /* ldi{2bit what} [to] */
         A0 = load_imms[op >> 6];
         NEXT(1);
-      case 15: {                                                /* type o r */
+      case 15: { /* type o r */
         word ob = A0;
         if (allocp(ob)) ob = V(ob);
         A1 = F((hval)ob >> TPOS & 63);
         NEXT(2);
-
       }
 
       case 16: /* jeqi[which] a lo hi */ /* FIXME: move this to op4 after fasl
@@ -5173,66 +4977,58 @@ invoke:                    /* nargs and regs ready, maybe gc and execute ob */
                                             instructions) */
         if (A0 == load_imms[op >> 6]) ip += ip[2] << 8 | ip[1];
         NEXT(3);
-      case 18:                                   /* fxand a b r, prechecked */
+      case 18: /* fxand a b r, prechecked */
         A2 = A0 & A1;
         NEXT(3);
-      case 21: {            /* fx- a b r u, types prechecked, signs ignored */
+      case 21: { /* fx- a b r u, types prechecked, signs ignored */
         hval r = immval(A0) - immval(A1);
         A3 = F(r >> FBITS & 1);
         A2 = F(r);
         NEXT(4);
-
       }
 
-      case 22: {            /* fx+ a b r o, types prechecked, signs ignored */
+      case 22: { /* fx+ a b r o, types prechecked, signs ignored */
         hval r = immval(A0) + immval(A1);
         A3 = F(r >> FBITS);
         A2 = F(r);
         NEXT(4);
-
       }
 
-      case 23: {                                      /* mkt t s f1 .. fs r */
+      case 23: { /* mkt t s f1 .. fs r */
         word t = *ip++;
         word s = *ip++ + 1; /* the argument is n-1 to allow making a 256-tuple
                                with 255, and avoid 0-tuples */
         word *ob;
         uint  p;
-        allocate(s + 1, ob);                           /* s fields + header */
+        allocate(s + 1, ob); /* s fields + header */
         *ob = make_header(s + 1, t);
         for (p = 0; p != s; ++p)
           ob[p + 1] = R[ip[p]];
         R[ip[p]] = (word)ob;
         NEXT(s + 1);
-
       }
 
-      case 24:                    /* ret val == implicit call r3 with 1 arg */
+      case 24: /* ret val == implicit call r3 with 1 arg */
         ob = (word *)R[3];
         R[3] = A0;
         acc = 1;
         goto apply;
-      case 25: {                                    /* jmp-var-args a hi lo */
+      case 25: { /* jmp-var-args a hi lo */
         uint needed = *ip;
         if (acc == needed) {
-
-          R[acc + 3] = INULL;                   /* add empty extra arg list */
+          R[acc + 3] = INULL; /* add empty extra arg list */
 
         } else if (acc > needed) {
-
-          word tail;                 /* TODO: no call overflow handling yet */
+          word tail; /* TODO: no call overflow handling yet */
           for (tail = INULL; acc > needed; --acc)
             tail = cons(R[acc + 2], tail);
           R[acc + 3] = tail;
 
         } else {
-
           ip += ip[1] << 8 | ip[2];
-
         }
 
         NEXT(3);
-
       }
 
       case 26: { /* fxqr ah al b qh ql r, b != 0, int32 / int16 -> int32, as
@@ -5245,10 +5041,9 @@ invoke:                    /* nargs and regs ready, maybe gc and execute ob */
         A4 = F(q);
         A5 = F(a - q * b);
         NEXT(6);
-
       }
 
-      case 27:                                 /* syscall cont op arg1 arg2 */
+      case 27: /* syscall cont op arg1 arg2 */
         ob = (word *)R[0];
         R[0] = IFALSE;
         R[3] = A1;
@@ -5257,29 +5052,25 @@ invoke:                    /* nargs and regs ready, maybe gc and execute ob */
         R[6] = A3;
         acc = 4;
         if (ticker > 10)
-          bank = ticker;    /* deposit remaining ticks for return to thread */
+          bank = ticker; /* deposit remaining ticks for return to thread */
         goto apply;
-      case 28: {                                            /* sizeb obj to */
+      case 28: { /* sizeb obj to */
         word ob = A0;
         if (immediatep(ob)) {
-
           A1 = IFALSE;
 
         } else {
-
           word hdr = header(ob);
           A1 = rawp(hdr) ? F(payl_len(hdr)) : IFALSE;
-
         }
 
         NEXT(2);
-
       }
 
-      case 29:                                   /* fxior a b r, prechecked */
+      case 29: /* fxior a b r, prechecked */
         A2 = A0 | A1;
         NEXT(3);
-      case 32: {                             /* bind tuple <n> <r0> .. <rn> */
+      case 32: { /* bind tuple <n> <r0> .. <rn> */
         word *tuple = (word *)R[*ip++];
         word  hdr, pos = 1, n = *ip++ + 1;
         assert(allocp(tuple), tuple, 32);
@@ -5288,66 +5079,57 @@ invoke:                    /* nargs and regs ready, maybe gc and execute ob */
         while (--n)
           R[*ip++] = tuple[pos++];
         NEXT(0);
-
       }
 
-      case 33:                                   /* fxxor a b r, prechecked */
-        A2 = A0 ^ (FMAX << IPOS & A1);            /* inherit A0's type info */
+      case 33:                         /* fxxor a b r, prechecked */
+        A2 = A0 ^ (FMAX << IPOS & A1); /* inherit A0's type info */
         NEXT(3);
-      case 35: {                               /* listuple type size lst to */
+      case 35: { /* listuple type size lst to */
         uint  type = immval(A0);
         hval  size = immval(A1) + 1;
         word *lst = (word *)A2;
         word *ob;
         if (size < MAXOBJ) {
-
           allocate(size, ob);
           A3 = (word)ob;
           *ob++ = make_header(size, type);
           while (--size) {
-
             assert(pairp(lst), lst, 35);
             *ob++ = lst[1];
             lst = (word *)lst[2];
-
           }
 
         } else {
-
           A3 = IFALSE;
-
         }
 
         NEXT(4);
-
       }
 
-      case 39: {                                             /* fx* a b l h */
+      case 39: { /* fx* a b l h */
         uint64_t res = (uint64_t)immval(A0) * immval(A1);
         A3 = F(res >> FBITS);
         A2 = F(res);
         NEXT(4);
-
       }
 
-      case 41: {                                     /* car a r, or cdr d r */
+      case 41: { /* car a r, or cdr d r */
         word *ob = (word *)A0;
         assert(pairp(ob), ob, op);
         A1 = ob[op >> 6];
         NEXT(2);
-
       }
 
-      case 44:                                                /* less a b r */
+      case 44: /* less a b r */
         A2 = prim_less(A0, A1);
         NEXT(3);
-      case 45:                                               /* set t o v r */
+      case 45: /* set t o v r */
         A3 = prim_set(A0, A1, A2);
         NEXT(4);
-      case 47:                                                 /* ref t o r */
+      case 47: /* ref t o r */
         A2 = prim_ref(A0, A1);
         NEXT(3);
-      case 50: {                                       /* run thunk quantum */
+      case 50: { /* run thunk quantum */
         word hdr;
         ob = (word *)A0;
         R[0] = R[3];
@@ -5356,7 +5138,6 @@ invoke:                    /* nargs and regs ready, maybe gc and execute ob */
         assert(allocp(ob), ob, 50);
         hdr = *ob;
         if (is_type(hdr, TTHREAD)) {
-
           hval pos = objsize(hdr) - 1;
           word code = ob[pos];
           acc = pos - 3;
@@ -5365,67 +5146,57 @@ invoke:                    /* nargs and regs ready, maybe gc and execute ob */
           ip = (byte *)code + W;
 
         } else {
-
           /* call a thunk with terminal continuation */
-          R[3] = IHALT;                  /* exit via R0 when the time comes */
+          R[3] = IHALT; /* exit via R0 when the time comes */
           acc = 1;
           goto apply;
-
         }
 
         NEXT(0);
-
       }
 
-      case 51:                                                /* cons a b r */
+      case 51: /* cons a b r */
         A2 = cons(A0, A1);
         NEXT(3);
-      case 58: {                                          /* fx>> x n hi lo */
+      case 58: { /* fx>> x n hi lo */
         hval x = immval(A0);
         uint n = immval(A1);
         A2 = F(x >> n);
         A3 = F(x << (FBITS - n));
         NEXT(4);
-
       }
 
       case 59: /* lraw lst type r (FIXME: alloc amount testing compiler pass not
                   in place yet) */
         A2 = prim_lraw(A0, A1);
         NEXT(3);
-      case 61: {                                             /* arity error */
+      case 61: { /* arity error */
         word *t;
         allocate(acc + 1, t);
         *t = make_header(acc + 1, TTUPLE);
         memcpy(t + 1, R + 3, acc * W);
         error(61, ob, t);
-
       }
 
-      case 62:                 /* set-ticker <val> <to> -> old ticker value */
+      case 62: /* set-ticker <val> <to> -> old ticker value */
         /* ponder: it should be possible to remove this, if the only use is to
          * yield control */
         A1 = F(ticker);
         ticker = immval(A0);
         NEXT(2);
-      case 63:                             /* sys-prim op arg1 arg2 arg3 r1 */
+      case 63: /* sys-prim op arg1 arg2 arg3 r1 */
         A4 = prim_sys(A0, A1, A2, A3);
         NEXT(5);
       default:
-        error(256, F(op), IFALSE);           /* report unimplemented opcode */
-
+        error(256, F(op), IFALSE); /* report unimplemented opcode */
     }
-
   }
 
-super_dispatch:                                   /* run macro instructions */
+super_dispatch: /* run macro instructions */
   switch (op) {
-
     case 0:
       if (acc == 2) {
-
         {
-
           word *ob = (word *)R[4];
           hval  hdr;
           assert(allocp(R[4]), R[4], IFALSE);
@@ -5435,7 +5206,6 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = ob[2];
           R[7] = ob[3];
           R[8] = ob[4];
-
         }
 
         R[9] = G(R[2], 2);
@@ -5457,15 +5227,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -5493,17 +5260,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 2:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -5528,7 +5291,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 6);
           R[5] = G(R[1], 7);
           R[6] = G(R[1], 8);
@@ -5545,19 +5307,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 3:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(4, TCLOS);
@@ -5575,15 +5333,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 4:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 5);
@@ -5604,15 +5359,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 5:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         R[8] = G(R[1], 3);
         *fp = make_header(4, TCLOS);
@@ -5629,15 +5381,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 6:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -5653,15 +5402,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 7:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(4, TPROC);
         fp[1] = G(R[1], 3);
@@ -5675,15 +5421,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 8:
       if (acc == 3) {
-
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 2);
         R[9] = R[6];
@@ -5694,15 +5437,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 9:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -5720,17 +5460,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 10:
       if (acc == 1) {
-
         {
-
           word *ob = (word *)R[3];
           hval  hdr;
           assert(allocp(R[3]), R[3], IFALSE);
@@ -5739,7 +5475,6 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = ob[1];
           R[5] = ob[2];
           R[6] = ob[3];
-
         }
 
         R[7] = G(R[2], 2);
@@ -5756,15 +5491,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 11:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -5786,15 +5518,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 12:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -5811,17 +5540,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 13:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 6);
           R[5] = G(R[1], 2);
           R[6] = INULL;
@@ -5832,7 +5557,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -5851,19 +5575,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 14:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -5884,15 +5604,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 15:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -5917,15 +5634,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 16:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -5950,15 +5664,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 17:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -5980,24 +5691,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 18:
       if (acc == 4) {
-
         if (R[5] == F(0)) {
-
           R[7] = INULL;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           R[7] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -6009,19 +5715,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 6;
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 19:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         R[8] = G(R[1], 3);
         *fp = make_header(6, TCLOS);
@@ -6038,15 +5740,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 20:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 2);
         R[8] = G(R[1], 3);
@@ -6067,20 +5766,15 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 21:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 7);
           if (R[4] == INULL) {
-
             R[5] = G(R[1], 8);
             R[6] = G(R[1], 6);
             R[7] = G(R[1], 3);
@@ -6098,7 +5792,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[5] = G(R[1], 5);
             R[6] = G(R[1], 4);
             *fp = make_header(4, TPROC);
@@ -6109,11 +5802,9 @@ super_dispatch:                                   /* run macro instructions */
             fp += 4;
             ob = (word *)R[4];
             acc = 1;
-
           }
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 6);
@@ -6133,19 +5824,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 22:
       if (acc == 2) {
-
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 5);
@@ -6165,17 +5852,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 23:
       if (acc == 5) {
-
         if (R[4] == INULL) {
-
           R[8] = G(R[1], 4);
           R[9] = G(R[1], 2);
           R[10] = G(R[1], 3);
@@ -6193,7 +5876,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[8] = G(R[2], 3);
           R[9] = G(R[1], 2);
           R[10] = G(R[1], 3);
@@ -6212,21 +5894,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 10;
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 24:
       if (acc == 1) {
-
         {
-
           word *ob = (word *)R[3];
           hval  hdr;
           assert(allocp(R[3]), R[3], IFALSE);
@@ -6236,7 +5913,6 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = ob[2];
           R[6] = ob[3];
           R[7] = ob[4];
-
         }
 
         R[8] = G(R[1], 4);
@@ -6267,15 +5943,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 25:
       if (acc == 5) {
-
         R[8] = G(R[2], 2);
         R[9] = G(R[1], 3);
         R[10] = G(R[1], 4);
@@ -6307,15 +5980,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 26:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -6352,15 +6022,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 27:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -6389,15 +6056,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 28:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -6419,13 +6083,11 @@ super_dispatch:                                   /* run macro instructions */
         R[12] = (word)fp;
         fp += 10;
         if (R[3] == IFALSE) {
-
           R[3] = IFALSE;
           ob = (word *)R[12];
           acc = 1;
 
         } else {
-
           R[13] = G(R[2], 2);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[2], 3);
@@ -6436,21 +6098,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = G(R[1], 2);
           ob = (word *)R[13];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 29:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 7);
           R[6] = G(R[1], 3);
@@ -6475,7 +6132,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 6);
           R[6] = G(R[1], 7);
@@ -6494,19 +6150,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 30:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -6519,15 +6171,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 31:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -6543,15 +6192,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 32:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -6571,15 +6217,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 33:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
@@ -6596,23 +6239,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 34:
       if (acc == 3) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           R[6] = G(R[1], 2);
           *fp = make_header(3, TCLOS);
           fp[1] = G(R[1], 3);
@@ -6621,19 +6259,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 3;
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 35:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
@@ -6650,15 +6284,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 36:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = 128 * 2 + 258;
@@ -6671,17 +6302,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 37:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 6);
           R[5] = G(R[1], 7);
           *fp = make_header(3, TPROC);
@@ -6703,7 +6330,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[4] = G(R[2], 3);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -6725,19 +6351,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[12];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 38:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -6752,15 +6374,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 39:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -6783,15 +6402,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 40:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -6818,21 +6434,16 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 41:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 2);
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -6840,7 +6451,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           R[8] = G(R[2], 3);
@@ -6860,13 +6470,10 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[2], 5);
           if (R[3] == R[5]) {
-
             R[6] = G(R[1], 2);
             {
-
               word *ob = (word *)R[6];
               hval  hdr;
               assert(allocp(R[6]), R[6], IFALSE);
@@ -6874,7 +6481,6 @@ super_dispatch:                                   /* run macro instructions */
               assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
               R[7] = ob[1];
               R[8] = ob[2];
-
             }
 
             R[7] = G(R[1], 4);
@@ -6886,13 +6492,10 @@ super_dispatch:                                   /* run macro instructions */
             acc = 5;
 
           } else {
-
             R[6] = G(R[2], 6);
             if (R[3] == R[6]) {
-
               R[7] = G(R[1], 2);
               {
-
                 word *ob = (word *)R[7];
                 hval  hdr;
                 assert(allocp(R[7]), R[7], IFALSE);
@@ -6902,7 +6505,6 @@ super_dispatch:                                   /* run macro instructions */
                 R[9] = ob[2];
                 R[10] = ob[3];
                 R[11] = ob[4];
-
               }
 
               R[12] = G(R[2], 3);
@@ -6924,30 +6526,23 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[5] = G(R[1], 2);
               R[8] = G(R[2], 8);
               R[3] = G(R[1], 8);
               R[4] = G(R[2], 9);
               ob = (word *)R[8];
               acc = 3;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 42:
       if (acc == 2) {
-
         R[5] = G(R[2], 4);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 2);
@@ -6972,15 +6567,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 43:
       if (acc == 2) {
-
         R[5] = G(R[2], 4);
         *fp = make_header(3, 2);
         fp[1] = R[5];
@@ -7001,15 +6593,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 44:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -7022,17 +6611,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 45:
       if (acc == 2) {
-
         if (R[4] == F(0)) {
-
           R[5] = G(R[2], 2);
           R[4] = G(R[1], 2);
           R[7] = G(R[1], 3);
@@ -7047,10 +6632,8 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[5] = 128 * 0 + 258;
           if (R[4] == R[5]) {
-
             R[6] = G(R[2], 2);
             R[4] = G(R[1], 2);
             R[8] = G(R[1], 3);
@@ -7065,10 +6648,8 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             R[6] = 128 * 2 + 258;
             if (R[4] == R[6]) {
-
               R[7] = G(R[2], 5);
               R[8] = G(R[1], 2);
               R[9] = G(R[1], 3);
@@ -7084,7 +6665,6 @@ super_dispatch:                                   /* run macro instructions */
               acc = 2;
 
             } else {
-
               R[7] = G(R[2], 7);
               R[8] = G(R[1], 2);
               R[9] = G(R[1], 3);
@@ -7099,23 +6679,17 @@ super_dispatch:                                   /* run macro instructions */
               R[5] = INULL;
               ob = (word *)R[7];
               acc = 3;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 46:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -7132,15 +6706,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 47:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -7164,15 +6735,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 48:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -7189,15 +6757,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 49:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 4);
         *fp = make_header(4, TPROC);
@@ -7221,30 +6786,23 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 50:
       if (acc == 4) {
-
         if (R[4] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[7] = 128 * 0 + 258;
           {
-
             hval r = immval(R[4]) - immval(R[7]);
             R[9] = F(r >> FBITS & 1);
             R[8] = F(r);
-
           }
 
           R[10] = G(R[1], 2);
@@ -7258,19 +6816,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = 128 * 192 + 258;
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 51:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -7285,114 +6839,91 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 52:
       if (acc == 2) {
-
         if (R[4] == F(0)) {
-
           R[5] = G(R[1], 2);
           R[4] = 128 * 252 + 258;
           ob = (word *)R[5];
           acc = 2;
 
         } else {
-
           R[5] = 128 * 0 + 258;
           if (R[4] == R[5]) {
-
             R[6] = G(R[1], 2);
             R[4] = 128 * 254 + 258;
             ob = (word *)R[6];
             acc = 2;
 
           } else {
-
             R[6] = 128 * 2 + 258;
             if (R[4] == R[6]) {
-
               R[7] = G(R[1], 2);
               R[4] = 128 * 508 + 258;
               ob = (word *)R[7];
               acc = 2;
 
             } else {
-
               R[7] = 128 * 4 + 258;
               if (R[4] == R[7]) {
-
                 R[8] = G(R[1], 2);
                 R[4] = 128 * 510 + 258;
                 ob = (word *)R[8];
                 acc = 2;
 
               } else {
-
                 R[8] = 128 * 6 + 258;
                 if (R[4] == R[8]) {
-
                   R[9] = G(R[1], 2);
                   R[4] = G(R[2], 2);
                   ob = (word *)R[9];
                   acc = 2;
 
                 } else {
-
                   R[9] = 128 * 8 + 258;
                   if (R[4] == R[9]) {
-
                     R[10] = G(R[1], 2);
                     R[4] = G(R[2], 3);
                     ob = (word *)R[10];
                     acc = 2;
 
                   } else {
-
                     R[10] = 128 * 10 + 258;
                     if (R[4] == R[10]) {
-
                       R[11] = G(R[1], 2);
                       R[4] = G(R[2], 4);
                       ob = (word *)R[11];
                       acc = 2;
 
                     } else {
-
                       R[11] = 128 * 12 + 258;
                       if (R[4] == R[11]) {
-
                         R[12] = G(R[1], 2);
                         R[4] = G(R[2], 5);
                         ob = (word *)R[12];
                         acc = 2;
 
                       } else {
-
                         R[12] = 128 * 14 + 258;
                         if (R[4] == R[12]) {
-
                           R[13] = G(R[1], 2);
                           R[4] = G(R[2], 6);
                           ob = (word *)R[13];
                           acc = 2;
 
                         } else {
-
                           R[13] = 128 * 16 + 258;
                           if (R[4] == R[13]) {
-
                             R[14] = G(R[1], 2);
                             R[4] = G(R[2], 7);
                             ob = (word *)R[14];
                             acc = 2;
 
                           } else {
-
                             R[14] = G(R[2], 8);
                             R[15] = G(R[1], 2);
                             *fp = make_header(3, TPROC);
@@ -7405,37 +6936,24 @@ super_dispatch:                                   /* run macro instructions */
                             R[3] = R[16];
                             ob = (word *)R[14];
                             acc = 3;
-
                           }
-
                         }
-
                       }
-
                     }
-
                   }
-
                 }
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 53:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -7456,15 +6974,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 54:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -7478,31 +6993,25 @@ super_dispatch:                                   /* run macro instructions */
         R[8] = (word)fp;
         fp += 6;
         if (R[3] == IFALSE) {
-
           R[3] = G(R[1], 2);
           ob = (word *)R[8];
           acc = 1;
 
         } else {
-
           R[9] = G(R[2], 2);
           R[4] = G(R[1], 2);
           R[3] = R[8];
           ob = (word *)R[9];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 55:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -7517,15 +7026,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 56:
       if (acc == 2) {
-
         R[5] = G(R[2], 4);
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 2);
@@ -7541,17 +7047,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 57:
       if (acc == 5) {
-
         if (R[5] == F(0)) {
-
           R[7] = R[3];
           R[3] = R[4];
           R[4] = R[6];
@@ -7559,7 +7061,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -7571,19 +7072,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 6;
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 58:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -7605,15 +7102,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 59:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -7629,15 +7123,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 60:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -7652,24 +7143,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 61:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[1], 3);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           *fp = make_header(4, TCLOS);
@@ -7683,52 +7169,40 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 62:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[4] == R[3]) {
-
           R[5] = G(R[1], 3);
           R[3] = IFALSE;
           ob = (word *)R[5];
           acc = 1;
 
         } else {
-
           R[5] = G(R[1], 3);
           R[3] = G(R[1], 2);
           ob = (word *)R[5];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 63:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 2);
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -7736,7 +7210,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           R[8] = G(R[2], 3);
@@ -7747,13 +7220,10 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[2], 4);
           if (R[3] == R[5]) {
-
             R[6] = G(R[1], 2);
             {
-
               word *ob = (word *)R[6];
               hval  hdr;
               assert(allocp(R[6]), R[6], IFALSE);
@@ -7763,7 +7233,6 @@ super_dispatch:                                   /* run macro instructions */
               R[8] = ob[2];
               R[9] = ob[3];
               R[10] = ob[4];
-
             }
 
             R[11] = G(R[2], 5);
@@ -7781,13 +7250,10 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[6] = G(R[2], 7);
             if (R[3] == R[6]) {
-
               R[7] = G(R[1], 2);
               {
-
                 word *ob = (word *)R[7];
                 hval  hdr;
                 assert(allocp(R[7]), R[7], IFALSE);
@@ -7795,7 +7261,6 @@ super_dispatch:                                   /* run macro instructions */
                 assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                 R[8] = ob[1];
                 R[9] = ob[2];
-
               }
 
               R[10] = G(R[2], 3);
@@ -7806,30 +7271,23 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[7] = G(R[2], 8);
               R[3] = G(R[1], 4);
               R[4] = G(R[2], 9);
               R[5] = G(R[1], 2);
               ob = (word *)R[7];
               acc = 3;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 64:
       if (acc == 2) {
-
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
         R[7] = G(R[1], 7);
@@ -7860,26 +7318,20 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 65:
       if (acc == 7) {
-
         if (R[4] == INULL) {
-
           if (R[5] == INULL) {
-
             R[10] = G(R[1], 2);
             R[4] = R[6];
             ob = (word *)R[10];
             acc = 2;
 
           } else {
-
             R[10] = G(R[1], 3);
             *fp = make_header(3, TCLOS);
             fp[1] = G(R[1], 4);
@@ -7889,11 +7341,9 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = G(R[1], 5);
             ob = (word *)R[10];
             acc = 4;
-
           }
 
         } else {
-
           R[10] = G(R[1], 6);
           *fp = make_header(9, TCLOS);
           fp[1] = G(R[1], 7);
@@ -7908,21 +7358,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 9;
           ob = (word *)R[10];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 66:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 6);
           R[6] = G(R[1], 2);
@@ -7948,10 +7393,8 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 2);
           if (R[4] == INULL) {
-
             R[5] = G(R[1], 8);
             R[6] = G(R[1], 7);
             R[7] = G(R[1], 6);
@@ -7971,7 +7414,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 7;
 
           } else {
-
             R[5] = G(R[2], 4);
             R[6] = G(R[1], 4);
             R[7] = G(R[1], 5);
@@ -7994,21 +7436,16 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[12];
             ob = (word *)R[9];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 67:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -8026,17 +7463,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 68:
       if (acc == 7) {
-
         if (R[4] == INULL) {
-
           R[10] = G(R[1], 2);
           *fp = make_header(3, TCLOS);
           fp[1] = G(R[1], 3);
@@ -8048,7 +7481,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[10] = G(R[1], 5);
           *fp = make_header(9, TCLOS);
           fp[1] = G(R[1], 6);
@@ -8063,21 +7495,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 9;
           ob = (word *)R[10];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 69:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -8103,7 +7530,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -8128,19 +7554,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 70:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -8169,15 +7591,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 71:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -8207,15 +7626,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 72:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -8245,15 +7661,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 73:
       if (acc == 1) {
-
         R[4] = G(R[1], 9);
         R[5] = G(R[1], 8);
         R[6] = G(R[1], 7);
@@ -8276,17 +7689,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 10;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 74:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 8);
           R[6] = G(R[1], 5);
@@ -8311,7 +7720,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[2], 5);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -8335,19 +7743,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 75:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -8373,15 +7777,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 76:
       if (acc == 1) {
-
         R[4] = G(R[1], 7);
         R[5] = G(R[1], 6);
         R[6] = G(R[1], 5);
@@ -8400,17 +7801,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 77:
       if (acc == 10) {
-
         if (R[4] == INULL) {
-
           R[13] = G(R[1], 2);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[1], 3);
@@ -8424,7 +7821,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[13] = G(R[1], 4);
           *fp = make_header(12, TCLOS);
           fp[1] = G(R[1], 5);
@@ -8442,22 +7838,17 @@ super_dispatch:                                   /* run macro instructions */
           fp += 12;
           ob = (word *)R[13];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 78:
       if (acc == 1) {
-
         R[4] = G(R[1], 8);
         if (R[3] == R[4]) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 3);
           R[7] = G(R[1], 9);
@@ -8485,10 +7876,8 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[5] = 128 * 182 + 258;
           if (R[3] == R[5]) {
-
             R[6] = G(R[2], 2);
             R[7] = G(R[1], 2);
             R[8] = G(R[1], 3);
@@ -8518,7 +7907,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             R[6] = G(R[2], 5);
             R[7] = G(R[1], 2);
             R[8] = G(R[1], 3);
@@ -8547,23 +7935,17 @@ super_dispatch:                                   /* run macro instructions */
             R[3] = R[16];
             ob = (word *)R[6];
             acc = 2;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 79:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 6);
           R[6] = G(R[1], 5);
@@ -8589,7 +7971,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -8619,19 +8000,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 80:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -8657,17 +8034,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 81:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -8698,7 +8071,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -8728,21 +8100,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 82:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -8774,7 +8141,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -8804,19 +8170,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 83:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -8849,15 +8211,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 84:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -8890,15 +8249,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 85:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -8930,15 +8286,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 86:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -8970,15 +8323,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 87:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -9009,15 +8359,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 88:
       if (acc == 1) {
-
         R[4] = G(R[1], 10);
         R[5] = G(R[1], 9);
         R[6] = G(R[1], 8);
@@ -9041,15 +8388,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 10;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 89:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -9079,15 +8423,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 90:
       if (acc == 1) {
-
         R[4] = G(R[2], 5);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -9100,7 +8441,6 @@ super_dispatch:                                   /* run macro instructions */
         fp += 5;
         R[8] = G(R[1], 5);
         if (R[8] == INULL) {
-
           R[9] = G(R[2], 2);
           R[10] = G(R[1], 6);
           R[11] = G(R[1], 7);
@@ -9122,7 +8462,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[9] = G(R[2], 2);
           R[10] = G(R[1], 6);
           R[11] = G(R[1], 7);
@@ -9143,19 +8482,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = G(R[1], 4);
           ob = (word *)R[9];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 91:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -9181,15 +8516,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 92:
       if (acc == 1) {
-
         R[4] = G(R[2], 4);
         *fp = make_header(3, 2);
         fp[1] = R[4];
@@ -9220,15 +8552,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 93:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -9251,15 +8580,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 94:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -9278,15 +8604,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 95:
       if (acc == 4) {
-
         R[7] = G(R[1], 4);
         R[8] = G(R[1], 3);
         R[9] = G(R[1], 2);
@@ -9298,15 +8621,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 96:
       if (acc == 4) {
-
         R[7] = G(R[1], 4);
         R[8] = G(R[1], 3);
         R[9] = G(R[1], 2);
@@ -9317,15 +8637,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 97:
       if (acc == 7) {
-
         R[10] = G(R[1], 4);
         R[11] = G(R[1], 3);
         R[12] = G(R[1], 2);
@@ -9333,15 +8650,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 10;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 98:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -9355,15 +8669,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 99:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = 128 * 10 + 258;
         R[9] = R[6];
@@ -9373,33 +8684,26 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 100:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           R[7] = ITRUE;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           if (R[5] == F(0)) {
-
             R[7] = ITRUE;
             ob = (word *)R[3];
             R[3] = R[7];
             acc = 1;
 
           } else {
-
             R[7] = G(R[1], 2);
             *fp = make_header(6, TCLOS);
             fp[1] = G(R[1], 3);
@@ -9411,30 +8715,23 @@ super_dispatch:                                   /* run macro instructions */
             fp += 6;
             ob = (word *)R[7];
             acc = 2;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 101:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -9451,19 +8748,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 102:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -9479,17 +8772,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 103:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -9506,26 +8795,20 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 104:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -9542,124 +8825,95 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 105:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           R[5] = 128 * 16 + 258;
           if (R[4] == R[5]) {
-
             R[6] = G(R[1], 2);
             R[3] = ITRUE;
             ob = (word *)R[6];
             acc = 1;
 
           } else {
-
             R[6] = 128 * 18 + 258;
             if (R[4] == R[6]) {
-
               R[7] = G(R[1], 2);
               R[3] = ITRUE;
               ob = (word *)R[7];
               acc = 1;
 
             } else {
-
               R[7] = 128 * 24 + 258;
               if (R[4] == R[7]) {
-
                 R[8] = G(R[1], 2);
                 R[3] = ITRUE;
                 ob = (word *)R[8];
                 acc = 1;
 
               } else {
-
                 R[8] = G(R[1], 2);
                 R[3] = IFALSE;
                 ob = (word *)R[8];
                 acc = 1;
-
               }
-
             }
-
           }
 
         } else {
-
           R[4] = G(R[1], 2);
           R[3] = ITRUE;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 106:
       if (acc == 2) {
-
         R[5] = 128 * 76 + 258;
         if (R[4] == R[5]) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[6] = 128 * 66 + 258;
           if (R[4] == R[6]) {
-
             ob = (word *)R[3];
             R[3] = R[6];
             acc = 1;
 
           } else {
-
             R[7] = IFALSE;
             ob = (word *)R[3];
             R[3] = R[7];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 107:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 2);
         R[8] = G(R[1], 3);
@@ -9684,18 +8938,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 108:
       if (acc == 2) {
-
         R[5] = G(R[1], 8);
         if (R[5] == IFALSE) {
-
           R[6] = G(R[1], 5);
           R[7] = G(R[1], 6);
           *fp = make_header(3, TPROC);
@@ -9714,7 +8964,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[6] = G(R[2], 3);
           R[7] = G(R[1], 3);
           R[8] = G(R[1], 4);
@@ -9744,19 +8993,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[14];
           ob = (word *)R[9];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 109:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[2], 3);
@@ -9776,17 +9021,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 110:
       if (acc == 4) {
-
         if (R[5] == INULL) {
-
           R[5] = IFALSE;
           R[8] = R[3];
           R[3] = R[4];
@@ -9795,7 +9036,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[7] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -9808,21 +9048,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 111:
       if (acc == 2) {
-
         if (R[4] == IFALSE) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 4);
           R[7] = G(R[1], 3);
@@ -9838,7 +9073,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[5] = G(R[2], 4);
           R[6] = G(R[1], 4);
           *fp = make_header(5, TPROC);
@@ -9851,21 +9085,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = G(R[1], 2);
           ob = (word *)R[5];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 112:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[1], 3);
           R[5] = G(R[1], 2);
           R[6] = IFALSE;
@@ -9876,7 +9105,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -9887,19 +9115,15 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[9];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 113:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -9916,17 +9140,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 114:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 5);
@@ -9950,24 +9170,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[3] = G(R[1], 5);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 115:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -9989,15 +9204,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 116:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -10024,15 +9236,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 117:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -10058,15 +9267,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 118:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -10099,15 +9305,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 119:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -10139,15 +9342,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 120:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -10161,15 +9361,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 121:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -10199,15 +9396,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 122:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -10235,17 +9429,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 123:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -10270,7 +9460,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[1], 7);
           R[5] = G(R[1], 8);
           *fp = make_header(3, TPROC);
@@ -10290,19 +9479,15 @@ super_dispatch:                                   /* run macro instructions */
           R[7] = R[10];
           ob = (word *)R[11];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 124:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -10326,15 +9511,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 125:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -10356,15 +9538,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 126:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -10394,15 +9573,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 127:
       if (acc == 5) {
-
         R[8] = G(R[2], 2);
         R[9] = G(R[1], 2);
         R[10] = G(R[1], 3);
@@ -10420,15 +9596,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 128:
       if (acc == 2) {
-
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
         R[7] = G(R[1], 6);
@@ -10461,15 +9634,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 129:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 6);
         *fp = make_header(3, TPROC);
@@ -10491,15 +9661,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 130:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -10524,15 +9691,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 131:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -10558,15 +9722,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 132:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 5);
@@ -10590,15 +9751,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 133:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -10622,15 +9780,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 134:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         *fp = make_header(3, TPROC);
@@ -10651,17 +9806,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 135:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 2);
@@ -10674,7 +9825,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 3);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -10692,19 +9842,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 136:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -10723,17 +9869,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 137:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -10747,24 +9889,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[3] = G(R[1], 4);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 138:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -10788,17 +9925,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 139:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -10818,7 +9951,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -10837,19 +9969,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 140:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -10872,17 +10000,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 141:
       if (acc == 2) {
-
         if (R[4] == IFALSE) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 4);
@@ -10898,7 +10022,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[5] = G(R[2], 4);
           R[6] = G(R[1], 3);
           R[7] = G(R[1], 4);
@@ -10917,28 +10040,22 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[9];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 142:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 5);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -10956,21 +10073,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 143:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -10990,7 +10102,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -11011,21 +10122,16 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[11];
           ob = (word *)R[12];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 144:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -11045,7 +10151,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -11064,19 +10169,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 145:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -11097,15 +10198,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 146:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -11120,24 +10218,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 147:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 6);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -11157,22 +10250,17 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 148:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 3);
           R[3] = G(R[1], 6);
           R[4] = G(R[1], 2);
@@ -11180,7 +10268,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 3);
@@ -11198,19 +10285,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[5];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 149:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -11233,17 +10316,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 150:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[1], 3);
           R[5] = G(R[1], 2);
           R[6] = IFALSE;
@@ -11254,7 +10333,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -11270,21 +10348,16 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[7];
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 151:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 5);
@@ -11303,7 +10376,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -11322,19 +10394,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 152:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -11355,23 +10423,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 153:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[7] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -11383,21 +10446,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 6;
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 154:
       if (acc == 5) {
-
         if (R[4] == INULL) {
-
           R[8] = G(R[1], 2);
           *fp = make_header(3, TPROC);
           fp[1] = G(R[1], 3);
@@ -11409,9 +10467,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           {
-
             word *ob = (word *)R[4];
             hval  hdr;
             assert(allocp(R[4]), R[4], IFALSE);
@@ -11419,11 +10475,9 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[8] = ob[1];
             R[9] = ob[2];
-
           }
 
           if (R[8] == R[5]) {
-
             R[10] = G(R[1], 4);
             *fp = make_header(4, TCLOS);
             fp[1] = G(R[1], 5);
@@ -11437,7 +10491,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[10] = G(R[1], 6);
             *fp = make_header(8, TCLOS);
             fp[1] = G(R[1], 7);
@@ -11454,23 +10507,17 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[8];
             ob = (word *)R[10];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 155:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 2);
@@ -11492,7 +10539,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 7);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -11515,21 +10561,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[7];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 156:
       if (acc == 2) {
-
         if (R[4] == IFALSE) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 5);
@@ -11545,7 +10586,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[5] = G(R[2], 4);
           R[6] = G(R[1], 3);
           R[7] = G(R[1], 4);
@@ -11566,19 +10606,15 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[10];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 157:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -11604,15 +10640,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 158:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -11626,18 +10659,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 159:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         if (R[4] == R[3]) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 3);
           R[7] = G(R[1], 4);
@@ -11654,7 +10683,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[2], 4);
           R[6] = G(R[1], 4);
           R[7] = G(R[1], 3);
@@ -11663,19 +10691,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 160:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = 128 * 382 + 258;
@@ -11688,15 +10712,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 161:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
         *fp = make_header(6, TCLOS);
@@ -11712,15 +10733,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 162:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -11743,17 +10761,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 163:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 5);
           R[5] = G(R[1], 8);
           R[6] = G(R[1], 6);
@@ -11774,7 +10788,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 6);
@@ -11798,19 +10811,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[11];
           ob = (word *)R[9];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 164:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
         R[8] = G(R[1], 4);
@@ -11831,15 +10840,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 165:
       if (acc == 5) {
-
         R[8] = G(R[2], 2);
         R[9] = G(R[1], 2);
         R[10] = G(R[1], 3);
@@ -11859,17 +10865,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 166:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 7);
           R[5] = G(R[1], 8);
           *fp = make_header(3, TPROC);
@@ -11891,7 +10893,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -11914,19 +10915,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[11];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 167:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -11947,15 +10944,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 168:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         *fp = make_header(3, TPROC);
@@ -11977,24 +10971,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 169:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[1], 2);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           *fp = make_header(4, TCLOS);
@@ -12008,30 +10997,23 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 170:
       if (acc == 5) {
-
         if (R[4] == INULL) {
-
           if (R[5] == INULL) {
-
             R[8] = G(R[1], 2);
             R[4] = R[6];
             ob = (word *)R[8];
             acc = 2;
 
           } else {
-
             R[8] = G(R[1], 2);
             *fp = make_header(4, TCLOS);
             fp[1] = G(R[1], 3);
@@ -12042,13 +11024,10 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[5];
             ob = (word *)R[8];
             acc = 2;
-
           }
 
         } else {
-
           {
-
             word *ob = (word *)R[4];
             hval  hdr;
             assert(allocp(R[4]), R[4], IFALSE);
@@ -12056,12 +11035,10 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[8] = ob[1];
             R[9] = ob[2];
-
           }
 
           R[10] = 128 * 18 + 258;
           if (R[8] == R[10]) {
-
             R[11] = G(R[1], 4);
             *fp = make_header(6, TCLOS);
             fp[1] = G(R[1], 5);
@@ -12076,7 +11053,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[11] = G(R[1], 4);
             *fp = make_header(6, TPROC);
             fp[1] = G(R[1], 6);
@@ -12089,21 +11065,16 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[8];
             ob = (word *)R[11];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 171:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[6] = INULL;
@@ -12115,15 +11086,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 172:
       if (acc == 2) {
-
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
         R[7] = G(R[1], 6);
@@ -12138,7 +11106,6 @@ super_dispatch:                                   /* run macro instructions */
         fp += 7;
         R[9] = G(R[1], 2);
         if (R[9] == INULL) {
-
           R[10] = G(R[2], 2);
           R[4] = G(R[1], 3);
           R[3] = R[8];
@@ -12146,7 +11113,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[10] = G(R[2], 3);
           R[11] = G(R[1], 3);
           *fp = make_header(4, TCLOS);
@@ -12158,19 +11124,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[10];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 173:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -12186,24 +11148,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 174:
       if (acc == 1) {
-
         if (immediatep(R[3])) {
-
           R[4] = IFALSE;
 
         } else {
-
           hval h = V(R[3]);
           R[4] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
         }
 
         R[5] = G(R[2], 2);
@@ -12229,17 +11185,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 175:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -12264,7 +11216,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 5);
           R[5] = G(R[1], 7);
           *fp = make_header(3, TPROC);
@@ -12284,19 +11235,15 @@ super_dispatch:                                   /* run macro instructions */
           R[7] = R[10];
           ob = (word *)R[11];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 176:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -12322,15 +11269,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 177:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -12355,15 +11299,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 178:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -12389,15 +11330,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 179:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -12423,15 +11361,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 180:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -12464,15 +11399,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 181:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -12499,24 +11431,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 182:
       if (acc == 1) {
-
         if (immediatep(R[3])) {
-
           R[4] = IFALSE;
 
         } else {
-
           hval h = V(R[3]);
           R[4] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
         }
 
         R[5] = G(R[2], 2);
@@ -12550,15 +11476,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 183:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -12593,15 +11516,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 184:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -12629,15 +11549,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 185:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -12670,15 +11587,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 186:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -12705,15 +11619,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 187:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -12742,15 +11653,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 188:
       if (acc == 2) {
-
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
         R[7] = G(R[1], 6);
@@ -12771,7 +11679,6 @@ super_dispatch:                                   /* run macro instructions */
         fp += 10;
         R[12] = G(R[1], 2);
         if (R[12] == INULL) {
-
           R[13] = G(R[2], 2);
           R[4] = G(R[1], 3);
           R[3] = R[11];
@@ -12779,7 +11686,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[13] = G(R[2], 3);
           R[14] = G(R[1], 3);
           *fp = make_header(4, TCLOS);
@@ -12791,19 +11697,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[12];
           ob = (word *)R[13];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 189:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -12833,15 +11735,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 190:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -12874,15 +11773,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 191:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 2);
         R[5] = R[4];
@@ -12891,15 +11787,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 192:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -12916,12 +11809,10 @@ super_dispatch:                                   /* run macro instructions */
         fp += 7;
         R[10] = G(R[1], 2);
         if (R[10] == INULL) {
-
           ob = (word *)R[9];
           acc = 1;
 
         } else {
-
           R[11] = G(R[2], 2);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[2], 3);
@@ -12932,19 +11823,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[11];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 193:
       if (acc == 4) {
-
         R[7] = G(R[1], 4);
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
@@ -12961,15 +11848,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 194:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -12988,15 +11872,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 195:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -13021,15 +11902,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 196:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 5);
@@ -13058,15 +11936,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 197:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 5);
@@ -13093,15 +11968,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 198:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -13129,15 +12001,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 199:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -13164,15 +12033,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 200:
       if (acc == 2) {
-
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
         R[7] = G(R[1], 6);
@@ -13193,7 +12059,6 @@ super_dispatch:                                   /* run macro instructions */
         fp += 10;
         R[12] = G(R[1], 3);
         if (R[12] == F(0)) {
-
           R[13] = G(R[2], 2);
           R[4] = R[6];
           R[3] = R[11];
@@ -13201,23 +12066,18 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[3] = G(R[1], 2);
           ob = (word *)R[11];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 201:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -13244,15 +12104,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 202:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -13275,15 +12132,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 203:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -13304,15 +12158,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 204:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -13328,15 +12179,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 205:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -13359,15 +12207,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 206:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -13392,15 +12237,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 207:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -13423,15 +12265,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 208:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 5);
@@ -13453,17 +12292,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 209:
       if (acc == 5) {
-
         if (R[5] == INULL) {
-
           R[8] = G(R[1], 2);
           *fp = make_header(4, TPROC);
           fp[1] = G(R[1], 3);
@@ -13476,7 +12311,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[8] = G(R[1], 4);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 5);
@@ -13489,21 +12323,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 210:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 4);
@@ -13520,7 +12349,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -13539,19 +12367,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 211:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -13575,15 +12399,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 212:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -13604,15 +12425,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 213:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -13633,15 +12451,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 214:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -13664,15 +12479,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 215:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -13703,15 +12515,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 216:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(4, TCLOS);
@@ -13731,15 +12540,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 217:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -13758,15 +12564,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 218:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 2);
@@ -13777,30 +12580,24 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 219:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[4] = G(R[1], 2);
         ob = (word *)R[6];
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 220:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -13823,15 +12620,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 221:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
@@ -13845,23 +12639,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 222:
       if (acc == 5) {
-
         if (R[4] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -13874,19 +12663,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = 128 * 0 + 258;
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 223:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -13907,15 +12692,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 224:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -13929,17 +12711,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 225:
       if (acc == 2) {
-
         if (R[4] == F(0)) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 3);
           R[7] = G(R[1], 2);
@@ -13951,7 +12729,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[2], 3);
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 3);
@@ -13970,21 +12747,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[10];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 226:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -14004,7 +12776,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -14015,19 +12786,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 227:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -14053,15 +12820,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 228:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -14086,15 +12850,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 229:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
@@ -14107,15 +12868,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 230:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -14139,15 +12897,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 231:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -14170,15 +12925,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 232:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -14204,15 +12956,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 233:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -14239,15 +12988,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 234:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -14279,15 +13025,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 235:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[2], 3);
@@ -14302,15 +13045,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 236:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -14324,15 +13064,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 237:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         *fp = make_header(4, TCLOS);
@@ -14342,7 +13079,6 @@ super_dispatch:                                   /* run macro instructions */
         R[6] = (word)fp;
         fp += 4;
         if (R[3] == IFALSE) {
-
           R[7] = G(R[2], 2);
           R[4] = G(R[1], 2);
           R[5] = 128 * 0 + 258;
@@ -14351,23 +13087,18 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[3] = 128 * 508 + 258;
           ob = (word *)R[6];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 238:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -14386,24 +13117,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 239:
       if (acc == 1) {
-
         if (immediatep(R[3])) {
-
           R[4] = IFALSE;
 
         } else {
-
           hval h = V(R[3]);
           R[4] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
         }
 
         R[5] = G(R[2], 2);
@@ -14427,15 +13152,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 240:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -14456,15 +13178,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 241:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -14487,15 +13206,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 242:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -14522,15 +13238,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 243:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -14554,15 +13267,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 244:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -14585,15 +13295,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 245:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 6);
         *fp = make_header(3, TPROC);
@@ -14615,15 +13322,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 246:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -14639,15 +13343,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 247:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -14671,15 +13372,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 248:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 2);
         R[8] = G(R[1], 3);
@@ -14701,15 +13399,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 249:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -14735,18 +13430,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 250:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         if (R[4] == F(0)) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 4);
           R[7] = G(R[1], 6);
@@ -14767,10 +13458,8 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[1], 2);
           if (R[5] == IFALSE) {
-
             R[6] = G(R[2], 4);
             R[7] = G(R[1], 5);
             R[8] = G(R[1], 6);
@@ -14789,7 +13478,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[6] = G(R[2], 4);
             R[7] = G(R[1], 5);
             R[8] = G(R[1], 6);
@@ -14806,21 +13494,16 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = G(R[2], 6);
             ob = (word *)R[6];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 251:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         *fp = make_header(3, TPROC);
@@ -14842,15 +13525,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 252:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         *fp = make_header(3, TPROC);
@@ -14872,17 +13552,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 253:
       if (acc == 2) {
-
         if (R[4] == F(0)) {
-
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
           *fp = make_header(3, TPROC);
@@ -14902,7 +13578,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
           *fp = make_header(3, TPROC);
@@ -14920,21 +13595,16 @@ super_dispatch:                                   /* run macro instructions */
           R[7] = R[10];
           ob = (word *)R[11];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 254:
       if (acc == 5) {
-
         if (R[5] == INULL) {
-
           R[8] = G(R[1], 2);
           *fp = make_header(3, TPROC);
           fp[1] = G(R[1], 3);
@@ -14946,7 +13616,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[8] = G(R[1], 4);
           *fp = make_header(7, TCLOS);
           fp[1] = G(R[1], 5);
@@ -14960,21 +13629,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 255:
       if (acc == 2) {
-
         if (R[3] == IFALSE) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 3);
@@ -14994,7 +13658,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[5] = G(R[2], 4);
           R[6] = G(R[1], 3);
           R[7] = G(R[1], 4);
@@ -15016,19 +13679,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[12];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 256:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -15052,17 +13711,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 257:
       if (acc == 3) {
-
         if (R[4] == F(0)) {
-
           R[6] = G(R[2], 2);
           R[7] = G(R[1], 5);
           *fp = make_header(4, TCLOS);
@@ -15078,7 +13733,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[6] = G(R[2], 4);
           R[7] = G(R[1], 3);
           R[8] = G(R[1], 4);
@@ -15095,19 +13749,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = 128 * 0 + 258;
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 258:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -15128,15 +13778,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 259:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -15154,15 +13801,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 260:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -15180,15 +13824,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 261:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[6] = 128 * 1 + 258;
@@ -15201,15 +13842,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 262:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 3);
         *fp = make_header(6, TCLOS);
@@ -15225,19 +13863,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 263:
       if (acc == 5) {
-
         if (R[4] == INULL) {
-
           if (R[6] == F(0)) {
-
             R[8] = IFALSE;
             R[4] = INULL;
             R[7] = R[3];
@@ -15246,17 +13879,14 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             R[4] = INULL;
             R[7] = R[3];
             R[3] = R[5];
             ob = (word *)R[7];
             acc = 2;
-
           }
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(7, TCLOS);
           fp[1] = G(R[1], 3);
@@ -15269,24 +13899,18 @@ super_dispatch:                                   /* run macro instructions */
           fp += 7;
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 264:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           if (R[4] == F(0)) {
-
             R[5] = G(R[1], 5);
             R[3] = IFALSE;
             R[4] = G(R[1], 2);
@@ -15294,17 +13918,14 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             R[5] = G(R[1], 5);
             R[3] = G(R[1], 3);
             R[4] = G(R[1], 2);
             ob = (word *)R[5];
             acc = 2;
-
           }
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -15324,19 +13945,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 265:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -15359,74 +13976,57 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 266:
       if (acc == 2) {
-
         R[5] = 128 * 94 + 258;
         R[6] = prim_less(R[4], R[5]);
         if (R[6] == IFALSE) {
-
           R[7] = 128 * 112 + 258;
           R[8] = prim_less(R[7], R[4]);
           if (R[8] == IFALSE) {
-
             R[9] = G(R[1], 2);
             ob = (word *)R[9];
             acc = 3;
 
           } else {
-
             R[9] = IFALSE;
             ob = (word *)R[3];
             R[3] = R[9];
             acc = 1;
-
           }
 
         } else {
-
           R[7] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 267:
       if (acc == 4) {
-
         if (immediatep(R[4])) {
-
           R[7] = IFALSE;
 
         } else {
-
           hval h = V(R[4]);
           R[7] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
         }
 
         if (R[7] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 4);
           fp[4] = R[6];
@@ -15445,19 +14045,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 268:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 3);
         R[9] = G(R[1], 4);
@@ -15478,21 +14074,16 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 269:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         if (R[4] == R[5]) {
-
           if (R[4] == F(0)) {
-
             R[6] = G(R[1], 4);
             R[7] = G(R[1], 6);
             *fp = make_header(3, TCLOS);
@@ -15507,14 +14098,11 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[6] = 128 * 0 + 258;
             {
-
               hval r = immval(R[4]) - immval(R[6]);
               R[8] = F(r >> FBITS & 1);
               R[7] = F(r);
-
             }
 
             R[9] = G(R[1], 4);
@@ -15532,13 +14120,10 @@ super_dispatch:                                   /* run macro instructions */
             R[3] = R[12];
             ob = (word *)R[9];
             acc = 3;
-
           }
 
         } else {
-
           if (R[4] == F(0)) {
-
             R[6] = G(R[2], 4);
             R[7] = G(R[1], 6);
             *fp = make_header(3, TCLOS);
@@ -15553,14 +14138,11 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[6] = 128 * 0 + 258;
             {
-
               hval r = immval(R[4]) - immval(R[6]);
               R[8] = F(r >> FBITS & 1);
               R[7] = F(r);
-
             }
 
             R[9] = G(R[2], 4);
@@ -15578,40 +14160,31 @@ super_dispatch:                                   /* run macro instructions */
             R[3] = R[12];
             ob = (word *)R[9];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 270:
       if (acc == 4) {
-
         R[7] = 128 * 14 + 258;
         if (R[5] == R[7]) {
-
           R[8] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
 
         } else {
-
           if (R[4] == INULL) {
-
             R[8] = IFALSE;
             ob = (word *)R[3];
             R[3] = R[8];
             acc = 1;
 
           } else {
-
             R[8] = G(R[1], 2);
             *fp = make_header(6, TCLOS);
             fp[1] = G(R[1], 3);
@@ -15623,30 +14196,23 @@ super_dispatch:                                   /* run macro instructions */
             fp += 6;
             ob = (word *)R[8];
             acc = 2;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 271:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[1], 4);
           R[3] = ITRUE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -15664,23 +14230,18 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 272:
       if (acc == 1) {
-
         R[4] = 128 * 254 + 258;
         R[5] = R[4] & R[3];
         if (R[5] == F(0)) {
-
           R[6] = G(R[2], 2);
           R[7] = G(R[1], 3);
           R[8] = G(R[1], 4);
@@ -15697,24 +14258,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[6] = G(R[1], 4);
           R[3] = ITRUE;
           ob = (word *)R[6];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 273:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TPROC);
         fp[1] = G(R[1], 3);
@@ -15729,41 +14285,32 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 274:
       if (acc == 2) {
-
         if (R[4] == IFALSE) {
-
           R[5] = G(R[1], 2);
           R[4] = 128 * 1 + 258;
           ob = (word *)R[5];
           acc = 2;
 
         } else {
-
           R[5] = G(R[1], 2);
           R[4] = 128 * 0 + 258;
           ob = (word *)R[5];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 275:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TPROC);
         fp[1] = G(R[1], 3);
@@ -15778,19 +14325,15 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 276:
       if (acc == 2) {
-
         R[5] = 128 * 0 + 258;
         R[6] = R[3] & R[5];
         if (R[6] == F(0)) {
-
           R[7] = G(R[1], 2);
           R[3] = R[4];
           R[4] = R[5];
@@ -15798,26 +14341,21 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[7] = G(R[1], 2);
           R[8] = 128 * 1 + 258;
           R[3] = R[4];
           R[4] = R[8];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 277:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -15838,15 +14376,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 278:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -15872,15 +14407,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 279:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 2);
         R[8] = G(R[1], 3);
@@ -15904,17 +14436,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 280:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 6);
           R[5] = G(R[1], 8);
           R[6] = G(R[1], 7);
@@ -15936,7 +14464,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[2], 3);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 6);
@@ -15959,19 +14486,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[11];
           ob = (word *)R[9];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 281:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -15995,15 +14518,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 282:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -16028,15 +14548,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 283:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -16052,15 +14569,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 284:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -16075,24 +14589,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 285:
       if (acc == 2) {
-
         if (R[4] == INULL) {
-
           R[5] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[5] = G(R[1], 2);
           *fp = make_header(3, TPROC);
           fp[1] = G(R[1], 3);
@@ -16101,45 +14610,35 @@ super_dispatch:                                   /* run macro instructions */
           fp += 3;
           ob = (word *)R[5];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 286:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[1], 2);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[3] = ITRUE;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 287:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -16153,15 +14652,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 288:
       if (acc == 3) {
-
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
         R[8] = G(R[1], 5);
@@ -16182,18 +14678,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 289:
       if (acc == 3) {
-
         R[6] = G(R[1], 5);
         if (R[5] == R[6]) {
-
           R[7] = G(R[1], 4);
           R[8] = G(R[1], 3);
           R[5] = R[4];
@@ -16203,24 +14695,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[7] = G(R[1], 3);
           R[6] = G(R[1], 2);
           ob = (word *)R[7];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 290:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -16235,17 +14722,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 291:
       if (acc == 2) {
-
         if (R[4] == F(0)) {
-
           R[5] = G(R[1], 2);
           R[6] = G(R[2], 2);
           R[7] = G(R[2], 3);
@@ -16256,10 +14739,8 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = 128 * 0 + 258;
           if (R[4] == R[5]) {
-
             R[6] = G(R[1], 2);
             R[4] = G(R[2], 4);
             R[5] = G(R[2], 5);
@@ -16267,10 +14748,8 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[6] = 128 * 2 + 258;
             if (R[4] == R[6]) {
-
               R[7] = G(R[1], 2);
               R[4] = G(R[2], 6);
               R[5] = G(R[2], 7);
@@ -16278,10 +14757,8 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[7] = 128 * 4 + 258;
               if (R[4] == R[7]) {
-
                 R[8] = G(R[1], 2);
                 R[4] = G(R[2], 8);
                 R[5] = G(R[2], 9);
@@ -16289,31 +14766,23 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 3;
 
               } else {
-
                 R[8] = G(R[1], 2);
                 R[4] = G(R[2], 10);
                 R[5] = G(R[2], 11);
                 ob = (word *)R[8];
                 acc = 3;
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 292:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -16334,15 +14803,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 293:
       if (acc == 2) {
-
         R[5] = G(R[1], 3);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[2], 3);
@@ -16363,23 +14829,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 294:
       if (acc == 4) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           R[7] = G(R[2], 4);
           R[8] = G(R[1], 2);
           *fp = make_header(4, 2);
@@ -16401,19 +14862,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[12];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 295:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -16428,32 +14885,25 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 296:
       if (acc == 3) {
-
         R[6] = prim_less(R[5], R[4]);
         ob = (word *)R[3];
         R[3] = R[6];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 297:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[1], 3);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 5);
@@ -16466,7 +14916,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -16485,19 +14934,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 298:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -16515,15 +14960,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 299:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -16552,17 +14994,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 300:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[1], 3);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 5);
@@ -16575,7 +15013,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -16596,19 +15033,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 301:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -16629,15 +15062,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 302:
       if (acc == 2) {
-
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 5);
@@ -16657,17 +15087,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 303:
       if (acc == 4) {
-
         if (R[4] == F(0)) {
-
           R[7] = G(R[2], 2);
           R[8] = G(R[1], 3);
           R[9] = G(R[1], 4);
@@ -16690,7 +15116,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[7] = G(R[2], 5);
           R[8] = G(R[1], 5);
           R[9] = G(R[1], 6);
@@ -16706,19 +15131,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = 128 * 0 + 258;
           ob = (word *)R[7];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 304:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -16744,17 +15165,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 305:
       if (acc == 5) {
-
         if (R[6] == INULL) {
-
           R[7] = R[3];
           R[3] = R[4];
           R[4] = R[5];
@@ -16762,7 +15179,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -16775,23 +15191,18 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = IFALSE;
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 306:
       if (acc == 2) {
-
         R[5] = 128 * 0 + 258;
         R[6] = R[3] & R[5];
         if (R[6] == F(0)) {
-
           R[7] = G(R[1], 4);
           R[8] = G(R[1], 2);
           R[3] = R[4];
@@ -16800,7 +15211,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[7] = G(R[2], 2);
           R[8] = G(R[1], 3);
           R[9] = G(R[1], 4);
@@ -16816,19 +15226,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 307:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = 128 * 2 + 258;
         R[9] = R[6];
@@ -16838,15 +15244,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 308:
       if (acc == 2) {
-
         R[5] = 128 * 0 + 258;
         R[6] = R[3] & R[5];
         R[7] = G(R[2], 2);
@@ -16867,15 +15270,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 309:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -16889,7 +15289,6 @@ super_dispatch:                                   /* run macro instructions */
         R[8] = (word)fp;
         fp += 6;
         if (R[3] == IFALSE) {
-
           R[9] = G(R[2], 2);
           R[5] = G(R[2], 3);
           R[3] = R[8];
@@ -16897,24 +15296,18 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           ob = (word *)R[8];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 310:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 5);
@@ -16934,7 +15327,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 5);
           *fp = make_header(3, TCLOS);
@@ -16949,19 +15341,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 311:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         *fp = make_header(4, TPROC);
@@ -16977,17 +15365,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 312:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[1], 5);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 4);
@@ -17000,7 +15384,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -17019,19 +15402,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 313:
       if (acc == 2) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[2], 4);
         fp[2] = R[4];
@@ -17052,18 +15431,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 314:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         if (R[4] == R[5]) {
-
           R[6] = G(R[2], 2);
           *fp = make_header(4, 2);
           fp[1] = R[6];
@@ -17076,23 +15451,18 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 315:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -17106,7 +15476,6 @@ super_dispatch:                                   /* run macro instructions */
         R[8] = (word)fp;
         fp += 6;
         if (R[3] == INULL) {
-
           R[9] = G(R[2], 2);
           R[4] = R[5];
           R[3] = R[8];
@@ -17114,22 +15483,17 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           ob = (word *)R[8];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 316:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -17151,15 +15515,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 317:
       if (acc == 2) {
-
         R[5] = G(R[1], 5);
         *fp = make_header(4, TPROC);
         fp[1] = G(R[2], 4);
@@ -17183,15 +15544,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 318:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -17211,17 +15569,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 319:
       if (acc == 1) {
-
         {
-
           word *ob = (word *)R[3];
           hval  hdr;
           assert(allocp(R[3]), R[3], IFALSE);
@@ -17229,7 +15583,6 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[4] = ob[1];
           R[5] = ob[2];
-
         }
 
         R[6] = G(R[2], 2);
@@ -17249,15 +15602,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 320:
       if (acc == 2) {
-
         R[5] = G(R[1], 5);
         *fp = make_header(4, TPROC);
         fp[1] = G(R[2], 9);
@@ -17267,7 +15617,6 @@ super_dispatch:                                   /* run macro instructions */
         fp += 4;
         R[7] = G(R[1], 2);
         if (R[7] == F(0)) {
-
           R[8] = G(R[2], 3);
           R[9] = G(R[1], 4);
           *fp = make_header(4, 2);
@@ -17288,10 +15637,8 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[8] = 128 * 0 + 258;
           if (R[7] == R[8]) {
-
             R[9] = G(R[2], 4);
             R[10] = G(R[1], 4);
             *fp = make_header(4, 2);
@@ -17312,10 +15659,8 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             R[9] = 128 * 2 + 258;
             if (R[7] == R[9]) {
-
               R[10] = G(R[2], 5);
               R[11] = G(R[1], 4);
               *fp = make_header(5, TCLOS);
@@ -17331,30 +15676,23 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[10] = G(R[2], 7);
               R[4] = G(R[2], 8);
               R[3] = R[6];
               R[5] = R[7];
               ob = (word *)R[10];
               acc = 3;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 321:
       if (acc == 3) {
-
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 2);
         *fp = make_header(5, TPROC);
@@ -17369,17 +15707,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 322:
       if (acc == 5) {
-
         if (R[6] == INULL) {
-
           R[7] = R[3];
           R[3] = R[4];
           R[4] = R[5];
@@ -17387,7 +15721,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -17400,21 +15733,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = 128 * 4 + 258;
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 323:
       if (acc == 2) {
-
         if (R[4] == F(0)) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 3);
           R[4] = G(R[1], 2);
@@ -17433,7 +15761,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[5] = G(R[2], 4);
           R[6] = G(R[1], 3);
           R[7] = G(R[1], 4);
@@ -17449,21 +15776,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = G(R[1], 2);
           ob = (word *)R[5];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 324:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -17485,7 +15807,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -17507,19 +15828,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 325:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -17541,15 +15858,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 326:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -17570,15 +15884,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 327:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -17593,15 +15904,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 328:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -17616,15 +15924,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 329:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -17640,7 +15945,6 @@ super_dispatch:                                   /* run macro instructions */
         R[9] = (word)fp;
         fp += 7;
         if (R[3] == IFALSE) {
-
           R[10] = G(R[2], 2);
           *fp = make_header(3, TCLOS);
           fp[1] = G(R[2], 3);
@@ -17651,24 +15955,18 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           ob = (word *)R[9];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 330:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -17688,7 +15986,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 6);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 5);
@@ -17699,21 +15996,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 331:
       if (acc == 2) {
-
         {
-
           word *ob = (word *)R[4];
           hval  hdr;
           assert(allocp(R[4]), R[4], IFALSE);
@@ -17721,11 +16013,9 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[5] = ob[1];
           R[6] = ob[2];
-
         }
 
         {
-
           word *ob = (word *)R[6];
           hval  hdr;
           assert(allocp(R[6]), R[6], IFALSE);
@@ -17733,7 +16023,6 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[7] = ob[1];
           R[8] = ob[2];
-
         }
 
         R[9] = G(R[2], 2);
@@ -17757,52 +16046,40 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 332:
       if (acc == 2) {
-
         R[5] = G(R[1], 3);
         if (R[4] == R[5]) {
-
           R[6] = G(R[1], 2);
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[6] = G(R[1], 2);
           if (R[4] == R[6]) {
-
             ob = (word *)R[3];
             R[3] = R[5];
             acc = 1;
 
           } else {
-
             ob = (word *)R[3];
             R[3] = R[4];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 333:
       if (acc == 3) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 4);
         fp[2] = R[5];
@@ -17820,15 +16097,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 334:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[2], 2);
@@ -17841,18 +16115,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 335:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         if (R[4] == R[3]) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 3);
           R[7] = G(R[1], 4);
@@ -17870,29 +16140,22 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[1], 3);
           ob = (word *)R[5];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 336:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 2);
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -17902,7 +16165,6 @@ super_dispatch:                                   /* run macro instructions */
             R[7] = ob[2];
             R[8] = ob[3];
             R[9] = ob[4];
-
           }
 
           R[10] = G(R[2], 3);
@@ -17925,26 +16187,20 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[1], 3);
           R[3] = G(R[1], 2);
           ob = (word *)R[5];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 337:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -17955,7 +16211,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -17971,19 +16226,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 338:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -17998,15 +16249,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 339:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
@@ -18023,17 +16271,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 340:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -18051,25 +16295,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 3);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 341:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -18082,23 +16320,18 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 3);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 342:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[2], 4);
@@ -18117,15 +16350,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 343:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[2], 2);
@@ -18140,15 +16370,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 344:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -18160,37 +16387,29 @@ super_dispatch:                                   /* run macro instructions */
         R[7] = (word)fp;
         fp += 5;
         if (R[3] == IFALSE) {
-
           R[3] = G(R[1], 2);
           ob = (word *)R[7];
           acc = 1;
 
         } else {
-
           R[8] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[3] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 345:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 2);
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -18199,7 +16418,6 @@ super_dispatch:                                   /* run macro instructions */
             R[6] = ob[1];
             R[7] = ob[2];
             R[8] = ob[3];
-
           }
 
           R[6] = G(R[1], 5);
@@ -18217,13 +16435,10 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[5] = G(R[2], 4);
           if (R[3] == R[5]) {
-
             R[6] = G(R[1], 2);
             {
-
               word *ob = (word *)R[6];
               hval  hdr;
               assert(allocp(R[6]), R[6], IFALSE);
@@ -18233,7 +16448,6 @@ super_dispatch:                                   /* run macro instructions */
               R[8] = ob[2];
               R[9] = ob[3];
               R[10] = ob[4];
-
             }
 
             R[11] = G(R[2], 5);
@@ -18250,28 +16464,21 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             R[6] = G(R[1], 4);
             R[3] = G(R[1], 3);
             ob = (word *)R[6];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 346:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 3);
           R[6] = INULL;
@@ -18285,7 +16492,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -18302,19 +16508,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[10];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 347:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -18328,17 +16530,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 348:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 5);
@@ -18358,7 +16556,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -18375,21 +16572,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[10];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 349:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -18407,7 +16599,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 5);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -18426,25 +16617,19 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 350:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 4);
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -18452,7 +16637,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           R[8] = G(R[2], 3);
@@ -18463,13 +16647,10 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[2], 4);
           if (R[3] == R[5]) {
-
             R[6] = G(R[1], 4);
             {
-
               word *ob = (word *)R[6];
               hval  hdr;
               assert(allocp(R[6]), R[6], IFALSE);
@@ -18479,7 +16660,6 @@ super_dispatch:                                   /* run macro instructions */
               R[8] = ob[2];
               R[9] = ob[3];
               R[10] = ob[4];
-
             }
 
             R[11] = G(R[2], 5);
@@ -18500,13 +16680,10 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[6] = G(R[2], 7);
             if (R[3] == R[6]) {
-
               R[7] = G(R[1], 4);
               {
-
                 word *ob = (word *)R[7];
                 hval  hdr;
                 assert(allocp(R[7]), R[7], IFALSE);
@@ -18515,7 +16692,6 @@ super_dispatch:                                   /* run macro instructions */
                 R[8] = ob[1];
                 R[9] = ob[2];
                 R[10] = ob[3];
-
               }
 
               R[11] = G(R[2], 8);
@@ -18527,13 +16703,10 @@ super_dispatch:                                   /* run macro instructions */
               acc = 4;
 
             } else {
-
               R[7] = G(R[2], 9);
               if (R[3] == R[7]) {
-
                 R[8] = G(R[1], 4);
                 {
-
                   word *ob = (word *)R[8];
                   hval  hdr;
                   assert(allocp(R[8]), R[8], IFALSE);
@@ -18542,7 +16715,6 @@ super_dispatch:                                   /* run macro instructions */
                   R[9] = ob[1];
                   R[10] = ob[2];
                   R[11] = ob[3];
-
                 }
 
                 R[12] = G(R[2], 10);
@@ -18554,13 +16726,10 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 4;
 
               } else {
-
                 R[8] = G(R[2], 11);
                 if (R[3] == R[8]) {
-
                   R[9] = G(R[1], 4);
                   {
-
                     word *ob = (word *)R[9];
                     hval  hdr;
                     assert(allocp(R[9]), R[9], IFALSE);
@@ -18568,7 +16737,6 @@ super_dispatch:                                   /* run macro instructions */
                     assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                     R[10] = ob[1];
                     R[11] = ob[2];
-
                   }
 
                   R[12] = G(R[2], 5);
@@ -18579,13 +16747,10 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 3;
 
                 } else {
-
                   R[9] = G(R[2], 12);
                   if (R[3] == R[9]) {
-
                     R[10] = G(R[1], 4);
                     {
-
                       word *ob = (word *)R[10];
                       hval  hdr;
                       assert(allocp(R[10]), R[10], IFALSE);
@@ -18594,7 +16759,6 @@ super_dispatch:                                   /* run macro instructions */
                       R[11] = ob[1];
                       R[12] = ob[2];
                       R[13] = ob[3];
-
                     }
 
                     R[6] = G(R[1], 3);
@@ -18612,7 +16776,6 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 4;
 
                   } else {
-
                     R[10] = G(R[2], 14);
                     R[11] = G(R[1], 4);
                     R[12] = G(R[1], 5);
@@ -18626,29 +16789,20 @@ super_dispatch:                                   /* run macro instructions */
                     R[5] = INULL;
                     ob = (word *)R[10];
                     acc = 3;
-
                   }
-
                 }
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 351:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -18661,15 +16815,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 352:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -18690,15 +16841,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 353:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -18719,15 +16867,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 354:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -18742,15 +16887,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 355:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = 128 * 118 + 258;
@@ -18763,23 +16905,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 356:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[7] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -18791,21 +16928,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 6;
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 357:
       if (acc == 1) {
-
         {
-
           word *ob = (word *)R[3];
           hval  hdr;
           assert(allocp(R[3]), R[3], IFALSE);
@@ -18813,7 +16945,6 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[4] = ob[1];
           R[5] = ob[2];
-
         }
 
         R[6] = G(R[2], 2);
@@ -18834,15 +16965,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 358:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         *fp = make_header(4, TCLOS);
@@ -18853,12 +16981,10 @@ super_dispatch:                                   /* run macro instructions */
         fp += 4;
         R[7] = G(R[1], 2);
         if (R[7] == IFALSE) {
-
           ob = (word *)R[6];
           acc = 1;
 
         } else {
-
           R[8] = G(R[2], 2);
           *fp = make_header(3, TCLOS);
           fp[1] = G(R[2], 3);
@@ -18870,19 +16996,15 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[9];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 359:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = 128 * 62 + 258;
@@ -18895,15 +17017,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 360:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = 128 * 120 + 258;
@@ -18916,15 +17035,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 361:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -18938,15 +17054,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 362:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -18961,15 +17074,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 363:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -18989,15 +17099,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 364:
       if (acc == 3) {
-
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 2);
         *fp = make_header(3, TPROC);
@@ -19012,15 +17119,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 365:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -19037,21 +17141,16 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 366:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 2);
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -19059,7 +17158,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           R[8] = G(R[1], 4);
@@ -19068,13 +17166,10 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[5] = G(R[2], 3);
           if (R[3] == R[5]) {
-
             R[6] = G(R[1], 2);
             {
-
               word *ob = (word *)R[6];
               hval  hdr;
               assert(allocp(R[6]), R[6], IFALSE);
@@ -19083,7 +17178,6 @@ super_dispatch:                                   /* run macro instructions */
               R[7] = ob[1];
               R[8] = ob[2];
               R[9] = ob[3];
-
             }
 
             R[10] = G(R[2], 4);
@@ -19096,13 +17190,10 @@ super_dispatch:                                   /* run macro instructions */
             acc = 5;
 
           } else {
-
             R[6] = G(R[2], 5);
             if (R[3] == R[6]) {
-
               R[7] = G(R[1], 2);
               {
-
                 word *ob = (word *)R[7];
                 hval  hdr;
                 assert(allocp(R[7]), R[7], IFALSE);
@@ -19110,7 +17201,6 @@ super_dispatch:                                   /* run macro instructions */
                 assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                 R[8] = ob[1];
                 R[9] = ob[2];
-
               }
 
               R[10] = G(R[2], 4);
@@ -19123,13 +17213,10 @@ super_dispatch:                                   /* run macro instructions */
               acc = 5;
 
             } else {
-
               R[7] = G(R[2], 6);
               if (R[3] == R[7]) {
-
                 R[8] = G(R[1], 2);
                 {
-
                   word *ob = (word *)R[8];
                   hval  hdr;
                   assert(allocp(R[8]), R[8], IFALSE);
@@ -19138,7 +17225,6 @@ super_dispatch:                                   /* run macro instructions */
                   R[9] = ob[1];
                   R[10] = ob[2];
                   R[11] = ob[3];
-
                 }
 
                 R[12] = G(R[2], 4);
@@ -19151,13 +17237,10 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 5;
 
               } else {
-
                 R[8] = G(R[2], 7);
                 if (R[3] == R[8]) {
-
                   R[9] = G(R[1], 2);
                   {
-
                     word *ob = (word *)R[9];
                     hval  hdr;
                     assert(allocp(R[9]), R[9], IFALSE);
@@ -19167,7 +17250,6 @@ super_dispatch:                                   /* run macro instructions */
                     R[11] = ob[2];
                     R[12] = ob[3];
                     R[13] = ob[4];
-
                   }
 
                   R[14] = G(R[2], 8);
@@ -19191,7 +17273,6 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 4;
 
                 } else {
-
                   R[9] = G(R[2], 11);
                   R[3] = G(R[1], 4);
                   R[4] = G(R[2], 12);
@@ -19199,27 +17280,19 @@ super_dispatch:                                   /* run macro instructions */
                   R[6] = G(R[1], 2);
                   ob = (word *)R[9];
                   acc = 4;
-
                 }
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 367:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -19235,15 +17308,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 368:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -19257,24 +17327,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 369:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         if (R[4] == INULL) {
-
           R[5] = G(R[1], 4);
           ob = (word *)R[5];
           acc = 1;
 
         } else {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 3);
           R[7] = G(R[1], 4);
@@ -19292,21 +17357,16 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[8];
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 370:
       if (acc == 1) {
-
         {
-
           word *ob = (word *)R[3];
           hval  hdr;
           assert(allocp(R[3]), R[3], IFALSE);
@@ -19314,7 +17374,6 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[4] = ob[1];
           R[5] = ob[2];
-
         }
 
         R[6] = G(R[2], 2);
@@ -19337,15 +17396,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 371:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -19357,7 +17413,6 @@ super_dispatch:                                   /* run macro instructions */
         R[7] = (word)fp;
         fp += 5;
         if (R[3] == IFALSE) {
-
           R[8] = G(R[2], 2);
           R[4] = G(R[1], 2);
           R[3] = R[7];
@@ -19365,7 +17420,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[8] = G(R[2], 2);
           *fp = make_header(3, TCLOS);
           fp[1] = G(R[2], 3);
@@ -19375,19 +17429,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = G(R[1], 2);
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 372:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
@@ -19403,17 +17453,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 373:
       if (acc == 2) {
-
         if (R[4] == F(0)) {
-
           R[5] = G(R[1], 2);
           R[6] = 128 * 94 + 258;
           R[7] = INULL;
@@ -19424,7 +17470,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[1], 3);
           R[6] = INULL;
           R[9] = R[6];
@@ -19432,27 +17477,21 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[9];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 374:
       if (acc == 4) {
-
         if (R[4] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[7] = G(R[1], 2);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 3);
@@ -19464,19 +17503,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = 128 * 18 + 258;
           ob = (word *)R[7];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 375:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -19496,15 +17531,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 376:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -19518,17 +17550,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 377:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -19548,7 +17576,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -19568,30 +17595,24 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[9];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 378:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = prim_less(R[4], R[3]);
         if (R[5] == IFALSE) {
-
           R[6] = G(R[1], 6);
           R[3] = G(R[1], 5);
           ob = (word *)R[6];
           acc = 1;
 
         } else {
-
           R[6] = G(R[2], 2);
           R[7] = G(R[1], 4);
           R[8] = G(R[1], 5);
@@ -19607,19 +17628,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = G(R[1], 2);
           ob = (word *)R[6];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 379:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = INULL;
         R[8] = R[5];
@@ -19628,24 +17645,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 380:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           R[7] = G(R[1], 2);
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
 
         } else {
-
           R[7] = G(R[1], 3);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 4);
@@ -19657,19 +17669,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 6;
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 381:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -19692,21 +17700,16 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 382:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 4);
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -19714,7 +17717,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           R[8] = G(R[2], 3);
@@ -19734,13 +17736,10 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[5] = G(R[2], 5);
           if (R[3] == R[5]) {
-
             R[6] = G(R[1], 4);
             {
-
               word *ob = (word *)R[6];
               hval  hdr;
               assert(allocp(R[6]), R[6], IFALSE);
@@ -19749,7 +17748,6 @@ super_dispatch:                                   /* run macro instructions */
               R[7] = ob[1];
               R[8] = ob[2];
               R[9] = ob[3];
-
             }
 
             R[10] = G(R[2], 3);
@@ -19769,13 +17767,10 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             R[6] = G(R[2], 7);
             if (R[3] == R[6]) {
-
               R[7] = G(R[1], 4);
               {
-
                 word *ob = (word *)R[7];
                 hval  hdr;
                 assert(allocp(R[7]), R[7], IFALSE);
@@ -19783,7 +17778,6 @@ super_dispatch:                                   /* run macro instructions */
                 assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                 R[8] = ob[1];
                 R[9] = ob[2];
-
               }
 
               R[10] = G(R[2], 8);
@@ -19805,7 +17799,6 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[7] = G(R[2], 3);
               R[8] = G(R[1], 3);
               R[9] = G(R[1], 4);
@@ -19822,25 +17815,18 @@ super_dispatch:                                   /* run macro instructions */
               R[4] = G(R[1], 2);
               ob = (word *)R[7];
               acc = 2;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 383:
       if (acc == 3) {
-
         if (R[3] == IFALSE) {
-
           R[6] = G(R[2], 2);
           R[7] = G(R[1], 2);
           R[8] = G(R[1], 3);
@@ -19859,9 +17845,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           {
-
             word *ob = (word *)R[3];
             hval  hdr;
             assert(allocp(R[3]), R[3], IFALSE);
@@ -19870,7 +17854,6 @@ super_dispatch:                                   /* run macro instructions */
             R[6] = ob[1];
             R[7] = ob[2];
             R[8] = ob[3];
-
           }
 
           R[9] = G(R[2], 2);
@@ -19889,19 +17872,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = G(R[1], 4);
           ob = (word *)R[9];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 384:
       if (acc == 1) {
-
         R[4] = G(R[2], 4);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -19928,17 +17907,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 385:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           R[4] = IFALSE;
           R[8] = R[3];
           R[3] = R[4];
@@ -19947,7 +17922,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[7] = G(R[2], 2);
           R[8] = G(R[1], 2);
           *fp = make_header(7, TCLOS);
@@ -19961,19 +17935,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 7;
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 386:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -19998,18 +17968,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 387:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[2], 3);
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 3);
@@ -20034,7 +18000,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[2], 5);
           R[6] = G(R[1], 4);
           R[7] = G(R[1], 5);
@@ -20051,22 +18016,17 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = G(R[1], 2);
           ob = (word *)R[5];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 388:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         if (R[3] == R[4]) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 4);
           R[7] = G(R[1], 5);
@@ -20083,7 +18043,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 4);
           R[7] = G(R[1], 5);
@@ -20100,27 +18059,21 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = G(R[1], 2);
           ob = (word *)R[5];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 389:
       if (acc == 2) {
-
         if (R[4] == IFALSE) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
           R[7] = INULL;
@@ -20131,19 +18084,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[9];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 390:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -20157,21 +18106,16 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 391:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 2);
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -20179,12 +18123,10 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           R[8] = G(R[1], 3);
           if (R[8] == INULL) {
-
             R[9] = G(R[2], 3);
             R[3] = G(R[1], 4);
             R[4] = R[5];
@@ -20193,7 +18135,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[9] = G(R[2], 4);
             R[10] = G(R[1], 4);
             *fp = make_header(6, TCLOS);
@@ -20207,11 +18148,9 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[8];
             ob = (word *)R[9];
             acc = 2;
-
           }
 
         } else {
-
           R[5] = G(R[2], 3);
           R[6] = G(R[1], 4);
           R[4] = G(R[1], 2);
@@ -20221,19 +18160,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 392:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -20256,21 +18191,16 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 393:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 3);
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -20278,7 +18208,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           R[8] = G(R[2], 3);
@@ -20296,7 +18225,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[2], 5);
           R[6] = G(R[1], 6);
           R[4] = G(R[1], 2);
@@ -20306,19 +18234,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 394:
       if (acc == 1) {
-
         R[4] = G(R[2], 4);
         *fp = make_header(3, 2);
         fp[1] = R[4];
@@ -20338,17 +18262,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 395:
       if (acc == 4) {
-
         if (R[5] == INULL) {
-
           R[7] = R[3];
           R[3] = R[4];
           R[4] = R[5];
@@ -20356,7 +18276,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[7] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -20369,21 +18288,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 396:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -20401,7 +18315,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -20419,19 +18332,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 397:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 5);
@@ -20451,15 +18360,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 398:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -20476,17 +18382,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 399:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           *fp = make_header(3, TCLOS);
@@ -20503,7 +18405,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 5);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -20521,25 +18422,19 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[9];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 400:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 2);
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -20547,7 +18442,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           R[8] = G(R[1], 4);
@@ -20557,13 +18451,10 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[5] = G(R[2], 3);
           if (R[3] == R[5]) {
-
             R[6] = G(R[1], 2);
             {
-
               word *ob = (word *)R[6];
               hval  hdr;
               assert(allocp(R[6]), R[6], IFALSE);
@@ -20572,7 +18463,6 @@ super_dispatch:                                   /* run macro instructions */
               R[7] = ob[1];
               R[8] = ob[2];
               R[9] = ob[3];
-
             }
 
             R[10] = G(R[2], 4);
@@ -20589,13 +18479,10 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[6] = G(R[2], 6);
             if (R[3] == R[6]) {
-
               R[7] = G(R[1], 2);
               {
-
                 word *ob = (word *)R[7];
                 hval  hdr;
                 assert(allocp(R[7]), R[7], IFALSE);
@@ -20604,7 +18491,6 @@ super_dispatch:                                   /* run macro instructions */
                 R[8] = ob[1];
                 R[9] = ob[2];
                 R[10] = ob[3];
-
               }
 
               R[11] = G(R[2], 4);
@@ -20621,13 +18507,10 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[7] = G(R[2], 8);
               if (R[3] == R[7]) {
-
                 R[8] = G(R[1], 2);
                 {
-
                   word *ob = (word *)R[8];
                   hval  hdr;
                   assert(allocp(R[8]), R[8], IFALSE);
@@ -20635,7 +18518,6 @@ super_dispatch:                                   /* run macro instructions */
                   assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                   R[9] = ob[1];
                   R[10] = ob[2];
-
                 }
 
                 R[11] = G(R[2], 4);
@@ -20651,7 +18533,6 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 3;
 
               } else {
-
                 R[8] = G(R[2], 10);
                 R[9] = G(R[1], 4);
                 *fp = make_header(3, TCLOS);
@@ -20663,25 +18544,18 @@ super_dispatch:                                   /* run macro instructions */
                 R[5] = G(R[1], 2);
                 ob = (word *)R[8];
                 acc = 3;
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 401:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         *fp = make_header(3, 2);
         fp[1] = R[5];
@@ -20693,15 +18567,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 402:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         *fp = make_header(4, TCLOS);
@@ -20719,15 +18590,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 403:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         *fp = make_header(4, 2);
@@ -20741,15 +18609,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 404:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = 128 * 252 + 258;
@@ -20760,17 +18625,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 405:
       if (acc == 5) {
-
         if (R[6] == INULL) {
-
           R[7] = R[3];
           R[3] = R[5];
           R[4] = R[6];
@@ -20778,7 +18639,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(7, TCLOS);
           fp[1] = G(R[1], 3);
@@ -20792,19 +18652,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 406:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 5);
@@ -20826,15 +18682,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 407:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -20853,15 +18706,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 408:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -20881,17 +18731,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 409:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -20908,7 +18754,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 2);
           R[7] = R[4];
@@ -20916,19 +18761,15 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 410:
       if (acc == 3) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 2);
         fp[2] = R[5];
@@ -20938,17 +18779,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 411:
       if (acc == 4) {
-
         if (R[5] == INULL) {
-
           R[7] = G(R[2], 2);
           R[5] = INULL;
           R[6] = G(R[1], 2);
@@ -20956,7 +18793,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[7] = G(R[2], 3);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[2], 4);
@@ -20969,30 +18805,23 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 412:
       if (acc == 4) {
-
         if (R[4] == IFALSE) {
-
           R[7] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           if (R[5] == INULL) {
-
             R[7] = G(R[1], 2);
             R[5] = INULL;
             R[6] = IFALSE;
@@ -21000,7 +18829,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             R[7] = G(R[1], 3);
             *fp = make_header(6, TCLOS);
             fp[1] = G(R[1], 4);
@@ -21013,21 +18841,16 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[5];
             ob = (word *)R[7];
             acc = 2;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 413:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -21049,15 +18872,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 414:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -21073,23 +18893,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 415:
       if (acc == 3) {
-
         if (R[4] == IFALSE) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[6] = G(R[1], 2);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 3);
@@ -21103,25 +18918,19 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 416:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 3);
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -21129,7 +18938,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           R[8] = G(R[2], 3);
@@ -21145,7 +18953,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[1], 2);
           *fp = make_header(3, 2);
           fp[1] = R[4];
@@ -21164,19 +18971,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = INULL;
           ob = (word *)R[7];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 417:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         *fp = make_header(3, 2);
         fp[1] = R[7];
@@ -21188,54 +18991,42 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 418:
       if (acc == 2) {
-
         R[5] = 128 * 66 + 258;
         if (R[4] == R[5]) {
-
           R[6] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[6] = 128 * 118 + 258;
           if (R[4] == R[6]) {
-
             R[7] = IFALSE;
             ob = (word *)R[3];
             R[3] = R[7];
             acc = 1;
 
           } else {
-
             R[7] = ITRUE;
             ob = (word *)R[3];
             R[3] = R[7];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 419:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -21250,15 +19041,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 420:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -21276,15 +19064,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 421:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(3, 2);
@@ -21297,15 +19082,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 422:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -21326,15 +19108,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 423:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
@@ -21350,15 +19129,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 424:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -21373,15 +19149,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 425:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -21404,15 +19177,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 426:
       if (acc == 4) {
-
         R[7] = G(R[1], 3);
         R[8] = G(R[1], 2);
         *fp = make_header(4, 2);
@@ -21426,15 +19196,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 427:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -21452,15 +19219,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 428:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -21475,15 +19239,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 429:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         R[8] = G(R[1], 3);
         *fp = make_header(7, TCLOS);
@@ -21496,31 +19257,25 @@ super_dispatch:                                   /* run macro instructions */
         R[9] = (word)fp;
         fp += 7;
         if (R[6] == IFALSE) {
-
           R[3] = R[6];
           ob = (word *)R[9];
           acc = 1;
 
         } else {
-
           R[10] = G(R[2], 2);
           R[4] = R[6];
           R[3] = R[9];
           ob = (word *)R[10];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 430:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
@@ -21541,15 +19296,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 431:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(6, TPROC);
@@ -21566,15 +19318,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 432:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -21593,15 +19342,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 433:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 3);
         R[9] = G(R[1], 4);
@@ -21620,15 +19366,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 434:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -21644,17 +19387,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 435:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -21672,7 +19411,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -21683,21 +19421,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 436:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -21715,7 +19448,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -21726,28 +19458,22 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 437:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -21758,21 +19484,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 438:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 2);
@@ -21785,7 +19506,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 3);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -21801,19 +19521,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 439:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -21828,15 +19544,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 440:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -21860,15 +19573,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 441:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -21889,15 +19599,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 442:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -21919,15 +19626,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 443:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -21952,15 +19656,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 444:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[8] = R[5];
@@ -21970,15 +19671,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 445:
       if (acc == 6) {
-
         R[9] = G(R[1], 2);
         *fp = make_header(8, TCLOS);
         fp[1] = G(R[1], 3);
@@ -21995,15 +19693,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 446:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -22029,17 +19724,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 447:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -22061,7 +19752,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -22083,19 +19773,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[11];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 448:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -22118,15 +19804,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 449:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -22152,15 +19835,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 450:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -22186,15 +19866,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 451:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -22217,17 +19894,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 452:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 6);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 5);
@@ -22238,7 +19911,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -22258,19 +19930,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 453:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -22293,15 +19961,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 454:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -22325,15 +19990,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 455:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -22360,15 +20022,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 456:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[2], 3);
@@ -22385,15 +20044,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 457:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -22414,17 +20070,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 458:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -22445,7 +20097,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 5);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 4);
@@ -22454,19 +20105,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 459:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -22488,15 +20135,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 460:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -22518,15 +20162,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 461:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -22547,15 +20188,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 462:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -22578,15 +20216,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 463:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -22607,15 +20242,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 464:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -22638,15 +20270,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 465:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 5);
@@ -22666,15 +20295,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 466:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -22695,17 +20321,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 467:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -22725,7 +20347,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 5);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -22734,19 +20355,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 468:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -22766,15 +20383,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 469:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -22794,15 +20408,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 470:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -22826,23 +20437,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 471:
       if (acc == 2) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 2);
           *fp = make_header(5, TCLOS);
@@ -22854,27 +20460,21 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[5];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 472:
       if (acc == 5) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -22889,19 +20489,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[10];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 473:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -22922,15 +20518,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 474:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -22949,23 +20542,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 475:
       if (acc == 2) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           R[5] = G(R[1], 2);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[1], 3);
@@ -22975,19 +20563,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 4;
           ob = (word *)R[5];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 476:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -23008,17 +20592,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 477:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -23037,7 +20617,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 5);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 4);
@@ -23046,19 +20625,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 478:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -23078,15 +20653,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 479:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 4);
         *fp = make_header(5, TCLOS);
@@ -23104,15 +20676,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 480:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -23130,17 +20699,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 481:
       if (acc == 3) {
-
         if (R[5] == INULL) {
-
           R[7] = R[3];
           R[3] = R[4];
           R[4] = R[5];
@@ -23148,7 +20713,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[6] = G(R[1], 2);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 3);
@@ -23160,33 +20724,25 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[6];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 482:
       if (acc == 5) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[6];
           acc = 2;
 
         } else {
-
           R[8] = 128 * 0 + 258;
           {
-
             hval r = immval(R[5]) - immval(R[8]);
             R[10] = F(r >> FBITS & 1);
             R[9] = F(r);
-
           }
 
           R[11] = G(R[1], 2);
@@ -23201,19 +20757,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 7;
           ob = (word *)R[11];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 483:
       if (acc == 5) {
-
         R[8] = G(R[2], 2);
         R[9] = G(R[1], 3);
         *fp = make_header(7, TCLOS);
@@ -23230,15 +20782,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 484:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -23261,15 +20810,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 485:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -23285,15 +20831,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 486:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         R[9] = 128 * 0 + 258;
         R[12] = R[9];
@@ -23306,15 +20849,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 487:
       if (acc == 7) {
-
         R[10] = G(R[1], 2);
         *fp = make_header(8, TCLOS);
         fp[1] = G(R[1], 3);
@@ -23331,15 +20871,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 488:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -23358,7 +20895,6 @@ super_dispatch:                                   /* run macro instructions */
         R[11] = (word)fp;
         fp += 9;
         if (R[4] == IFALSE) {
-
           R[12] = G(R[2], 2);
           R[5] = 128 * 2 + 258;
           R[4] = R[8];
@@ -23367,25 +20903,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[3] = R[4];
           ob = (word *)R[11];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 489:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -23409,7 +20939,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 3);
           R[5] = G(R[1], 6);
           R[6] = G(R[1], 7);
@@ -23428,19 +20957,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[12];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 490:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 3);
         R[9] = G(R[1], 4);
@@ -23460,15 +20985,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 491:
       if (acc == 6) {
-
         R[9] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -23486,15 +21008,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 492:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -23518,15 +21037,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 493:
       if (acc == 5) {
-
         R[8] = G(R[2], 2);
         R[9] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
@@ -23545,17 +21061,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 494:
       if (acc == 2) {
-
         if (R[4] == IFALSE) {
-
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
           *fp = make_header(4, 2);
@@ -23578,7 +21090,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 6);
           R[7] = G(R[1], 5);
@@ -23592,19 +21103,15 @@ super_dispatch:                                   /* run macro instructions */
           R[7] = R[9];
           ob = (word *)R[8];
           acc = 6;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 495:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -23621,15 +21128,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 496:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -23648,15 +21152,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 497:
       if (acc == 5) {
-
         *fp = make_header(4, 2);
         fp[1] = R[5];
         fp[2] = R[6];
@@ -23676,15 +21177,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 498:
       if (acc == 6) {
-
         R[9] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -23700,15 +21198,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 499:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -23732,17 +21227,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 500:
       if (acc == 2) {
-
         if (R[3] == IFALSE) {
-
           R[5] = G(R[1], 7);
           R[6] = G(R[1], 4);
           R[7] = INULL;
@@ -23759,7 +21250,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 6);
           R[7] = G(R[1], 7);
@@ -23779,19 +21269,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[8];
           acc = 6;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 501:
       if (acc == 6) {
-
         R[9] = G(R[2], 2);
         R[10] = G(R[1], 2);
         R[11] = G(R[1], 3);
@@ -23814,17 +21300,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 502:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 7);
           R[6] = G(R[1], 2);
@@ -23854,7 +21336,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 6);
           R[6] = G(R[1], 7);
@@ -23872,19 +21353,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 7;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 503:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -23914,15 +21391,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 504:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -23946,7 +21420,6 @@ super_dispatch:                                   /* run macro instructions */
         R[13] = (word)fp;
         fp += 11;
         if (R[3] == IFALSE) {
-
           R[14] = G(R[2], 2);
           R[4] = R[5];
           R[3] = R[13];
@@ -23954,22 +21427,17 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           ob = (word *)R[13];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 505:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -23993,13 +21461,11 @@ super_dispatch:                                   /* run macro instructions */
         R[13] = (word)fp;
         fp += 11;
         if (R[3] == IFALSE) {
-
           R[3] = IFALSE;
           ob = (word *)R[13];
           acc = 1;
 
         } else {
-
           R[14] = G(R[2], 2);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[2], 3);
@@ -24011,24 +21477,18 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[14];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 506:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           if (R[4] == INULL) {
-
             R[5] = G(R[2], 2);
             R[6] = G(R[1], 9);
             R[4] = G(R[1], 2);
@@ -24040,7 +21500,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[5] = G(R[2], 2);
             R[6] = G(R[1], 9);
             R[7] = G(R[1], 2);
@@ -24061,11 +21520,9 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[11];
             ob = (word *)R[8];
             acc = 3;
-
           }
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 6);
           R[6] = G(R[1], 7);
@@ -24087,19 +21544,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[11];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 507:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -24119,15 +21572,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 508:
       if (acc == 4) {
-
         R[7] = G(R[1], 3);
         R[8] = G(R[1], 2);
         R[10] = R[7];
@@ -24141,15 +21591,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 509:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -24170,15 +21617,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 510:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -24200,17 +21644,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 511:
       if (acc == 5) {
-
         if (R[5] == F(0)) {
-
           R[8] = G(R[1], 2);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[1], 3);
@@ -24222,14 +21662,11 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[8] = 128 * 0 + 258;
           {
-
             hval r = immval(R[5]) - immval(R[8]);
             R[10] = F(r >> FBITS & 1);
             R[9] = F(r);
-
           }
 
           R[11] = G(R[1], 2);
@@ -24244,19 +21681,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 7;
           ob = (word *)R[11];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 512:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -24281,15 +21714,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 513:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -24302,15 +21732,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 514:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -24330,15 +21757,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 515:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -24358,15 +21782,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 516:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -24389,15 +21810,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 517:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(3, TCLOS);
@@ -24416,15 +21834,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 518:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         *fp = make_header(4, TPROC);
@@ -24440,15 +21855,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 519:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -24476,15 +21888,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 520:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
@@ -24500,15 +21909,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 521:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -24536,17 +21942,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 522:
       if (acc == 4) {
-
         if (R[5] == INULL) {
-
           R[7] = R[3];
           R[3] = R[4];
           R[4] = R[6];
@@ -24554,9 +21956,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           if (R[6] == INULL) {
-
             R[7] = R[3];
             R[3] = R[4];
             R[4] = R[5];
@@ -24564,7 +21964,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             R[7] = G(R[1], 2);
             *fp = make_header(4, TCLOS);
             fp[1] = G(R[1], 3);
@@ -24574,21 +21973,16 @@ super_dispatch:                                   /* run macro instructions */
             fp += 4;
             ob = (word *)R[7];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 523:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -24606,15 +22000,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 524:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
@@ -24627,15 +22018,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 525:
       if (acc == 1) {
-
         R[4] = G(R[2], 3);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -24651,15 +22039,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 526:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -24676,17 +22061,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 527:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -24708,7 +22089,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 2);
@@ -24719,21 +22099,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 528:
       if (acc == 2) {
-
         if (R[4] == F(0)) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 4);
           R[7] = G(R[1], 2);
@@ -24745,7 +22120,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = G(R[2], 3);
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 3);
@@ -24766,21 +22140,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[12];
           ob = (word *)R[9];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 529:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 4);
@@ -24793,7 +22162,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 3);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -24813,19 +22181,15 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[9];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 530:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -24841,17 +22205,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 531:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -24870,7 +22230,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 4);
@@ -24881,19 +22240,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 532:
       if (acc == 3) {
-
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
@@ -24909,17 +22264,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 533:
       if (acc == 6) {
-
         if (R[5] == INULL) {
-
           R[8] = R[3];
           R[3] = R[4];
           R[4] = R[6];
@@ -24928,7 +22279,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[9] = G(R[1], 2);
           *fp = make_header(7, TCLOS);
           fp[1] = G(R[1], 3);
@@ -24942,23 +22292,18 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = IFALSE;
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 534:
       if (acc == 2) {
-
         R[5] = 128 * 0 + 258;
         R[6] = R[3] & R[5];
         if (R[5] == R[6]) {
-
           R[7] = G(R[2], 2);
           R[8] = G(R[1], 4);
           R[9] = G(R[1], 3);
@@ -24980,7 +22325,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[7] = G(R[2], 2);
           R[8] = G(R[1], 2);
           R[9] = G(R[1], 3);
@@ -25000,19 +22344,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 535:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -25035,15 +22375,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 536:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -25066,15 +22403,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 537:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -25097,15 +22431,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 538:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         *fp = make_header(3, TCLOS);
@@ -25124,15 +22455,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 539:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[2], 3);
@@ -25146,24 +22474,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 540:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[3] = G(R[1], 3);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -25180,21 +22503,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 541:
       if (acc == 2) {
-
         {
-
           word *ob = (word *)R[4];
           hval  hdr;
           assert(allocp(R[4]), R[4], IFALSE);
@@ -25202,7 +22520,6 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[5] = ob[1];
           R[6] = ob[2];
-
         }
 
         R[7] = G(R[2], 2);
@@ -25219,15 +22536,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 542:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -25245,23 +22559,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 543:
       if (acc == 3) {
-
         if (R[5] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           R[6] = G(R[1], 2);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 3);
@@ -25273,19 +22582,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[6];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 544:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -25308,24 +22613,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 545:
       if (acc == 3) {
-
         if (R[4] == INULL) {
-
           R[6] = INULL;
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[6] = G(R[1], 2);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 3);
@@ -25336,27 +22636,21 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[6];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 546:
       if (acc == 5) {
-
         if (R[4] == R[5]) {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(7, TCLOS);
           fp[1] = G(R[1], 3);
@@ -25369,19 +22663,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 7;
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 547:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -25394,17 +22684,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 548:
       if (acc == 2) {
-
         if (R[4] == F(0)) {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 3);
           *fp = make_header(4, TPROC);
@@ -25421,10 +22707,8 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[5] = 128 * 0 + 258;
           if (R[4] == R[5]) {
-
             R[6] = G(R[2], 4);
             R[7] = G(R[1], 3);
             *fp = make_header(4, TPROC);
@@ -25438,30 +22722,24 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[6] = 128 * 2 + 258;
             if (R[4] == R[6]) {
-
               R[7] = G(R[1], 3);
               R[4] = F(0);
               ob = (word *)R[7];
               acc = 2;
 
             } else {
-
               R[7] = 128 * 4 + 258;
               if (R[4] == R[7]) {
-
                 R[8] = G(R[1], 3);
                 R[4] = R[5];
                 ob = (word *)R[8];
                 acc = 2;
 
               } else {
-
                 R[8] = 128 * 6 + 258;
                 if (R[4] == R[8]) {
-
                   R[9] = G(R[2], 6);
                   R[10] = G(R[1], 3);
                   R[5] = G(R[2], 7);
@@ -25471,10 +22749,8 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 3;
 
                 } else {
-
                   R[9] = 128 * 8 + 258;
                   if (R[4] == R[9]) {
-
                     R[10] = G(R[2], 6);
                     R[11] = G(R[1], 3);
                     R[5] = G(R[2], 7);
@@ -25484,10 +22760,8 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 3;
 
                   } else {
-
                     R[10] = 128 * 10 + 258;
                     if (R[4] == R[10]) {
-
                       R[11] = G(R[2], 6);
                       R[12] = G(R[1], 3);
                       R[5] = G(R[2], 7);
@@ -25497,10 +22771,8 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 3;
 
                     } else {
-
                       R[11] = 128 * 12 + 258;
                       if (R[4] == R[11]) {
-
                         R[12] = G(R[2], 6);
                         R[13] = G(R[1], 2);
                         R[14] = G(R[1], 3);
@@ -25517,10 +22789,8 @@ super_dispatch:                                   /* run macro instructions */
                         acc = 3;
 
                       } else {
-
                         R[12] = 128 * 14 + 258;
                         if (R[4] == R[12]) {
-
                           R[13] = G(R[2], 6);
                           R[14] = G(R[1], 2);
                           R[15] = G(R[1], 3);
@@ -25537,10 +22807,8 @@ super_dispatch:                                   /* run macro instructions */
                           acc = 3;
 
                         } else {
-
                           R[13] = 128 * 16 + 258;
                           if (R[4] == R[13]) {
-
                             R[14] = G(R[2], 10);
                             R[4] = G(R[1], 2);
                             R[16] = G(R[1], 3);
@@ -25556,7 +22824,6 @@ super_dispatch:                                   /* run macro instructions */
                             acc = 3;
 
                           } else {
-
                             R[14] = G(R[2], 12);
                             R[15] = G(R[1], 2);
                             R[16] = G(R[1], 3);
@@ -25571,37 +22838,24 @@ super_dispatch:                                   /* run macro instructions */
                             R[3] = R[17];
                             ob = (word *)R[14];
                             acc = 4;
-
                           }
-
                         }
-
                       }
-
                     }
-
                   }
-
                 }
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 549:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -25619,15 +22873,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 550:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -25647,15 +22898,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 551:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -25668,29 +22916,23 @@ super_dispatch:                                   /* run macro instructions */
         R[8] = (word)fp;
         fp += 6;
         if (R[4] == F(0)) {
-
           R[3] = G(R[2], 2);
           ob = (word *)R[8];
           acc = 1;
 
         } else {
-
           R[3] = G(R[2], 3);
           ob = (word *)R[8];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 552:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         *fp = make_header(4, TPROC);
@@ -25707,15 +22949,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 553:
       if (acc == 3) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 4);
         fp[2] = R[5];
@@ -25733,15 +22972,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 554:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
@@ -25758,17 +22994,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 555:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -25790,7 +23022,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 5);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 6);
@@ -25805,19 +23036,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[9];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 556:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
@@ -25835,15 +23062,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 557:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -25866,17 +23090,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 558:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -25897,7 +23117,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 2);
@@ -25906,37 +23125,29 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 559:
       if (acc == 4) {
-
         if (R[5] == F(0)) {
-
           R[7] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           if (R[4] == INULL) {
-
             R[7] = ITRUE;
             ob = (word *)R[3];
             R[3] = R[7];
             acc = 1;
 
           } else {
-
             R[7] = G(R[1], 2);
             *fp = make_header(5, TCLOS);
             fp[1] = G(R[1], 3);
@@ -25947,23 +23158,17 @@ super_dispatch:                                   /* run macro instructions */
             fp += 5;
             ob = (word *)R[7];
             acc = 2;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 560:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -25978,7 +23183,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[2], 3);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -25996,13 +23200,10 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[8];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
@@ -26014,7 +23215,6 @@ super_dispatch:                                   /* run macro instructions */
       break;
     case 562:
       if (acc == 2) {
-
         assert(pairp(R[4]), R[4], 105);
         R[5] = G(R[4], 1);
         ob = (word *)R[3];
@@ -26022,9 +23222,7 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
@@ -26036,82 +23234,66 @@ super_dispatch:                                   /* run macro instructions */
       break;
     case 564:
       if (acc == 3) {
-
         R[6] = prim_ref(R[4], R[5]);
         ob = (word *)R[3];
         R[3] = R[6];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 565:
       if (acc == 3) {
-
         R[6] = R[4] ^ (FMAX << IPOS & R[5]);
         ob = (word *)R[3];
         R[3] = R[6];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 566:
       if (acc == 3) {
-
         R[6] = BOOL(R[4] == R[5]);
         ob = (word *)R[3];
         R[3] = R[6];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 567:
       if (acc == 3) {
-
         R[6] = prim_lraw(R[4], R[5]);
         ob = (word *)R[3];
         R[3] = R[6];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 568:
       if (acc == 3) {
-
         R[6] = cons(R[4], R[5]);
         ob = (word *)R[3];
         R[3] = R[6];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 569:
       if (acc == 2) {
-
         assert(pairp(R[4]), R[4], 169);
         R[5] = G(R[4], 2);
         ob = (word *)R[3];
@@ -26119,15 +23301,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 570:
       if (acc == 2) {
-
         assert(pairp(R[4]), R[4], 105);
         R[5] = G(R[4], 1);
         ob = (word *)R[3];
@@ -26135,30 +23314,24 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 571:
       if (acc == 3) {
-
         R[6] = R[4] ^ (FMAX << IPOS & R[5]);
         ob = (word *)R[3];
         R[3] = R[6];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 572:
       if (acc == 5) {
-
         R[8] = G(R[2], 2);
         R[9] = G(R[1], 2);
         R[10] = G(R[1], 3);
@@ -26181,17 +23354,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 573:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 7);
           R[6] = G(R[1], 2);
@@ -26221,7 +23390,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 5);
@@ -26247,21 +23415,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[13];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 574:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 10);
@@ -26278,7 +23441,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -26304,19 +23466,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[13];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 575:
       if (acc == 5) {
-
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 2);
         fp[5] = R[5];
@@ -26339,15 +23497,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 576:
       if (acc == 5) {
-
         R[8] = G(R[2], 2);
         R[9] = G(R[1], 2);
         R[10] = G(R[1], 3);
@@ -26371,17 +23526,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 577:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 10);
@@ -26411,7 +23562,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 7);
           R[6] = G(R[1], 8);
@@ -26430,21 +23580,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 578:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 2);
@@ -26474,7 +23619,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 5);
@@ -26500,21 +23644,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[13];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 579:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -26531,7 +23670,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -26557,19 +23695,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[13];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 580:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -26590,15 +23724,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 581:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -26624,15 +23755,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 582:
       if (acc == 5) {
-
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 2);
         fp[4] = R[5];
@@ -26653,24 +23781,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 583:
       if (acc == 2) {
-
         if (R[4] == IFALSE) {
-
           R[5] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
           R[8] = R[4];
@@ -26678,49 +23801,39 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[6];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 584:
       if (acc == 5) {
-
         R[8] = IFALSE;
         ob = (word *)R[3];
         R[3] = R[8];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 585:
       if (acc == 5) {
-
         R[8] = ITRUE;
         ob = (word *)R[3];
         R[3] = R[8];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 586:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -26741,15 +23854,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 587:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
         R[7] = IFALSE;
@@ -26762,26 +23872,20 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 588:
       if (acc == 5) {
-
         if (R[4] == IFALSE) {
-
           if (R[7] == IFALSE) {
-
             R[8] = G(R[1], 3);
             R[4] = G(R[1], 2);
             ob = (word *)R[8];
             acc = 4;
 
           } else {
-
             R[8] = G(R[1], 3);
             R[9] = G(R[1], 4);
             *fp = make_header(6, TPROC);
@@ -26795,13 +23899,10 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = G(R[1], 2);
             ob = (word *)R[8];
             acc = 4;
-
           }
 
         } else {
-
           if (R[7] == IFALSE) {
-
             R[8] = G(R[1], 4);
             R[9] = G(R[1], 3);
             *fp = make_header(6, TPROC);
@@ -26820,7 +23921,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 5;
 
           } else {
-
             R[8] = G(R[1], 4);
             R[9] = G(R[1], 3);
             *fp = make_header(8, TCLOS);
@@ -26839,29 +23939,22 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[9];
             ob = (word *)R[7];
             acc = 5;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 589:
       if (acc == 5) {
-
         if (R[6] == IFALSE) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 2);
           fp[4] = R[7];
@@ -26872,30 +23965,23 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[4];
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 590:
       if (acc == 5) {
-
         if (R[4] == IFALSE) {
-
           if (R[7] == IFALSE) {
-
             R[8] = G(R[1], 3);
             R[4] = G(R[1], 2);
             ob = (word *)R[8];
             acc = 4;
 
           } else {
-
             R[8] = G(R[1], 4);
             R[4] = G(R[1], 3);
             *fp = make_header(6, TPROC);
@@ -26911,13 +23997,10 @@ super_dispatch:                                   /* run macro instructions */
             R[7] = R[8];
             ob = (word *)R[7];
             acc = 5;
-
           }
 
         } else {
-
           if (R[7] == IFALSE) {
-
             R[8] = G(R[1], 3);
             R[9] = G(R[1], 4);
             *fp = make_header(6, TPROC);
@@ -26933,7 +24016,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             R[8] = G(R[1], 4);
             R[9] = G(R[1], 3);
             *fp = make_header(8, TCLOS);
@@ -26952,21 +24034,16 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[9];
             ob = (word *)R[7];
             acc = 5;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 591:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -26977,15 +24054,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 592:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[7] = IFALSE;
         R[10] = R[7];
@@ -26995,33 +24069,25 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         if (acc == 4) {
-
           R[7] = G(R[1], 2);
           ob = (word *)R[7];
           acc = 5;
 
         } else {
-
           error(61, ob, F(acc));
-
         }
-
       }
 
       break;
     case 593:
       if (acc == 5) {
-
         if (R[4] == IFALSE) {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           *fp = make_header(5, TPROC);
           fp[1] = G(R[1], 2);
           fp[4] = R[7];
@@ -27040,31 +24106,24 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 594:
       if (acc == 5) {
-
         R[8] = G(R[1], 3);
         if (R[8] == R[5]) {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[9] = prim_less(R[8], R[5]);
           if (R[9] == IFALSE) {
-
             R[10] = G(R[1], 4);
             R[6] = G(R[1], 2);
             R[4] = R[7];
@@ -27074,29 +24133,22 @@ super_dispatch:                                   /* run macro instructions */
             acc = 5;
 
           } else {
-
             R[7] = G(R[1], 4);
             R[6] = G(R[1], 2);
             R[5] = R[8];
             ob = (word *)R[7];
             acc = 5;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 595:
       if (acc == 5) {
-
         if (R[4] == IFALSE) {
-
           R[8] = G(R[1], 2);
           R[4] = IFALSE;
           R[7] = R[4];
@@ -27104,7 +24156,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 3);
           fp[4] = R[5];
@@ -27123,25 +24174,19 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 596:
       if (acc == 5) {
-
         R[8] = G(R[1], 4);
         R[9] = prim_less(R[8], R[5]);
         if (R[9] == IFALSE) {
-
           if (R[8] == R[5]) {
-
             R[10] = G(R[2], 2);
             R[6] = G(R[1], 3);
             R[5] = R[8];
@@ -27149,7 +24194,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 5;
 
           } else {
-
             R[10] = G(R[1], 2);
             *fp = make_header(6, TCLOS);
             fp[1] = G(R[2], 3);
@@ -27165,11 +24209,9 @@ super_dispatch:                                   /* run macro instructions */
             R[7] = R[10];
             ob = (word *)R[7];
             acc = 5;
-
           }
 
         } else {
-
           R[10] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[2], 4);
@@ -27184,19 +24226,15 @@ super_dispatch:                                   /* run macro instructions */
           R[7] = R[10];
           ob = (word *)R[7];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 597:
       if (acc == 5) {
-
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 2);
         fp[5] = R[4];
@@ -27218,15 +24256,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 598:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
         R[10] = G(R[1], 4);
@@ -27251,15 +24286,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 599:
       if (acc == 5) {
-
         R[8] = G(R[1], 4);
         R[9] = G(R[1], 3);
         R[10] = G(R[1], 2);
@@ -27283,15 +24315,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 600:
       if (acc == 5) {
-
         R[8] = G(R[2], 2);
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
@@ -27301,15 +24330,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 601:
       if (acc == 5) {
-
         R[8] = G(R[1], 4);
         R[9] = G(R[1], 3);
         R[10] = G(R[1], 2);
@@ -27336,15 +24362,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 602:
       if (acc == 5) {
-
         R[8] = G(R[1], 4);
         R[9] = G(R[1], 3);
         R[10] = G(R[1], 2);
@@ -27367,15 +24390,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 603:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 6);
         R[6] = G(R[1], 7);
@@ -27399,15 +24419,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 604:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[8] = R[4];
         R[4] = R[5];
@@ -27415,15 +24432,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 605:
       if (acc == 3) {
-
         R[6] = G(R[1], 5);
         R[7] = G(R[1], 4);
         R[8] = G(R[1], 3);
@@ -27437,15 +24451,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 606:
       if (acc == 3) {
-
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 3);
         R[8] = G(R[1], 2);
@@ -27459,15 +24470,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 607:
       if (acc == 3) {
-
         R[6] = IFALSE;
         R[7] = G(R[1], 4);
         R[8] = G(R[1], 3);
@@ -27481,15 +24489,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 608:
       if (acc == 3) {
-
         R[6] = IFALSE;
         R[7] = G(R[1], 3);
         R[8] = G(R[1], 2);
@@ -27502,19 +24507,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 609:
       if (acc == 5) {
-
         if (R[4] == IFALSE) {
-
           if (R[7] == IFALSE) {
-
             *fp = make_header(4, TPROC);
             fp[1] = G(R[1], 2);
             fp[3] = R[5];
@@ -27526,7 +24526,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             *fp = make_header(5, TPROC);
             fp[1] = G(R[1], 3);
             fp[4] = R[5];
@@ -27537,13 +24536,10 @@ super_dispatch:                                   /* run macro instructions */
             ob = (word *)R[3];
             R[3] = R[8];
             acc = 1;
-
           }
 
         } else {
-
           if (R[7] == IFALSE) {
-
             *fp = make_header(5, TPROC);
             fp[1] = G(R[1], 4);
             fp[4] = R[4];
@@ -27556,7 +24552,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             *fp = make_header(6, TPROC);
             fp[1] = G(R[1], 5);
             fp[5] = R[4];
@@ -27568,21 +24563,16 @@ super_dispatch:                                   /* run macro instructions */
             ob = (word *)R[3];
             R[3] = R[8];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 610:
       if (acc == 3) {
-
         R[6] = G(R[1], 5);
         R[7] = G(R[1], 4);
         R[8] = G(R[1], 3);
@@ -27596,15 +24586,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 611:
       if (acc == 3) {
-
         R[6] = G(R[1], 4);
         R[7] = G(R[1], 3);
         R[8] = G(R[1], 2);
@@ -27618,15 +24605,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 612:
       if (acc == 3) {
-
         R[6] = IFALSE;
         R[7] = G(R[1], 4);
         R[8] = G(R[1], 3);
@@ -27640,15 +24624,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 613:
       if (acc == 3) {
-
         R[6] = IFALSE;
         R[7] = G(R[1], 3);
         R[8] = G(R[1], 2);
@@ -27661,37 +24642,29 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 614:
       if (acc == 4) {
-
         assert(pairp(R[4]), R[4], 105);
         R[7] = G(R[4], 1);
         if (R[7] == R[5]) {
-
           R[8] = G(R[4], 2);
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
 
         } else {
-
           R[8] = G(R[4], 1);
           {
-
             word ob = R[8];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           if (R[9] == F(0)) {
-
             R[10] = G(R[4], 1);
             R[4] = G(R[4], 2);
             *fp = make_header(4, TPROC);
@@ -27704,25 +24677,19 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             R[4] = G(R[4], 2);
             ob = (word *)R[6];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 615:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -27744,15 +24711,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 616:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = 128 * 46 + 258;
         R[7] = IFALSE;
@@ -27764,15 +24728,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 617:
       if (acc == 6) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
         fp[2] = R[8];
@@ -27789,15 +24750,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 618:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[2], 2);
@@ -27810,27 +24768,21 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 619:
       if (acc == 3) {
-
         if (R[3] == IFALSE) {
-
           R[6] = G(R[1], 2);
           if (R[6] == IFALSE) {
-
             R[7] = G(R[1], 3);
             R[3] = IFALSE;
             ob = (word *)R[7];
             acc = 1;
 
           } else {
-
             R[5] = G(R[1], 4);
             R[3] = G(R[1], 3);
             *fp = make_header(3, TPROC);
@@ -27840,11 +24792,9 @@ super_dispatch:                                   /* run macro instructions */
             fp += 3;
             ob = (word *)R[5];
             acc = 3;
-
           }
 
         } else {
-
           R[6] = G(R[2], 3);
           R[7] = G(R[1], 3);
           R[8] = G(R[1], 4);
@@ -27858,28 +24808,22 @@ super_dispatch:                                   /* run macro instructions */
           fp += 6;
           ob = (word *)R[6];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 620:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 5);
@@ -27894,19 +24838,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[5];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 621:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -27919,15 +24859,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 622:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = F(0);
         R[6] = INULL;
@@ -27938,15 +24875,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 623:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = INULL;
         R[6] = G(R[1], 2);
@@ -27959,15 +24893,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 624:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
@@ -27984,15 +24915,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 625:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = 128 * 250 + 258;
@@ -28003,15 +24931,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 626:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -28044,15 +24969,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 627:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -28081,37 +25003,28 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 628:
       if (acc == 3) {
-
         {
-
           word ob = R[5];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = 128 * 82 + 258;
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 62 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 80 + 258;
             R[12] = BOOL(R[6] == R[11]);
             if (R[12] == IFALSE) {
-
               if (R[5] == F(0)) {
-
                 R[13] = IFALSE;
                 R[7] = R[3];
                 R[3] = R[4];
@@ -28120,42 +25033,34 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 2;
 
               } else {
-
                 R[13] = ITRUE;
                 R[7] = R[3];
                 R[3] = R[4];
                 R[4] = R[13];
                 ob = (word *)R[7];
                 acc = 2;
-
               }
 
             } else {
-
               R[13] = IFALSE;
               R[7] = R[3];
               R[3] = R[4];
               R[4] = R[13];
               ob = (word *)R[7];
               acc = 2;
-
             }
 
           } else {
-
             R[11] = IFALSE;
             R[7] = R[3];
             R[3] = R[4];
             R[4] = R[11];
             ob = (word *)R[7];
             acc = 2;
-
           }
 
         } else {
-
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -28163,12 +25068,10 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[9] = ob[1];
             R[10] = ob[2];
-
           }
 
           R[11] = 128 * 0 + 258;
           if (R[9] == R[11]) {
-
             R[12] = G(R[1], 2);
             *fp = make_header(3, TPROC);
             fp[1] = G(R[1], 3);
@@ -28180,7 +25083,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[12] = G(R[1], 2);
             *fp = make_header(4, TCLOS);
             fp[1] = G(R[1], 4);
@@ -28191,21 +25093,16 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[10];
             ob = (word *)R[12];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 629:
       if (acc == 2) {
-
         R[5] = F(0);
         R[4] = BOOL(R[4] == R[5]);
         R[7] = G(R[1], 2);
@@ -28213,17 +25110,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 630:
       if (acc == 3) {
-
         if (R[5] == INULL) {
-
           R[7] = R[3];
           R[3] = R[4];
           R[4] = R[5];
@@ -28231,28 +25124,22 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[6] = G(R[1], 2);
           R[7] = INULL;
           R[9] = R[6];
           R[6] = R[7];
           ob = (word *)R[9];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 631:
       if (acc == 5) {
-
         if (R[5] == INULL) {
-
           R[7] = R[3];
           R[3] = R[4];
           R[4] = R[6];
@@ -28260,7 +25147,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 3);
@@ -28276,19 +25162,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[8];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 632:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -28309,15 +25191,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 633:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -28339,17 +25218,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 634:
       if (acc == 6) {
-
         if (R[5] == INULL) {
-
           R[7] = R[3];
           R[3] = R[4];
           R[4] = R[6];
@@ -28357,7 +25232,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[9] = G(R[1], 2);
           *fp = make_header(8, TCLOS);
           fp[1] = G(R[1], 3);
@@ -28372,19 +25246,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[9];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 635:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -28410,19 +25280,15 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 636:
       if (acc == 2) {
-
         assert(pairp(R[3]), R[3], 169);
         R[5] = G(R[3], 2);
         if (R[5] == INULL) {
-
           R[6] = G(R[2], 2);
           R[7] = G(R[1], 2);
           R[8] = G(R[1], 6);
@@ -28445,7 +25311,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[6] = G(R[1], 4);
           R[7] = G(R[1], 5);
           R[8] = G(R[1], 6);
@@ -28466,19 +25331,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[11];
           ob = (word *)R[8];
           acc = 6;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 637:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -28498,15 +25359,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 638:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = cons(R[3], R[4]);
         R[6] = G(R[1], 7);
@@ -28524,15 +25382,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 639:
       if (acc == 3) {
-
         assert(pairp(R[4]), R[4], 105);
         R[6] = G(R[4], 1);
         assert(pairp(R[5]), R[5], 105);
@@ -28543,15 +25398,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 640:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(5, TPROC);
         fp[1] = G(R[1], 3);
@@ -28565,15 +25417,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 641:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = cons(R[3], R[5]);
         R[7] = G(R[1], 3);
@@ -28585,15 +25434,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 642:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -28609,17 +25455,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 643:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           R[5] = INULL;
           R[6] = cons(R[4], R[5]);
@@ -28632,7 +25474,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -28650,19 +25491,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 644:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -28678,17 +25515,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 645:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           *fp = make_header(3, TCLOS);
@@ -28705,24 +25538,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[3] = F(0);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 646:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         *fp = make_header(3, TPROC);
@@ -28738,15 +25566,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 647:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         R[8] = F(0);
         R[9] = G(R[1], 3);
@@ -28757,17 +25582,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 648:
       if (acc == 7) {
-
         if (R[5] == INULL) {
-
           R[10] = G(R[1], 2);
           *fp = make_header(4, TPROC);
           fp[1] = G(R[1], 3);
@@ -28780,7 +25601,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[10] = G(R[1], 4);
           *fp = make_header(9, TCLOS);
           fp[1] = G(R[1], 5);
@@ -28797,21 +25617,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 649:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 6);
@@ -28837,7 +25652,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -28858,19 +25672,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 650:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 6);
         R[6] = G(R[1], 5);
@@ -28889,17 +25699,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 651:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 2);
@@ -28921,7 +25727,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 3);
           assert(pairp(R[4]), R[4], 169);
           R[5] = G(R[4], 2);
@@ -28946,19 +25751,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = 128 * 0 + 258;
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 652:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         assert(pairp(R[4]), R[4], 105);
         R[5] = G(R[4], 1);
@@ -28985,17 +25786,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 653:
       if (acc == 7) {
-
         if (R[5] == INULL) {
-
           R[10] = G(R[1], 2);
           *fp = make_header(4, TPROC);
           fp[1] = G(R[1], 3);
@@ -29008,7 +25805,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[10] = G(R[1], 4);
           *fp = make_header(9, TCLOS);
           fp[1] = G(R[1], 5);
@@ -29024,21 +25820,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[10];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 654:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 5);
@@ -29060,7 +25851,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 3);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -29084,19 +25874,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[12];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 655:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -29122,15 +25908,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 656:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -29148,13 +25931,11 @@ super_dispatch:                                   /* run macro instructions */
         R[10] = (word)fp;
         fp += 8;
         if (R[3] == IFALSE) {
-
           R[3] = G(R[1], 3);
           ob = (word *)R[10];
           acc = 1;
 
         } else {
-
           assert(pairp(R[4]), R[4], 105);
           R[6] = G(R[4], 1);
           R[12] = G(R[2], 2);
@@ -29163,19 +25944,15 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[10];
           ob = (word *)R[12];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 657:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         assert(pairp(R[4]), R[4], 169);
         R[5] = G(R[4], 2);
@@ -29200,15 +25977,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 658:
       if (acc == 1) {
-
         R[4] = G(R[1], 7);
         R[5] = G(R[1], 6);
         R[6] = G(R[1], 5);
@@ -29228,17 +26002,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 659:
       if (acc == 3) {
-
         if (R[5] == F(0)) {
-
           R[6] = F(0);
           R[7] = R[3];
           R[3] = R[4];
@@ -29247,7 +26017,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[6] = G(R[1], 2);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[1], 3);
@@ -29260,19 +26029,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 660:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(4, TCLOS);
@@ -29290,15 +26055,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 661:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -29314,15 +26076,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 662:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -29336,17 +26095,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 663:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -29364,7 +26119,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -29380,19 +26134,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 664:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -29410,15 +26160,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 665:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = prim_ref(R[4], R[3]);
         R[6] = G(R[1], 4);
@@ -29428,17 +26175,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 666:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[2], 3);
@@ -29451,7 +26194,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -29467,19 +26209,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 667:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -29496,17 +26234,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 668:
       if (acc == 3) {
-
         if (R[5] == F(0)) {
-
           R[6] = F(0);
           R[7] = R[3];
           R[3] = R[4];
@@ -29515,56 +26249,43 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[6] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[7] = F(0);
           R[8] = BOOL(R[6] == R[7]);
           if (R[8] == IFALSE) {
-
             R[9] = 128 * 78 + 258;
             R[10] = BOOL(R[6] == R[9]);
             if (R[10] == IFALSE) {
-
               R[11] = G(R[1], 2);
               R[4] = G(R[1], 3);
               ob = (word *)R[11];
               acc = 3;
 
             } else {
-
               R[11] = G(R[1], 4);
               ob = (word *)R[11];
               acc = 3;
-
             }
 
           } else {
-
             R[9] = G(R[1], 5);
             ob = (word *)R[9];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 669:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[7] = INULL;
         R[8] = IFALSE;
@@ -29576,17 +26297,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 670:
       if (acc == 6) {
-
         {
-
           word *ob = (word *)R[5];
           hval  hdr;
           assert(allocp(R[5]), R[5], IFALSE);
@@ -29594,13 +26311,10 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[9] = ob[1];
           R[10] = ob[2];
-
         }
 
         if (R[10] == INULL) {
-
           if (R[7] == IFALSE) {
-
             R[11] = G(R[1], 2);
             *fp = make_header(4, TCLOS);
             fp[1] = G(R[1], 3);
@@ -29613,7 +26327,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[11] = G(R[1], 4);
             *fp = make_header(4, TCLOS);
             fp[1] = G(R[1], 5);
@@ -29624,11 +26337,9 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[9];
             ob = (word *)R[11];
             acc = 3;
-
           }
 
         } else {
-
           R[11] = G(R[1], 6);
           *fp = make_header(7, TPROC);
           fp[1] = G(R[1], 7);
@@ -29642,19 +26353,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = IFALSE;
           ob = (word *)R[11];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 671:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = cons(R[3], R[5]);
         R[7] = G(R[1], 3);
@@ -29668,15 +26375,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 672:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[4] = cons(R[4], R[5]);
         R[7] = G(R[2], 2);
@@ -29691,18 +26395,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 673:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         if (R[5] == R[6]) {
-
           R[7] = G(R[1], 3);
           *fp = make_header(3, TPROC);
           fp[1] = G(R[1], 4);
@@ -29714,7 +26414,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[7] = G(R[1], 5);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[1], 6);
@@ -29727,19 +26426,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[9];
           ob = (word *)R[7];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 674:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[7] = R[4];
         R[4] = R[3];
@@ -29748,15 +26443,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 675:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -29769,18 +26461,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 676:
       if (acc == 2) {
-
         R[5] = G(R[2], 4);
         if (R[3] == R[5]) {
-
           R[6] = G(R[1], 3);
           R[7] = F(0);
           R[3] = R[4];
@@ -29789,7 +26477,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[6] = G(R[2], 2);
           R[7] = G(R[1], 3);
           *fp = make_header(5, TCLOS);
@@ -29804,19 +26491,15 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[8];
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 677:
       if (acc == 2) {
-
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
         R[4] = R[3];
@@ -29825,15 +26508,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 678:
       if (acc == 1) {
-
         R[4] = 128 * 2 + 258;
         R[5] = prim_ref(R[3], R[4]);
         R[6] = 128 * 0 + 258;
@@ -29851,25 +26531,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 679:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         if (R[5] == F(0)) {
-
           R[6] = G(R[1], 2);
           *fp = make_header(3, TCLOS);
           fp[1] = G(R[1], 3);
@@ -29881,18 +26555,14 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[6] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[7] = 128 * 78 + 258;
           if (R[6] == R[7]) {
-
             R[8] = G(R[1], 4);
             *fp = make_header(4, TPROC);
             fp[1] = G(R[1], 5);
@@ -29908,9 +26578,7 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             {
-
               word *ob = (word *)R[4];
               hval  hdr;
               assert(allocp(R[4]), R[4], IFALSE);
@@ -29919,7 +26587,6 @@ super_dispatch:                                   /* run macro instructions */
               R[8] = ob[1];
               R[9] = ob[2];
               R[10] = ob[3];
-
             }
 
             R[11] = G(R[1], 7);
@@ -29935,26 +26602,19 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[10];
             ob = (word *)R[11];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 680:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           if (R[4] == IFALSE) {
-
             R[5] = G(R[2], 2);
             R[6] = G(R[1], 2);
             R[7] = G(R[1], 5);
@@ -29973,7 +26633,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             R[5] = G(R[2], 2);
             R[6] = G(R[1], 2);
             R[7] = G(R[1], 5);
@@ -29990,11 +26649,9 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[10];
             ob = (word *)R[12];
             acc = 4;
-
           }
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 5);
           *fp = make_header(4, TCLOS);
@@ -30005,31 +26662,24 @@ super_dispatch:                                   /* run macro instructions */
           fp += 4;
           R[7] = G(R[1], 3);
           if (R[7] == IFALSE) {
-
             R[3] = G(R[2], 6);
             ob = (word *)R[6];
             acc = 1;
 
           } else {
-
             R[3] = G(R[2], 4);
             ob = (word *)R[6];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 681:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         *fp = make_header(3, 40);
         fp[1] = R[3];
@@ -30052,15 +26702,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 682:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -30080,15 +26727,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 683:
       if (acc == 1) {
-
         R[4] = IFALSE;
         R[5] = G(R[1], 2);
         *fp = make_header(4, 2);
@@ -30102,15 +26746,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 684:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(4, TPROC);
@@ -30130,15 +26771,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 685:
       if (acc == 1) {
-
         R[4] = ITRUE;
         R[5] = G(R[1], 2);
         *fp = make_header(4, 2);
@@ -30152,40 +26790,31 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 686:
       if (acc == 5) {
-
         if (R[5] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[8] = 128 * 0 + 258;
           R[9] = prim_ref(R[5], R[8]);
           R[10] = G(R[1], 2);
           {
-
             uint64_t p = (uint64_t)immval(R[9]) * immval(R[10]);
             R[11] = F(p);
             R[12] = F(p >> FBITS);
-
           }
 
           {
-
             hval r = immval(R[11]) + immval(R[4]);
             R[14] = F(r >> FBITS);
             R[13] = F(r);
-
           }
 
           R[15] = 128 * 2 + 258;
@@ -30198,30 +26827,23 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[12];
           ob = (word *)R[7];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 687:
       if (acc == 3) {
-
         if (R[4] == INULL) {
-
           R[6] = F(0);
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           {
-
             word *ob = (word *)R[4];
             hval  hdr;
             assert(allocp(R[4]), R[4], IFALSE);
@@ -30229,25 +26851,20 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           if (R[6] == F(0)) {
-
             R[4] = R[7];
             ob = (word *)R[5];
             acc = 3;
 
           } else {
-
             if (R[7] == INULL) {
-
               ob = (word *)R[3];
               R[3] = R[6];
               acc = 1;
 
             } else {
-
               R[8] = INULL;
               *fp = make_header(3, 40);
               fp[1] = R[6];
@@ -30258,33 +26875,24 @@ super_dispatch:                                   /* run macro instructions */
               R[4] = R[7];
               ob = (word *)R[10];
               acc = 3;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 688:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           {
-
             word *ob = (word *)R[4];
             hval  hdr;
             assert(allocp(R[4]), R[4], IFALSE);
@@ -30292,7 +26900,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[7] = ob[1];
             R[8] = ob[2];
-
           }
 
           *fp = make_header(3, 40);
@@ -30303,19 +26910,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 689:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -30333,41 +26936,32 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 690:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 3);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 691:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[2], 3);
@@ -30380,15 +26974,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 692:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -30409,15 +27000,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 693:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -30429,15 +27017,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 694:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -30456,15 +27041,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 695:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -30485,15 +27067,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 696:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -30517,15 +27096,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 697:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -30551,15 +27127,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 698:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         *fp = make_header(5, TCLOS);
@@ -30574,15 +27147,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 699:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -30604,15 +27174,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 700:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -30632,15 +27199,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 701:
       if (acc == 1) {
-
         R[4] = G(R[1], 7);
         R[5] = G(R[1], 6);
         R[6] = G(R[1], 5);
@@ -30659,15 +27223,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 702:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -30689,41 +27250,32 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 703:
       if (acc == 2) {
-
         R[5] = G(R[1], 3);
         if (R[4] == R[5]) {
-
           R[6] = G(R[1], 2);
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 704:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -30743,15 +27295,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 705:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -30771,15 +27320,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 706:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -30800,15 +27346,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 707:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -30835,15 +27378,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 708:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         *fp = make_header(4, TPROC);
@@ -30860,15 +27400,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 709:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -30888,15 +27425,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 710:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -30917,15 +27451,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 711:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -30944,15 +27475,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 712:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -30978,15 +27506,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 713:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -31002,15 +27527,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 714:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         *fp = make_header(3, 2);
         fp[1] = R[4];
@@ -31022,15 +27544,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 715:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = IFALSE;
         R[7] = R[4];
@@ -31039,15 +27558,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 716:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -31064,15 +27580,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 717:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -31092,15 +27605,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 718:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -31118,15 +27628,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 719:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -31138,9 +27645,7 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         if (acc == 2) {
-
           R[5] = G(R[1], 2);
           *fp = make_header(3, TCLOS);
           fp[1] = G(R[1], 4);
@@ -31151,17 +27656,13 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           error(61, ob, F(acc));
-
         }
-
       }
 
       break;
     case 720:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = 128 * 18 + 258;
@@ -31173,15 +27674,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 721:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -31196,15 +27694,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 722:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -31229,15 +27724,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 723:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -31252,15 +27744,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 724:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -31279,15 +27768,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 725:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -31308,15 +27794,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 726:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -31349,15 +27832,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 727:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
@@ -31374,15 +27854,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 728:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -31402,15 +27879,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 729:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -31434,15 +27908,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 730:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 3);
         R[9] = G(R[1], 4);
@@ -31463,15 +27934,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 731:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 4);
         R[9] = G(R[1], 5);
@@ -31491,15 +27959,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 732:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TPROC);
         fp[1] = G(R[2], 5);
@@ -31511,32 +27976,26 @@ super_dispatch:                                   /* run macro instructions */
         fp += 6;
         R[9] = 128 * 84 + 258;
         if (R[6] == R[9]) {
-
           R[3] = G(R[2], 2);
           ob = (word *)R[8];
           acc = 1;
 
         } else {
-
           R[10] = G(R[2], 3);
           R[4] = G(R[2], 4);
           R[5] = F(0);
           R[3] = R[8];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 733:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -31549,15 +28008,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 734:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -31575,15 +28031,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 735:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
@@ -31600,15 +28053,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 736:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -31626,15 +28076,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 737:
       if (acc == 4) {
-
         R[7] = G(R[1], 3);
         *fp = make_header(6, TPROC);
         fp[1] = G(R[2], 3);
@@ -31647,32 +28094,26 @@ super_dispatch:                                   /* run macro instructions */
         R[9] = G(R[1], 2);
         R[10] = 128 * 84 + 258;
         if (R[9] == R[10]) {
-
           R[3] = R[6];
           ob = (word *)R[8];
           acc = 1;
 
         } else {
-
           R[11] = G(R[2], 2);
           R[4] = F(0);
           R[5] = R[6];
           R[3] = R[8];
           ob = (word *)R[11];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 738:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
@@ -31689,15 +28130,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 739:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 3);
         *fp = make_header(6, TPROC);
@@ -31714,15 +28152,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 740:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
@@ -31739,15 +28174,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 741:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -31762,15 +28194,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 742:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[2], 3);
@@ -31783,15 +28212,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 743:
       if (acc == 1) {
-
         R[4] = 128 * 112 + 258;
         R[5] = G(R[1], 2);
         R[6] = prim_less(R[4], R[5]);
@@ -31803,38 +28229,30 @@ super_dispatch:                                   /* run macro instructions */
         R[8] = (word)fp;
         fp += 4;
         if (R[6] == IFALSE) {
-
           R[3] = R[5];
           ob = (word *)R[8];
           acc = 1;
 
         } else {
-
           R[9] = 128 * 12 + 258;
           {
-
             hval r = immval(R[5]) - immval(R[9]);
             R[11] = F(r >> FBITS & 1);
             R[10] = F(r);
-
           }
 
           R[3] = R[10];
           ob = (word *)R[8];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 744:
       if (acc == 1) {
-
         R[4] = 128 * 28 + 258;
         R[5] = R[3] & R[4];
         R[6] = G(R[2], 2);
@@ -31844,25 +28262,20 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 745:
       if (acc == 2) {
-
         R[5] = 128 * 30 + 258;
         if (R[4] == R[5]) {
-
           R[6] = G(R[1], 2);
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           *fp = make_header(3, TPROC);
           fp[1] = G(R[1], 3);
           fp[2] = R[4];
@@ -31871,19 +28284,15 @@ super_dispatch:                                   /* run macro instructions */
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 746:
       if (acc == 2) {
-
         R[5] = 128 * 94 + 258;
         R[6] = R[4] ^ (FMAX << IPOS & R[5]);
         R[7] = G(R[1], 2);
@@ -31893,15 +28302,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 747:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = prim_ref(R[5], R[4]);
         R[7] = 128 * 6 + 258;
@@ -31913,15 +28319,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 748:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
@@ -31938,15 +28341,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 749:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -31973,15 +28373,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 750:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -32006,15 +28403,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 751:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -32035,15 +28429,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 752:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
@@ -32060,15 +28451,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 753:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -32091,15 +28479,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 754:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
@@ -32116,15 +28501,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 755:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -32147,15 +28529,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 756:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(3, TPROC);
@@ -32167,15 +28546,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 757:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
@@ -32188,15 +28564,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 758:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -32211,15 +28584,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 759:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -32240,15 +28610,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 760:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -32263,15 +28630,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 761:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -32290,29 +28654,23 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 762:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         ob = (word *)R[7];
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 763:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
@@ -32324,30 +28682,24 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 764:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         R[6] = G(R[2], 2);
         ob = (word *)R[7];
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 765:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
@@ -32360,27 +28712,21 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 766:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           if (R[4] == INULL) {
-
             R[5] = G(R[1], 3);
             R[3] = R[4];
             ob = (word *)R[5];
             acc = 1;
 
           } else {
-
             R[5] = G(R[2], 2);
             R[6] = G(R[1], 3);
             *fp = make_header(4, TCLOS);
@@ -32391,30 +28737,23 @@ super_dispatch:                                   /* run macro instructions */
             fp += 4;
             ob = (word *)R[5];
             acc = 2;
-
           }
 
         } else {
-
           R[4] = G(R[1], 3);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 767:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -32430,7 +28769,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -32439,21 +28777,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 768:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[2], 3);
@@ -32466,7 +28799,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -32475,27 +28807,21 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 769:
       if (acc == 4) {
-
         if (R[5] == INULL) {
-
           R[7] = G(R[1], 2);
           ob = (word *)R[7];
           acc = 3;
 
         } else {
-
           R[7] = G(R[1], 3);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 4);
@@ -32508,21 +28834,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 770:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -32538,7 +28859,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 3);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -32556,21 +28876,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 771:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 169);
           R[5] = G(R[4], 2);
@@ -32582,24 +28897,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[3] = ITRUE;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 772:
       if (acc == 3) {
-
         R[6] = INULL;
         R[7] = G(R[1], 2);
         R[8] = G(R[1], 3);
@@ -32612,30 +28922,24 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 773:
       if (acc == 4) {
-
         R[7] = ITRUE;
         ob = (word *)R[3];
         R[3] = R[7];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 774:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[2], 2);
@@ -32648,15 +28952,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 775:
       if (acc == 5) {
-
         R[8] = G(R[1], 3);
         R[9] = G(R[1], 4);
         *fp = make_header(7, TPROC);
@@ -32678,17 +28979,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 776:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 6);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 4);
@@ -32703,23 +29000,18 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[1], 5);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 777:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -32732,15 +29024,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 778:
       if (acc == 4) {
-
         R[7] = G(R[1], 3);
         R[8] = G(R[1], 2);
         R[10] = R[7];
@@ -32749,24 +29038,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 779:
       if (acc == 5) {
-
         if (R[4] == INULL) {
-
           R[8] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
 
         } else {
-
           R[8] = G(R[2], 2);
           R[9] = G(R[1], 2);
           R[10] = G(R[1], 3);
@@ -32783,21 +29067,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 9;
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 780:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 8);
@@ -32820,7 +29099,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 4);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -32844,19 +29122,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[13];
           ob = (word *)R[9];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 781:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -32875,15 +29149,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 782:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -32899,24 +29170,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 783:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 5);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 169);
           R[5] = G(R[4], 2);
@@ -32930,28 +29196,22 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[9];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 784:
       if (acc == 6) {
-
         if (R[4] == INULL) {
-
           R[9] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[9];
           acc = 1;
 
         } else {
-
           R[9] = G(R[2], 2);
           R[10] = G(R[1], 2);
           *fp = make_header(9, TCLOS);
@@ -32967,21 +29227,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 9;
           ob = (word *)R[9];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 785:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           R[5] = G(R[1], 8);
           R[6] = G(R[1], 6);
@@ -33001,13 +29256,11 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 3);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
           R[6] = G(R[1], 5);
           if (R[5] == R[6]) {
-
             R[7] = G(R[4], 2);
             R[8] = G(R[1], 4);
             R[5] = cons(R[6], R[8]);
@@ -33019,33 +29272,25 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             R[7] = G(R[1], 7);
             R[3] = IFALSE;
             ob = (word *)R[7];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 786:
       if (acc == 6) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[7];
           acc = 4;
 
         } else {
-
           R[9] = G(R[1], 2);
           *fp = make_header(8, TCLOS);
           fp[1] = G(R[1], 3);
@@ -33059,21 +29304,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 8;
           ob = (word *)R[9];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 787:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -33093,24 +29333,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 6);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 788:
       if (acc == 4) {
-
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 2);
         fp[4] = R[6];
@@ -33123,15 +29358,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 789:
       if (acc == 4) {
-
         R[8] = R[3];
         R[3] = R[4];
         R[4] = R[5];
@@ -33140,15 +29372,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 790:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
@@ -33161,15 +29390,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 791:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         R[9] = G(R[1], 3);
@@ -33184,15 +29410,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 792:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -33211,15 +29434,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 793:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 3);
         *fp = make_header(6, TPROC);
@@ -33236,15 +29456,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 794:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -33255,15 +29472,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 795:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -33275,15 +29489,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 796:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[2], 2);
@@ -33295,15 +29506,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 797:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 3);
         *fp = make_header(7, TCLOS);
@@ -33320,15 +29528,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 798:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -33349,15 +29554,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 799:
       if (acc == 4) {
-
         R[7] = G(R[1], 4);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[2], 3);
@@ -33381,15 +29583,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 800:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         R[8] = cons(R[6], R[7]);
         R[6] = G(R[1], 4);
@@ -33410,15 +29609,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 801:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -33439,15 +29635,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 802:
       if (acc == 4) {
-
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 2);
         fp[4] = R[5];
@@ -33460,15 +29653,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 803:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 3);
         *fp = make_header(6, TPROC);
@@ -33484,15 +29674,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 804:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -33506,15 +29693,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 805:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -33528,15 +29712,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 806:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         R[6] = cons(R[7], R[6]);
         R[9] = G(R[1], 3);
@@ -33544,15 +29725,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 807:
       if (acc == 4) {
-
         R[7] = G(R[1], 3);
         *fp = make_header(4, TPROC);
         fp[1] = G(R[2], 2);
@@ -33566,30 +29744,24 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 808:
       if (acc == 4) {
-
         R[7] = G(R[1], 3);
         R[6] = G(R[1], 2);
         ob = (word *)R[7];
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 809:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         R[9] = R[6];
         R[6] = R[7];
@@ -33597,24 +29769,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 810:
       if (acc == 4) {
-
         if (R[5] == INULL) {
-
           R[7] = G(R[2], 2);
           R[6] = G(R[2], 3);
           ob = (word *)R[7];
           acc = 4;
 
         } else {
-
           R[7] = G(R[2], 4);
           R[8] = G(R[1], 2);
           R[9] = G(R[1], 3);
@@ -33631,21 +29798,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 811:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 7);
@@ -33666,13 +29828,11 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 4);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
           R[6] = G(R[1], 5);
           if (R[5] == R[6]) {
-
             R[7] = G(R[1], 3);
             R[8] = cons(R[6], R[7]);
             R[5] = G(R[4], 2);
@@ -33683,7 +29843,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             R[7] = G(R[2], 3);
             R[3] = G(R[1], 6);
             R[9] = G(R[1], 3);
@@ -33692,30 +29851,23 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[9];
             ob = (word *)R[7];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 812:
       if (acc == 4) {
-
         if (R[5] == INULL) {
-
           R[7] = G(R[2], 2);
           R[6] = G(R[2], 3);
           ob = (word *)R[7];
           acc = 4;
 
         } else {
-
           R[7] = G(R[2], 4);
           R[8] = G(R[1], 2);
           R[9] = G(R[1], 3);
@@ -33732,21 +29884,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 813:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 7);
@@ -33767,10 +29914,8 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 4);
           {
-
             word *ob = (word *)R[4];
             hval  hdr;
             assert(allocp(R[4]), R[4], IFALSE);
@@ -33778,7 +29923,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[5] = ob[1];
             R[6] = ob[2];
-
           }
 
           R[7] = G(R[1], 3);
@@ -33798,21 +29942,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 814:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 6);
           R[6] = G(R[1], 3);
@@ -33827,7 +29966,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 3);
           R[6] = cons(R[4], R[5]);
@@ -33839,19 +29977,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[7];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 815:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -33868,24 +30002,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 816:
       if (acc == 5) {
-
         if (R[5] == INULL) {
-
           R[8] = G(R[1], 2);
           R[6] = G(R[1], 3);
           ob = (word *)R[8];
           acc = 4;
 
         } else {
-
           R[8] = G(R[1], 4);
           *fp = make_header(7, TCLOS);
           fp[1] = G(R[1], 5);
@@ -33899,21 +30028,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 817:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 6);
           R[6] = G(R[1], 3);
@@ -33931,7 +30055,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 4);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -33944,21 +30067,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[10];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 818:
       if (acc == 5) {
-
         if (R[4] == INULL) {
-
           R[8] = IFALSE;
           R[9] = R[3];
           R[4] = R[5];
@@ -33968,44 +30086,34 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           assert(pairp(R[4]), R[4], 105);
           R[8] = G(R[4], 1);
           {
-
             word ob = R[8];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           if (R[9] == F(0)) {
-
             R[4] = G(R[4], 2);
             R[5] = cons(R[8], R[5]);
             ob = (word *)R[7];
             acc = 5;
 
           } else {
-
             R[4] = G(R[4], 2);
             ob = (word *)R[8];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 819:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
@@ -34021,15 +30129,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 820:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = INULL;
         R[9] = R[6];
@@ -34039,15 +30144,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 821:
       if (acc == 4) {
-
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 2);
         fp[4] = R[6];
@@ -34060,15 +30162,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 822:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -34086,15 +30185,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 823:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = F(0);
@@ -34110,15 +30206,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 824:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = F(0);
@@ -34134,18 +30227,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 825:
       if (acc == 6) {
-
         R[9] = G(R[1], 2);
         if (R[5] == R[9]) {
-
           R[10] = G(R[1], 3);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 4);
@@ -34160,9 +30249,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           if (R[4] == INULL) {
-
             R[10] = G(R[1], 3);
             *fp = make_header(4, TCLOS);
             fp[1] = G(R[1], 5);
@@ -34175,14 +30262,11 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             R[10] = 128 * 0 + 258;
             {
-
               hval r = immval(R[5]) + immval(R[10]);
               R[12] = F(r >> FBITS);
               R[11] = F(r);
-
             }
 
             assert(pairp(R[4]), R[4], 169);
@@ -34193,21 +30277,16 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[13];
             ob = (word *)R[8];
             acc = 6;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 826:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -34228,24 +30307,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 827:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 5);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 3);
@@ -34261,19 +30335,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[11];
           ob = (word *)R[8];
           acc = 6;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 828:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(3, TPROC);
@@ -34290,35 +30360,27 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 829:
       if (acc == 4) {
-
         if (immediatep(R[4])) {
-
           R[7] = IFALSE;
 
         } else {
-
           hval h = V(R[4]);
           R[7] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
         }
 
         if (R[7] == F(0)) {
-
           R[8] = ITRUE;
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
 
         } else {
-
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 2);
           fp[5] = R[6];
@@ -34329,19 +30391,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 6;
           ob = (word *)R[4];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 830:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -34365,27 +30423,21 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 831:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 6);
           R[3] = ITRUE;
           ob = (word *)R[5];
           acc = 1;
 
         } else {
-
           if (R[3] == F(0)) {
-
             R[5] = G(R[2], 5);
             R[6] = G(R[1], 5);
             *fp = make_header(3, 2);
@@ -34407,16 +30459,13 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             if (R[3] == IFALSE) {
-
               R[5] = G(R[1], 6);
               R[3] = IFALSE;
               ob = (word *)R[5];
               acc = 1;
 
             } else {
-
               R[5] = G(R[2], 6);
               R[6] = G(R[1], 5);
               R[7] = G(R[1], 6);
@@ -34434,23 +30483,17 @@ super_dispatch:                                   /* run macro instructions */
               R[3] = R[9];
               ob = (word *)R[8];
               acc = 3;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 832:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -34464,13 +30507,11 @@ super_dispatch:                                   /* run macro instructions */
         R[8] = (word)fp;
         fp += 6;
         if (R[3] == IFALSE) {
-
           R[3] = IFALSE;
           ob = (word *)R[8];
           acc = 1;
 
         } else {
-
           R[9] = G(R[2], 4);
           *fp = make_header(3, 2);
           fp[1] = R[9];
@@ -34482,19 +30523,15 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[8];
           ob = (word *)R[11];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 833:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -34509,15 +30546,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 834:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -34538,15 +30572,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 835:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -34568,15 +30599,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 836:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -34599,15 +30627,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 837:
       if (acc == 4) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 2);
         fp[2] = R[4];
@@ -34620,15 +30645,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 838:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[2], 2);
@@ -34658,18 +30680,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 839:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         if (R[6] == F(0)) {
-
           R[7] = G(R[1], 4);
           R[8] = G(R[1], 5);
           *fp = make_header(5, TPROC);
@@ -34686,13 +30704,10 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           {
-
             hval r = immval(R[6]) + immval(R[6]);
             R[8] = F(r >> FBITS);
             R[7] = F(r);
-
           }
 
           R[9] = G(R[2], 3);
@@ -34711,19 +30726,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[12];
           ob = (word *)R[9];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 840:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -34739,15 +30750,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 841:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 4);
         R[8] = G(R[1], 5);
@@ -34768,18 +30776,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 842:
       if (acc == 6) {
-
         R[9] = 128 * 0 + 258;
         if (R[7] == R[9]) {
-
           R[8] = R[4];
           R[4] = R[5];
           R[5] = R[6];
@@ -34787,14 +30791,11 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           {
-
             hval x = immval(R[7]);
             uint n = immval(R[9]);
             R[10] = F(x >> n);
             R[11] = F(x << (FBITS - n));
-
           }
 
           assert(pairp(R[6]), R[6], 105);
@@ -34812,19 +30813,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[12];
           ob = (word *)R[8];
           acc = 6;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 843:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         assert(pairp(R[4]), R[4], 169);
         R[5] = G(R[4], 2);
@@ -34842,15 +30839,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 844:
       if (acc == 6) {
-
         R[9] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[2], 2);
@@ -34880,35 +30874,27 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 845:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         {
-
           hval r = immval(R[6]) + immval(R[6]);
           R[8] = F(r >> FBITS);
           R[7] = F(r);
-
         }
 
         R[9] = G(R[1], 4);
         {
-
           hval r = immval(R[9]) - immval(R[6]);
           R[11] = F(r >> FBITS & 1);
           R[10] = F(r);
-
         }
 
         if (R[11] == F(0)) {
-
           R[8] = G(R[1], 5);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[2], 2);
@@ -34924,7 +30910,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 6;
 
         } else {
-
           R[12] = G(R[2], 3);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[2], 4);
@@ -34936,31 +30921,24 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[9];
           ob = (word *)R[12];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 846:
       if (acc == 3) {
-
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 5);
         {
-
           hval r = immval(R[6]) - immval(R[7]);
           R[9] = F(r >> FBITS & 1);
           R[8] = F(r);
-
         }
 
         if (R[9] == F(0)) {
-
           R[10] = G(R[1], 6);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[2], 2);
@@ -34977,7 +30955,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 6;
 
         } else {
-
           R[10] = G(R[2], 3);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[2], 4);
@@ -34991,40 +30968,31 @@ super_dispatch:                                   /* run macro instructions */
           R[7] = R[12];
           ob = (word *)R[10];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 847:
       if (acc == 6) {
-
         R[9] = 128 * 0 + 258;
         if (R[6] == R[9]) {
-
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           {
-
             hval x = immval(R[6]);
             uint n = immval(R[9]);
             R[10] = F(x >> n);
             R[11] = F(x << (FBITS - n));
-
           }
 
           R[12] = R[5] & R[10];
           if (R[12] == F(0)) {
-
             assert(pairp(R[4]), R[4], 105);
             R[13] = G(R[4], 1);
             *fp = make_header(4, TPROC);
@@ -35039,7 +31007,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 6;
 
           } else {
-
             assert(pairp(R[4]), R[4], 105);
             R[13] = G(R[4], 1);
             R[4] = G(R[4], 2);
@@ -35052,21 +31019,16 @@ super_dispatch:                                   /* run macro instructions */
             R[6] = R[10];
             ob = (word *)R[8];
             acc = 6;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 848:
       if (acc == 4) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 2);
         fp[2] = R[6];
@@ -35083,15 +31045,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 849:
       if (acc == 4) {
-
         R[7] = IFALSE;
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 2);
@@ -35111,15 +31070,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 850:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[2], 3);
@@ -35130,15 +31086,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 851:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
         *fp = make_header(5, TCLOS);
@@ -35168,15 +31121,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 852:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(4, TCLOS);
@@ -35194,15 +31144,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 853:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 4);
         *fp = make_header(4, TCLOS);
@@ -35217,15 +31164,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 854:
       if (acc == 3) {
-
         R[6] = IFALSE;
         R[7] = G(R[1], 3);
         R[8] = G(R[1], 2);
@@ -35254,15 +31198,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 855:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[6] = cons(R[4], R[5]);
@@ -35280,15 +31221,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 856:
       if (acc == 3) {
-
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 2);
         R[4] = cons(R[6], R[7]);
@@ -35305,28 +31243,22 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 857:
       if (acc == 4) {
-
         ob = (word *)R[6];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 858:
       if (acc == 4) {
-
         R[4] = G(R[1], 3);
         R[8] = G(R[1], 2);
         R[9] = R[5];
@@ -35335,15 +31267,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 859:
       if (acc == 4) {
-
         R[7] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[9] = R[4];
@@ -35352,15 +31281,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 860:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = F(0);
         R[8] = R[5];
@@ -35370,15 +31296,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 861:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -35389,15 +31312,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 862:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[2], 3);
@@ -35409,15 +31329,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 863:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -35434,15 +31351,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 864:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -35461,15 +31375,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 865:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -35493,15 +31404,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 866:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -35519,15 +31427,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 867:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = BOOL(R[3] == R[4]);
         R[6] = G(R[1], 3);
@@ -35537,7 +31442,6 @@ super_dispatch:                                   /* run macro instructions */
         R[7] = (word)fp;
         fp += 3;
         if (R[5] == IFALSE) {
-
           R[8] = G(R[2], 2);
           *fp = make_header(4, TPROC);
           fp[1] = G(R[2], 3);
@@ -35549,51 +31453,39 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[3] = R[5];
           ob = (word *)R[7];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 868:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[3] = F(0);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 869:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           *fp = make_header(3, TCLOS);
@@ -35605,23 +31497,18 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 870:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
@@ -35634,15 +31521,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 871:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[3] = BOOL(R[3] == R[4]);
         R[6] = G(R[1], 3);
@@ -35650,15 +31534,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 872:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
@@ -35674,15 +31555,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 873:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -35701,15 +31579,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 874:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 16 + 258;
         R[6] = F(0);
@@ -35720,15 +31595,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 875:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = 128 * 80 + 258;
         R[7] = 128 * 0 + 258;
@@ -35740,15 +31612,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 876:
       if (acc == 2) {
-
         R[5] = IFALSE;
         R[6] = prim_sys(R[4], R[5], R[5], R[5]);
         ob = (word *)R[3];
@@ -35756,9 +31625,7 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         if (acc == 3) {
-
           R[6] = G(R[1], 2);
           *fp = make_header(4, TPROC);
           fp[1] = G(R[1], 3);
@@ -35771,9 +31638,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           if (acc == 4) {
-
             R[7] = G(R[1], 2);
             *fp = make_header(5, TCLOS);
             fp[1] = G(R[1], 4);
@@ -35787,9 +31652,7 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             if (acc == 5) {
-
               R[8] = G(R[1], 2);
               *fp = make_header(6, TCLOS);
               fp[1] = G(R[1], 5);
@@ -35804,21 +31667,15 @@ super_dispatch:                                   /* run macro instructions */
               acc = 2;
 
             } else {
-
               error(61, ob, F(acc));
-
             }
-
           }
-
         }
-
       }
 
       break;
     case 877:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -35838,15 +31695,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 878:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -35856,15 +31710,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 879:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[6] = IFALSE;
@@ -35874,15 +31725,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 880:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = IFALSE;
         R[3] = prim_sys(R[4], R[3], R[5], R[5]);
@@ -35891,24 +31739,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 881:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -35917,19 +31760,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 882:
       if (acc == 1) {
-
         R[4] = 128 * 14 + 258;
         R[5] = G(R[1], 2);
         R[6] = IFALSE;
@@ -35939,24 +31778,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 883:
       if (acc == 4) {
-
         if (R[4] == R[5]) {
-
           R[7] = ITRUE;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           R[7] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -35968,21 +31802,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 6;
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 884:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -36002,7 +31831,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -36018,28 +31846,22 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 885:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -36050,21 +31872,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 886:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -36083,7 +31900,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -36101,28 +31917,22 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 887:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -36144,34 +31954,27 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[8];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 888:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         ob = (word *)R[3];
         R[3] = R[5];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 889:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -36191,17 +31994,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 890:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           R[7] = 128 * 80 + 258;
           R[8] = cons(R[7], R[5]);
           R[9] = 128 * 78 + 258;
@@ -36211,7 +32010,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[7] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -36223,21 +32021,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 6;
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 891:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -36257,7 +32050,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -36270,21 +32062,16 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[8];
           ob = (word *)R[9];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 892:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -36304,7 +32091,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -36315,21 +32101,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 893:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 3);
@@ -36349,7 +32130,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 5);
           *fp = make_header(3, TCLOS);
           fp[1] = G(R[2], 5);
@@ -36370,27 +32150,21 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 894:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[7] = G(R[2], 2);
           R[8] = G(R[1], 2);
           *fp = make_header(7, TCLOS);
@@ -36404,21 +32178,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 7;
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 895:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 5);
           R[5] = G(R[1], 6);
           *fp = make_header(3, TPROC);
@@ -36435,7 +32204,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -36455,19 +32223,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[7];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 896:
       if (acc == 1) {
-
         R[4] = 128 * 62 + 258;
         R[5] = cons(R[4], R[3]);
         R[6] = 128 * 90 + 258;
@@ -36478,15 +32242,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 897:
       if (acc == 1) {
-
         assert(pairp(R[3]), R[3], 169);
         R[4] = G(R[3], 2);
         R[5] = 128 * 78 + 258;
@@ -36496,17 +32257,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 898:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -36526,7 +32283,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 5);
           *fp = make_header(4, TCLOS);
@@ -36537,33 +32293,25 @@ super_dispatch:                                   /* run macro instructions */
           fp += 4;
           R[7] = G(R[1], 3);
           if (R[7] == IFALSE) {
-
             R[3] = G(R[2], 4);
             ob = (word *)R[6];
             acc = 1;
 
           } else {
-
             R[3] = G(R[2], 5);
             ob = (word *)R[6];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 899:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -36583,7 +32331,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 2);
@@ -36594,21 +32341,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 900:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 5);
@@ -36628,7 +32370,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -36646,19 +32387,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 901:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         *fp = make_header(3, TPROC);
         fp[1] = G(R[2], 6);
@@ -36666,7 +32403,6 @@ super_dispatch:                                   /* run macro instructions */
         R[5] = (word)fp;
         fp += 3;
         if (R[3] == IFALSE) {
-
           R[6] = G(R[2], 2);
           R[7] = G(R[1], 3);
           R[8] = G(R[1], 4);
@@ -36682,7 +32418,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[6] = G(R[2], 4);
           R[7] = G(R[1], 3);
           R[8] = G(R[1], 4);
@@ -36696,19 +32431,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = G(R[1], 2);
           ob = (word *)R[6];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 902:
       if (acc == 1) {
-
         R[4] = 128 * 68 + 258;
         R[3] = cons(R[4], R[3]);
         R[6] = G(R[1], 2);
@@ -36716,15 +32447,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 903:
       if (acc == 1) {
-
         R[4] = 128 * 110 + 258;
         R[5] = cons(R[4], R[3]);
         R[6] = 128 * 232 + 258;
@@ -36734,17 +32462,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 904:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -36764,7 +32488,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 5);
           R[5] = G(R[1], 3);
           R[6] = G(R[2], 4);
@@ -36776,21 +32499,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 905:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -36810,7 +32528,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = 128 * 0 + 258;
           R[6] = prim_ref(R[4], R[5]);
@@ -36831,21 +32548,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 7;
           ob = (word *)R[10];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 906:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 2);
@@ -36865,7 +32577,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = 128 * 0 + 258;
           R[6] = prim_ref(R[4], R[5]);
@@ -36886,19 +32597,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 7;
           ob = (word *)R[10];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 907:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -36923,15 +32630,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 908:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 6);
@@ -36959,15 +32663,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 909:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[7] = prim_ref(R[6], R[5]);
         R[6] = G(R[1], 3);
@@ -36982,15 +32683,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 910:
       if (acc == 1) {
-
         R[4] = 128 * 62 + 258;
         R[3] = cons(R[4], R[3]);
         R[6] = G(R[1], 2);
@@ -36998,15 +32696,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 911:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         *fp = make_header(3, TPROC);
@@ -37023,15 +32718,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 912:
       if (acc == 1) {
-
         R[4] = 128 * 244 + 258;
         R[5] = cons(R[4], R[3]);
         R[6] = 128 * 68 + 258;
@@ -37041,15 +32733,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 913:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         *fp = make_header(3, TPROC);
@@ -37067,17 +32756,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 914:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -37097,7 +32782,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -37114,19 +32798,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 915:
       if (acc == 1) {
-
         R[4] = 128 * 180 + 258;
         R[5] = cons(R[4], R[3]);
         R[6] = 128 * 68 + 258;
@@ -37136,17 +32816,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 916:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 5);
@@ -37163,7 +32839,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -37180,19 +32855,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 917:
       if (acc == 1) {
-
         R[4] = 128 * 184 + 258;
         R[5] = G(R[1], 2);
         R[6] = cons(R[4], R[5]);
@@ -37211,15 +32882,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 918:
       if (acc == 1) {
-
         R[4] = 128 * 62 + 258;
         R[5] = cons(R[4], R[3]);
         R[6] = 128 * 198 + 258;
@@ -37235,17 +32903,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 919:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -37262,7 +32926,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = 128 * 80 + 258;
           R[5] = G(R[1], 2);
           R[6] = cons(R[4], R[5]);
@@ -37289,36 +32952,28 @@ super_dispatch:                                   /* run macro instructions */
           R[27] = G(R[1], 3);
           ob = (word *)R[27];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 920:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 36 + 258;
         if (R[5] == R[6]) {
-
           R[7] = G(R[1], 2);
           ob = (word *)R[7];
           acc = 2;
 
         } else {
-
           R[7] = G(R[1], 3);
           R[8] = G(R[1], 4);
           R[5] = INULL;
@@ -37326,19 +32981,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[7];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 921:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -37357,27 +33008,21 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 922:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[1], 2);
           if (R[4] == F(0)) {
-
             R[5] = G(R[1], 4);
             R[3] = INULL;
             ob = (word *)R[5];
             acc = 1;
 
           } else {
-
             R[5] = G(R[2], 2);
             R[6] = G(R[1], 3);
             R[7] = G(R[1], 4);
@@ -37392,11 +33037,9 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[9];
             ob = (word *)R[10];
             acc = 3;
-
           }
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -37412,37 +33055,29 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 923:
       if (acc == 4) {
-
         {
-
           word ob = R[5];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = 128 * 62 + 258;
         if (R[8] == R[7]) {
-
           R[9] = INULL;
           ob = (word *)R[3];
           R[3] = R[9];
           acc = 1;
 
         } else {
-
           R[9] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -37454,19 +33089,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 6;
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 924:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -37485,41 +33116,32 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 925:
       if (acc == 4) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = 128 * 28 + 258;
         R[9] = BOOL(R[7] == R[8]);
         if (R[9] == IFALSE) {
-
           R[10] = 128 * 36 + 258;
           R[11] = BOOL(R[7] == R[10]);
           if (R[11] == IFALSE) {
-
             R[12] = 128 * 20 + 258;
             R[13] = BOOL(R[7] == R[12]);
             if (R[13] == IFALSE) {
-
               ob = (word *)R[3];
               R[3] = R[5];
               acc = 1;
 
             } else {
-
               R[14] = G(R[1], 2);
               *fp = make_header(5, TCLOS);
               fp[1] = G(R[1], 3);
@@ -37530,20 +33152,15 @@ super_dispatch:                                   /* run macro instructions */
               fp += 5;
               ob = (word *)R[14];
               acc = 2;
-
             }
 
           } else {
-
             if (immediatep(R[4])) {
-
               R[12] = IFALSE;
 
             } else {
-
               hval h = V(R[4]);
               R[12] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
             }
 
             R[13] = G(R[1], 4);
@@ -37551,31 +33168,24 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[12];
             ob = (word *)R[13];
             acc = 4;
-
           }
 
         } else {
-
           R[10] = 128 * 0 + 258;
           R[4] = prim_ref(R[4], R[10]);
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 926:
       if (acc == 5) {
-
         R[8] = 128 * 0 + 258;
         if (R[5] == R[8]) {
-
           R[9] = prim_ref(R[4], R[5]);
           R[10] = cons(R[9], R[6]);
           ob = (word *)R[3];
@@ -37583,7 +33193,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[9] = prim_ref(R[4], R[5]);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 2);
@@ -37597,19 +33206,15 @@ super_dispatch:                                   /* run macro instructions */
           ob = (word *)R[3];
           R[3] = R[11];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 927:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -37630,23 +33235,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 928:
       if (acc == 5) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(6, TCLOS);
           fp[1] = G(R[1], 3);
@@ -37661,19 +33261,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[10];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 929:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = prim_ref(R[4], R[3]);
         R[6] = G(R[1], 3);
@@ -37692,15 +33288,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 930:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -37714,15 +33307,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 931:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -37743,15 +33333,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 932:
       if (acc == 2) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 4);
         fp[2] = R[4];
@@ -37768,15 +33355,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 933:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[2], 3);
@@ -37791,15 +33375,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 934:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -37820,15 +33401,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 935:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -37847,15 +33425,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 936:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -37875,24 +33450,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 937:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 5);
           R[3] = INULL;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 3);
@@ -37904,60 +33474,46 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 938:
       if (acc == 4) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = 128 * 28 + 258;
         R[9] = BOOL(R[7] == R[8]);
         if (R[9] == IFALSE) {
-
           R[10] = 128 * 36 + 258;
           R[11] = BOOL(R[7] == R[10]);
           if (R[11] == IFALSE) {
-
             ob = (word *)R[3];
             R[3] = R[5];
             acc = 1;
 
           } else {
-
             if (immediatep(R[4])) {
-
               R[12] = IFALSE;
 
             } else {
-
               hval h = V(R[4]);
               R[12] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
             }
 
             if (R[12] == F(0)) {
-
               ob = (word *)R[3];
               R[3] = R[5];
               acc = 1;
 
             } else {
-
               R[13] = G(R[1], 2);
               *fp = make_header(5, TCLOS);
               fp[1] = G(R[1], 3);
@@ -37970,32 +33526,24 @@ super_dispatch:                                   /* run macro instructions */
               R[4] = R[12];
               ob = (word *)R[13];
               acc = 3;
-
             }
-
           }
 
         } else {
-
           R[10] = 128 * 0 + 258;
           R[4] = prim_ref(R[4], R[10]);
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 939:
       if (acc == 5) {
-
         if (R[5] == F(0)) {
-
           R[8] = prim_ref(R[4], R[5]);
           R[9] = cons(R[8], R[6]);
           ob = (word *)R[3];
@@ -38003,14 +33551,11 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[8] = 128 * 0 + 258;
           {
-
             hval r = immval(R[5]) - immval(R[8]);
             R[10] = F(r >> FBITS & 1);
             R[9] = F(r);
-
           }
 
           R[11] = prim_ref(R[4], R[5]);
@@ -38018,81 +33563,63 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[9];
           ob = (word *)R[7];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 940:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 36 + 258;
         R[7] = BOOL(R[5] == R[6]);
         if (R[7] == IFALSE) {
-
           R[8] = 128 * 20 + 258;
           R[9] = BOOL(R[5] == R[8]);
           if (R[9] == IFALSE) {
-
             R[10] = 128 * 28 + 258;
             R[11] = BOOL(R[5] == R[10]);
             if (R[11] == IFALSE) {
-
               R[12] = IFALSE;
               ob = (word *)R[3];
               R[3] = R[12];
               acc = 1;
 
             } else {
-
               R[12] = ITRUE;
               ob = (word *)R[3];
               R[3] = R[12];
               acc = 1;
-
             }
 
           } else {
-
             R[10] = ITRUE;
             ob = (word *)R[3];
             R[3] = R[10];
             acc = 1;
-
           }
 
         } else {
-
           R[8] = ITRUE;
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 941:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -38107,15 +33634,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 942:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -38134,41 +33658,31 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 943:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 36 + 258;
         R[7] = BOOL(R[5] == R[6]);
         if (R[7] == IFALSE) {
-
           R[8] = 128 * 28 + 258;
           R[9] = BOOL(R[5] == R[8]);
           if (R[9] == IFALSE) {
-
             R[10] = 128 * 20 + 258;
             R[11] = BOOL(R[5] == R[10]);
             if (R[11] == IFALSE) {
-
               {
-
                 word ob = R[4];
                 if (allocp(ob)) ob = V(ob);
                 R[12] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[13] = INULL;
@@ -38184,183 +33698,140 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[12] = G(R[1], 6);
               ob = (word *)R[12];
               acc = 2;
-
             }
 
           } else {
-
             R[10] = 128 * 2 + 258;
             R[11] = prim_ref(R[4], R[10]);
             ob = (word *)R[3];
             R[3] = R[11];
             acc = 1;
-
           }
 
         } else {
-
           if (immediatep(R[4])) {
-
             R[8] = IFALSE;
 
           } else {
-
             hval h = V(R[4]);
             R[8] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
           }
 
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 944:
       if (acc == 3) {
-
         {
-
           word ob = R[5];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = F(0);
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 78 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = G(R[1], 2);
             R[4] = G(R[1], 3);
             ob = (word *)R[11];
             acc = 3;
 
           } else {
-
             R[11] = G(R[1], 4);
             ob = (word *)R[11];
             acc = 3;
-
           }
 
         } else {
-
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = 128 * 36 + 258;
           if (R[9] == R[10]) {
-
             ob = (word *)R[3];
             R[3] = R[4];
             acc = 1;
 
           } else {
-
             R[11] = G(R[1], 6);
             R[12] = prim_less(R[5], R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = G(R[1], 5);
               ob = (word *)R[13];
               acc = 3;
 
             } else {
-
               ob = (word *)R[3];
               R[3] = R[4];
               acc = 1;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 945:
       if (acc == 3) {
-
         {
-
           word ob = R[5];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = F(0);
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 78 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = G(R[1], 2);
             R[4] = G(R[1], 3);
             ob = (word *)R[11];
             acc = 3;
 
           } else {
-
             R[11] = G(R[1], 4);
             ob = (word *)R[11];
             acc = 3;
-
           }
 
         } else {
-
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = 128 * 36 + 258;
           if (R[9] == R[10]) {
-
             R[11] = prim_ref(R[4], R[5]);
             ob = (word *)R[3];
             R[3] = R[11];
             acc = 1;
 
           } else {
-
             R[11] = G(R[1], 8);
             R[12] = prim_less(R[5], R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = G(R[1], 5);
               *fp = make_header(4, TCLOS);
               fp[1] = G(R[1], 6);
@@ -38372,27 +33843,20 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[13] = G(R[1], 7);
               ob = (word *)R[13];
               acc = 3;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 946:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[2], 3);
         R[6] = R[4] & R[5];
@@ -38405,15 +33869,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 947:
       if (acc == 3) {
-
         R[6] = 128 * 2 + 258;
         R[7] = prim_ref(R[5], R[6]);
         R[8] = G(R[1], 2);
@@ -38428,15 +33889,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 948:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 0 + 258;
         R[6] = prim_ref(R[4], R[5]);
@@ -38455,41 +33913,31 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 949:
       if (acc == 4) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = 128 * 36 + 258;
         R[9] = BOOL(R[7] == R[8]);
         if (R[9] == IFALSE) {
-
           R[10] = 128 * 28 + 258;
           R[11] = BOOL(R[7] == R[10]);
           if (R[11] == IFALSE) {
-
             R[12] = 128 * 20 + 258;
             R[13] = BOOL(R[7] == R[12]);
             if (R[13] == IFALSE) {
-
               {
-
                 word ob = R[4];
                 if (allocp(ob)) ob = V(ob);
                 R[5] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[15] = G(R[1], 2);
@@ -38498,10 +33946,8 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[14] = G(R[1], 4);
               if (R[5] == R[14]) {
-
                 R[15] = G(R[1], 5);
                 R[16] = prim_ref(R[4], R[15]);
                 ob = (word *)R[3];
@@ -38509,58 +33955,45 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 1;
 
               } else {
-
                 R[15] = R[5] & R[14];
                 R[16] = 128 * 0 + 258;
                 {
-
                   hval r = immval(R[15]) + immval(R[16]);
                   R[18] = F(r >> FBITS);
                   R[17] = F(r);
-
                 }
 
                 R[19] = prim_ref(R[4], R[17]);
                 ob = (word *)R[3];
                 R[3] = R[19];
                 acc = 1;
-
               }
-
             }
 
           } else {
-
             R[12] = 128 * 0 + 258;
             R[4] = prim_ref(R[4], R[12]);
             ob = (word *)R[6];
             acc = 4;
-
           }
 
         } else {
-
           R[10] = G(R[1], 4);
           R[11] = R[5] & R[10];
           R[12] = prim_ref(R[4], R[11]);
           ob = (word *)R[3];
           R[3] = R[12];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 950:
       if (acc == 4) {
-
         {
-
           word *ob = (word *)R[5];
           hval  hdr;
           assert(allocp(R[5]), R[5], IFALSE);
@@ -38568,15 +34001,12 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[7] = ob[1];
           R[8] = ob[2];
-
         }
 
         if (R[8] == INULL) {
-
           R[9] = G(R[1], 5);
           R[10] = prim_less(R[7], R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = G(R[1], 2);
             *fp = make_header(4, TCLOS);
             fp[1] = G(R[1], 3);
@@ -38589,16 +34019,13 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[11] = G(R[1], 4);
             R[5] = R[7];
             ob = (word *)R[11];
             acc = 3;
-
           }
 
         } else {
-
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[1], 6);
           fp[3] = R[3];
@@ -38608,41 +34035,31 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 951:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = 128 * 28 + 258;
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 20 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             {
-
               word ob = R[4];
               if (allocp(ob)) ob = V(ob);
               R[5] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[12] = G(R[1], 2);
@@ -38651,72 +34068,56 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[11] = G(R[1], 2);
             R[12] = G(R[1], 4);
             R[5] = R[4];
             R[4] = R[12];
             ob = (word *)R[11];
             acc = 3;
-
           }
 
         } else {
-
           R[9] = 128 * 22 + 258;
           {
-
             hval x = immval(R[5]);
             uint n = immval(R[9]);
             R[10] = F(x >> n);
             R[11] = F(x << (FBITS - n));
-
           }
 
           R[12] = 128 * 2 + 258;
           {
-
             hval r = immval(R[10]) + immval(R[12]);
             R[14] = F(r >> FBITS);
             R[13] = F(r);
-
           }
 
           R[15] = prim_ref(R[4], R[13]);
           ob = (word *)R[3];
           R[3] = R[15];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 952:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = 128 * 28 + 258;
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[5] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = G(R[1], 2);
@@ -38725,52 +34126,40 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[9] = G(R[1], 4);
           R[10] = R[5] & R[9];
           R[11] = 128 * 2 + 258;
           {
-
             hval r = immval(R[10]) + immval(R[11]);
             R[13] = F(r >> FBITS);
             R[12] = F(r);
-
           }
 
           R[14] = prim_ref(R[4], R[12]);
           ob = (word *)R[3];
           R[3] = R[14];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 953:
       if (acc == 2) {
-
         ob = (word *)R[3];
         R[3] = R[4];
         acc = 1;
 
       } else {
-
         if (acc == 3) {
-
           if (immediatep(R[4])) {
-
             R[6] = IFALSE;
 
           } else {
-
             hval h = V(R[4]);
             R[6] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
           }
 
           R[7] = G(R[1], 2);
@@ -38787,9 +34176,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           if (acc == 4) {
-
             R[7] = G(R[1], 2);
             *fp = make_header(3, TCLOS);
             fp[1] = G(R[1], 4);
@@ -38804,29 +34191,21 @@ super_dispatch:                                   /* run macro instructions */
             acc = 5;
 
           } else {
-
             error(61, ob, F(acc));
-
           }
-
         }
-
       }
 
       break;
     case 954:
       if (acc == 3) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           {
-
             word *ob = (word *)R[4];
             hval  hdr;
             assert(allocp(R[4]), R[4], IFALSE);
@@ -38834,18 +34213,14 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           if (immediatep(R[6])) {
-
             R[8] = IFALSE;
 
           } else {
-
             hval h = V(R[6]);
             R[8] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
           }
 
           *fp = make_header(5, TCLOS);
@@ -38858,19 +34233,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[5];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 955:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -38887,31 +34258,24 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 956:
       if (acc == 6) {
-
         R[9] = prim_less(R[5], R[6]);
         if (R[9] == IFALSE) {
-
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           R[10] = 128 * 0 + 258;
           {
-
             hval r = immval(R[6]) - immval(R[10]);
             R[12] = F(r >> FBITS & 1);
             R[11] = F(r);
-
           }
 
           R[13] = prim_ref(R[4], R[11]);
@@ -38919,25 +34283,19 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[11];
           ob = (word *)R[8];
           acc = 6;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 957:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 36 + 258;
@@ -38947,21 +34305,16 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 958:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 22 + 258;
@@ -38971,19 +34324,15 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 959:
       if (acc == 2) {
-
         R[5] = ITRUE;
         R[6] = BOOL(R[4] == R[5]);
         if (R[6] == IFALSE) {
-
           R[7] = IFALSE;
           R[8] = BOOL(R[4] == R[7]);
           ob = (word *)R[3];
@@ -38991,23 +34340,18 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 960:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[3] = R[5];
@@ -39015,15 +34359,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 961:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -39045,15 +34386,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 962:
       if (acc == 3) {
-
         R[6] = 128 * 0 + 258;
         R[4] = prim_ref(R[4], R[6]);
         R[8] = G(R[1], 2);
@@ -39069,17 +34407,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 963:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -39097,7 +34431,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = 128 * 246 + 258;
           R[5] = G(R[1], 2);
           R[6] = cons(R[4], R[5]);
@@ -39105,21 +34438,16 @@ super_dispatch:                                   /* run macro instructions */
           R[8] = G(R[1], 4);
           ob = (word *)R[8];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 964:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -39132,7 +34460,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = 128 * 246 + 258;
           R[5] = G(R[1], 2);
           R[6] = cons(R[4], R[5]);
@@ -39147,19 +34474,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[6];
           ob = (word *)R[7];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 965:
       if (acc == 1) {
-
         R[4] = 128 * 246 + 258;
         R[3] = cons(R[4], R[3]);
         R[6] = G(R[1], 2);
@@ -39167,21 +34490,16 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 966:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 6 + 258;
@@ -39191,17 +34509,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 967:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -39212,23 +34526,18 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 3);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 968:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(4, TPROC);
         fp[1] = G(R[1], 3);
@@ -39240,36 +34549,27 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 969:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[5] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[6] = 128 * 32 + 258;
           R[7] = BOOL(R[5] == R[6]);
           if (R[7] == IFALSE) {
-
             {
-
               word ob = R[4];
               if (allocp(ob)) ob = V(ob);
               R[8] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[9] = 128 * 34 + 258;
@@ -39279,38 +34579,29 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             R[8] = G(R[1], 3);
             R[3] = R[7];
             ob = (word *)R[8];
             acc = 1;
-
           }
 
         } else {
-
           R[4] = G(R[1], 3);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 970:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 30 + 258;
@@ -39320,15 +34611,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 971:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -39345,15 +34633,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 972:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -39365,15 +34650,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 973:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -39387,15 +34669,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 974:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -39409,15 +34688,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 975:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -39430,15 +34706,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 976:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -39456,15 +34729,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 977:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -39482,15 +34752,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 978:
       if (acc == 2) {
-
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 4);
         fp[3] = R[3];
@@ -39498,38 +34765,30 @@ super_dispatch:                                   /* run macro instructions */
         R[5] = (word)fp;
         fp += 4;
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = 128 * 4 + 258;
         if (R[6] == R[7]) {
-
           R[3] = G(R[1], 2);
           ob = (word *)R[5];
           acc = 1;
 
         } else {
-
           R[3] = G(R[1], 3);
           ob = (word *)R[5];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 979:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(3, TPROC);
@@ -39548,15 +34807,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 980:
       if (acc == 1) {
-
         R[4] = 128 * 4 + 258;
         R[3] = prim_lraw(R[3], R[4]);
         R[6] = G(R[1], 2);
@@ -39564,15 +34820,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 981:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -39591,24 +34844,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 982:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -39623,19 +34871,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[9];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 983:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -39649,20 +34893,15 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 984:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           if (R[4] == INULL) {
-
             R[5] = G(R[2], 2);
             R[6] = G(R[1], 3);
             R[7] = G(R[1], 4);
@@ -39680,7 +34919,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             R[5] = G(R[1], 3);
             R[6] = G(R[1], 4);
             R[7] = G(R[1], 5);
@@ -39693,11 +34931,9 @@ super_dispatch:                                   /* run macro instructions */
             fp += 5;
             ob = (word *)R[4];
             acc = 1;
-
           }
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -39715,31 +34951,24 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 985:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           if (R[4] == INULL) {
-
             R[5] = G(R[1], 4);
             R[3] = IFALSE;
             ob = (word *)R[5];
             acc = 1;
 
           } else {
-
             R[5] = G(R[1], 2);
             R[6] = G(R[1], 4);
             R[7] = G(R[1], 5);
@@ -39752,11 +34981,9 @@ super_dispatch:                                   /* run macro instructions */
             fp += 5;
             ob = (word *)R[4];
             acc = 1;
-
           }
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -39778,19 +35005,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 986:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -39810,15 +35033,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 987:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -39832,13 +35052,11 @@ super_dispatch:                                   /* run macro instructions */
         R[8] = (word)fp;
         fp += 6;
         if (R[3] == IFALSE) {
-
           R[3] = IFALSE;
           ob = (word *)R[8];
           acc = 1;
 
         } else {
-
           assert(pairp(R[5]), R[5], 105);
           R[9] = G(R[5], 1);
           assert(pairp(R[4]), R[4], 105);
@@ -39848,28 +35066,22 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[11];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 988:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 169);
           R[5] = G(R[4], 2);
@@ -39882,31 +35094,24 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 989:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           if (R[4] == INULL) {
-
             R[5] = G(R[1], 4);
             R[3] = ITRUE;
             ob = (word *)R[5];
             acc = 1;
 
           } else {
-
             R[5] = G(R[1], 3);
             R[6] = G(R[1], 4);
             R[7] = G(R[1], 5);
@@ -39919,28 +35124,22 @@ super_dispatch:                                   /* run macro instructions */
             fp += 5;
             ob = (word *)R[4];
             acc = 1;
-
           }
 
         } else {
-
           R[4] = G(R[1], 4);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 990:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -39958,15 +35157,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 991:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = INULL;
         R[7] = F(0);
@@ -39981,17 +35177,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 992:
       if (acc == 7) {
-
         if (R[4] == INULL) {
-
           R[10] = G(R[1], 2);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[1], 3);
@@ -40006,10 +35198,8 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[10] = G(R[1], 4);
           if (R[6] == R[10]) {
-
             R[11] = G(R[1], 2);
             *fp = make_header(6, TPROC);
             fp[1] = G(R[1], 5);
@@ -40026,7 +35216,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             R[11] = G(R[1], 6);
             *fp = make_header(9, TCLOS);
             fp[1] = G(R[1], 7);
@@ -40041,23 +35230,17 @@ super_dispatch:                                   /* run macro instructions */
             fp += 9;
             ob = (word *)R[11];
             acc = 2;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 993:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 6);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 4);
@@ -40079,7 +35262,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -40099,13 +35281,11 @@ super_dispatch:                                   /* run macro instructions */
           R[11] = (word)fp;
           fp += 9;
           if (R[6] == IFALSE) {
-
             R[3] = IFALSE;
             ob = (word *)R[11];
             acc = 1;
 
           } else {
-
             assert(pairp(R[8]), R[8], 105);
             R[12] = G(R[8], 1);
             R[13] = G(R[2], 3);
@@ -40119,23 +35299,17 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[12];
             ob = (word *)R[13];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 994:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 6);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -40162,7 +35336,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 6);
@@ -40183,28 +35356,22 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[13];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 995:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 7);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -40231,19 +35398,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = 128 * 0 + 258;
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 996:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -40261,32 +35424,26 @@ super_dispatch:                                   /* run macro instructions */
         fp += 8;
         R[10] = G(R[1], 3);
         if (R[10] == IFALSE) {
-
           R[3] = IFALSE;
           ob = (word *)R[9];
           acc = 1;
 
         } else {
-
           R[11] = G(R[2], 2);
           R[4] = G(R[1], 2);
           R[5] = 128 * 254 + 258;
           R[3] = R[9];
           ob = (word *)R[11];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 997:
       if (acc == 1) {
-
         R[4] = G(R[1], 7);
         R[5] = G(R[1], 6);
         R[6] = G(R[1], 5);
@@ -40306,24 +35463,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 998:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -40334,19 +35486,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 999:
       if (acc == 1) {
-
         R[4] = G(R[1], 7);
         R[5] = G(R[1], 6);
         R[6] = G(R[1], 5);
@@ -40365,15 +35513,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1000:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = cons(R[3], R[4]);
         R[6] = G(R[1], 5);
@@ -40393,15 +35538,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1001:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = cons(R[3], R[4]);
         R[6] = G(R[2], 2);
@@ -40416,17 +35558,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1002:
       if (acc == 4) {
-
         if (R[6] == IFALSE) {
-
           R[7] = G(R[1], 2);
           *fp = make_header(4, TPROC);
           fp[1] = G(R[1], 3);
@@ -40438,7 +35576,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[7] = G(R[1], 2);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[1], 4);
@@ -40448,23 +35585,18 @@ super_dispatch:                                   /* run macro instructions */
           fp += 4;
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1003:
       if (acc == 1) {
-
         R[4] = 128 * 4 + 258;
         R[5] = prim_lraw(R[3], R[4]);
         if (R[5] == IFALSE) {
-
           R[6] = G(R[2], 2);
           R[3] = G(R[1], 3);
           R[4] = G(R[2], 3);
@@ -40473,24 +35605,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[6] = G(R[1], 3);
           R[3] = R[5];
           ob = (word *)R[6];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1004:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -40503,18 +35630,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1005:
       if (acc == 1) {
-
         R[4] = 128 * 0 + 258;
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 2);
           assert(pairp(R[5]), R[5], 105);
           R[3] = G(R[5], 1);
@@ -40523,7 +35646,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 3);
@@ -40543,21 +35665,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[10];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1006:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -40575,7 +35692,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -40593,19 +35709,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[11];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1007:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -40625,15 +35737,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1008:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
@@ -40652,15 +35761,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1009:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 3);
         R[7] = G(R[1], 4);
@@ -40680,15 +35786,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1010:
       if (acc == 2) {
-
         R[5] = INULL;
         R[6] = cons(R[4], R[5]);
         R[7] = cons(R[3], R[6]);
@@ -40713,15 +35816,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1011:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
@@ -40739,15 +35839,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1012:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -40767,15 +35864,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1013:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -40793,15 +35887,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1014:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -40823,15 +35914,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1015:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -40845,35 +35933,27 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1016:
       if (acc == 4) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = 128 * 4 + 258;
         R[9] = BOOL(R[7] == R[8]);
         if (R[9] == IFALSE) {
-
           R[10] = 128 * 42 + 258;
           R[11] = BOOL(R[7] == R[10]);
           if (R[11] == IFALSE) {
-
             R[12] = 128 * 40 + 258;
             R[13] = BOOL(R[7] == R[12]);
             if (R[13] == IFALSE) {
-
               R[14] = G(R[1], 2);
               R[15] = G(R[1], 3);
               R[5] = R[4];
@@ -40882,7 +35962,6 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               *fp = make_header(5, TCLOS);
               fp[1] = G(R[1], 6);
               fp[4] = R[6];
@@ -40899,11 +35978,9 @@ super_dispatch:                                   /* run macro instructions */
               fp += 4;
               ob = (word *)R[15];
               acc = 2;
-
             }
 
           } else {
-
             R[12] = G(R[1], 4);
             *fp = make_header(5, TCLOS);
             fp[1] = G(R[1], 7);
@@ -40914,11 +35991,9 @@ super_dispatch:                                   /* run macro instructions */
             fp += 5;
             ob = (word *)R[12];
             acc = 2;
-
           }
 
         } else {
-
           R[10] = G(R[1], 8);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 9);
@@ -40929,28 +36004,22 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[10];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1017:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[1], 4);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -40968,22 +36037,17 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[8];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1018:
       if (acc == 3) {
-
         R[6] = 128 * 2 + 258;
         if (R[4] == R[6]) {
-
           R[7] = G(R[1], 2);
           R[4] = prim_ref(R[7], R[6]);
           R[6] = G(R[1], 4);
@@ -40992,7 +36056,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[7] = G(R[1], 2);
           R[8] = prim_ref(R[7], R[4]);
           R[6] = G(R[1], 4);
@@ -41005,22 +36068,17 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1019:
       if (acc == 5) {
-
         R[8] = 128 * 0 + 258;
         if (R[6] == R[8]) {
-
           R[9] = prim_ref(R[4], R[6]);
           R[10] = cons(R[9], R[5]);
           ob = (word *)R[3];
@@ -41028,7 +36086,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[9] = prim_ref(R[4], R[6]);
           *fp = make_header(6, TPROC);
           fp[1] = G(R[1], 2);
@@ -41042,21 +36099,16 @@ super_dispatch:                                   /* run macro instructions */
           ob = (word *)R[3];
           R[3] = R[11];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1020:
       if (acc == 5) {
-
         if (R[6] == F(0)) {
-
           R[8] = prim_ref(R[4], R[6]);
           R[9] = cons(R[8], R[5]);
           ob = (word *)R[3];
@@ -41064,7 +36116,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[8] = prim_ref(R[4], R[6]);
           *fp = make_header(6, TPROC);
           fp[1] = G(R[1], 2);
@@ -41078,27 +36129,21 @@ super_dispatch:                                   /* run macro instructions */
           ob = (word *)R[3];
           R[3] = R[10];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1021:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 0 + 258;
         {
-
           hval r = immval(R[4]) - immval(R[5]);
           R[7] = F(r >> FBITS & 1);
           R[6] = F(r);
-
         }
 
         R[8] = G(R[1], 5);
@@ -41109,35 +36154,27 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1022:
       if (acc == 4) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = 128 * 4 + 258;
         R[9] = BOOL(R[7] == R[8]);
         if (R[9] == IFALSE) {
-
           R[10] = 128 * 42 + 258;
           R[11] = BOOL(R[7] == R[10]);
           if (R[11] == IFALSE) {
-
             R[12] = 128 * 40 + 258;
             R[13] = BOOL(R[7] == R[12]);
             if (R[13] == IFALSE) {
-
               R[14] = G(R[1], 2);
               R[15] = G(R[1], 3);
               R[5] = R[4];
@@ -41146,7 +36183,6 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               *fp = make_header(5, TCLOS);
               fp[1] = G(R[1], 4);
               fp[4] = R[6];
@@ -41157,20 +36193,16 @@ super_dispatch:                                   /* run macro instructions */
               R[4] = 128 * 2 + 258;
               ob = (word *)R[5];
               acc = 3;
-
             }
 
           } else {
-
             R[12] = G(R[1], 5);
             R[6] = 128 * 0 + 258;
             ob = (word *)R[12];
             acc = 4;
-
           }
 
         } else {
-
           R[10] = G(R[1], 6);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 7);
@@ -41181,28 +36213,22 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[10];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1023:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[1], 4);
           R[3] = G(R[1], 3);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 2);
@@ -41217,19 +36243,15 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[11];
           ob = (word *)R[10];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1024:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 2);
         R[8] = G(R[1], 3);
@@ -41249,18 +36271,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1025:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         if (R[4] == R[3]) {
-
           R[5] = G(R[1], 2);
           R[6] = prim_ref(R[5], R[4]);
           R[7] = G(R[1], 5);
@@ -41272,7 +36290,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[5] = G(R[1], 2);
           R[6] = prim_ref(R[5], R[4]);
           R[7] = G(R[1], 5);
@@ -41288,19 +36305,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[7];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1026:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -41315,18 +36328,14 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1027:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         if (R[4] == R[3]) {
-
           R[5] = G(R[1], 5);
           R[6] = prim_ref(R[5], R[4]);
           R[7] = G(R[1], 4);
@@ -41336,7 +36345,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[5] = G(R[1], 5);
           R[6] = prim_ref(R[5], R[4]);
           R[7] = G(R[1], 4);
@@ -41353,27 +36361,21 @@ super_dispatch:                                   /* run macro instructions */
           R[11] = G(R[1], 2);
           ob = (word *)R[11];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1028:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 0 + 258;
         {
-
           hval r = immval(R[4]) + immval(R[5]);
           R[7] = F(r >> FBITS);
           R[6] = F(r);
-
         }
 
         R[8] = G(R[1], 5);
@@ -41384,23 +36386,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1029:
       if (acc == 6) {
-
         if (R[6] == R[7]) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[9] = prim_ref(R[4], R[6]);
           *fp = make_header(7, TPROC);
           fp[1] = G(R[1], 2);
@@ -41415,27 +36412,21 @@ super_dispatch:                                   /* run macro instructions */
           ob = (word *)R[3];
           R[3] = R[11];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1030:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 0 + 258;
         {
-
           hval r = immval(R[4]) + immval(R[5]);
           R[7] = F(r >> FBITS);
           R[6] = F(r);
-
         }
 
         R[8] = G(R[1], 6);
@@ -41447,35 +36438,27 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1031:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 4 + 258;
         R[7] = BOOL(R[5] == R[6]);
         if (R[7] == IFALSE) {
-
           R[8] = 128 * 42 + 258;
           R[9] = BOOL(R[5] == R[8]);
           if (R[9] == IFALSE) {
-
             R[10] = 128 * 40 + 258;
             R[11] = BOOL(R[5] == R[10]);
             if (R[11] == IFALSE) {
-
               R[12] = G(R[1], 2);
               R[13] = G(R[1], 3);
               R[5] = R[4];
@@ -41484,114 +36467,88 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[12] = 128 * 0 + 258;
               R[13] = prim_ref(R[4], R[12]);
               ob = (word *)R[3];
               R[3] = R[13];
               acc = 1;
-
             }
 
           } else {
-
             R[10] = G(R[1], 4);
             ob = (word *)R[10];
             acc = 2;
-
           }
 
         } else {
-
           if (immediatep(R[4])) {
-
             R[8] = IFALSE;
 
           } else {
-
             hval h = V(R[4]);
             R[8] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
           }
 
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1032:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 4 + 258;
         R[7] = BOOL(R[5] == R[6]);
         if (R[7] == IFALSE) {
-
           R[8] = 128 * 42 + 258;
           R[9] = BOOL(R[5] == R[8]);
           if (R[9] == IFALSE) {
-
             R[10] = 128 * 40 + 258;
             R[11] = BOOL(R[5] == R[10]);
             if (R[11] == IFALSE) {
-
               R[12] = IFALSE;
               ob = (word *)R[3];
               R[3] = R[12];
               acc = 1;
 
             } else {
-
               R[12] = ITRUE;
               ob = (word *)R[3];
               R[3] = R[12];
               acc = 1;
-
             }
 
           } else {
-
             R[10] = ITRUE;
             ob = (word *)R[3];
             R[3] = R[10];
             acc = 1;
-
           }
 
         } else {
-
           R[8] = ITRUE;
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1033:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -41606,30 +36563,23 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1034:
       if (acc == 5) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[8] = 128 * 0 + 258;
           {
-
             hval r = immval(R[5]) - immval(R[8]);
             R[10] = F(r >> FBITS & 1);
             R[9] = F(r);
-
           }
 
           R[11] = prim_ref(R[4], R[5]);
@@ -41637,60 +36587,46 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[9];
           ob = (word *)R[7];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1035:
       if (acc == 1) {
-
         R[4] = 128 * 0 + 258;
         {
-
           hval r = immval(R[3]) - immval(R[4]);
           R[6] = F(r >> FBITS & 1);
           R[5] = F(r);
-
         }
 
         if (R[6] == F(0)) {
-
           R[7] = G(R[1], 2);
           R[3] = R[5];
           ob = (word *)R[7];
           acc = 1;
 
         } else {
-
           R[7] = G(R[1], 2);
           R[3] = IFALSE;
           ob = (word *)R[7];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1036:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 2 + 258;
@@ -41700,15 +36636,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1037:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -41725,15 +36658,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1038:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -41747,17 +36677,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1039:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -41777,28 +36703,22 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 3);
           R[3] = cons(R[4], R[5]);
           R[7] = G(R[1], 4);
           ob = (word *)R[7];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1040:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -41818,7 +36738,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 5);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -41836,19 +36755,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[9];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1041:
       if (acc == 1) {
-
         R[4] = 128 * 60 + 258;
         R[5] = R[3] & R[4];
         R[6] = 128 * 382 + 258;
@@ -41868,15 +36783,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1042:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = cons(R[3], R[4]);
         R[6] = G(R[1], 3);
@@ -41886,17 +36798,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1043:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -41916,7 +36824,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 5);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -41934,19 +36841,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[9];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1044:
       if (acc == 1) {
-
         R[4] = 128 * 28 + 258;
         R[5] = R[3] & R[4];
         R[6] = 128 * 446 + 258;
@@ -41968,15 +36871,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1045:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -41996,15 +36896,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1046:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = cons(R[3], R[4]);
         R[6] = G(R[1], 3);
@@ -42016,17 +36913,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1047:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[2], 3);
@@ -42039,7 +36932,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -42057,19 +36949,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[9];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1048:
       if (acc == 1) {
-
         R[4] = 128 * 12 + 258;
         R[5] = R[3] & R[4];
         R[6] = 128 * 478 + 258;
@@ -42091,15 +36979,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1049:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -42122,15 +37007,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1050:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -42153,15 +37035,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1051:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = cons(R[3], R[4]);
         R[6] = G(R[1], 3);
@@ -42175,15 +37054,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1052:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TPROC);
         fp[1] = G(R[1], 3);
@@ -42198,15 +37074,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1053:
       if (acc == 1) {
-
         R[4] = 128 * 254 + 258;
         R[3] = R[4] | R[3];
         R[6] = G(R[1], 2);
@@ -42214,69 +37087,53 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1054:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         if (R[5] == F(0)) {
-
           R[6] = ITRUE;
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[6] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[7] = 128 * 78 + 258;
           if (R[6] == R[7]) {
-
             R[8] = G(R[1], 2);
             R[5] = G(R[1], 3);
             ob = (word *)R[8];
             acc = 3;
 
           } else {
-
             R[8] = IFALSE;
             ob = (word *)R[3];
             R[3] = R[8];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1055:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -42295,15 +37152,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1056:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -42320,15 +37174,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1057:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -42353,15 +37204,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1058:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -42379,15 +37227,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1059:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -42412,15 +37257,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1060:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -42433,15 +37275,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1061:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -42470,15 +37309,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1062:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -42502,15 +37338,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1063:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[6] = F(0);
@@ -42523,15 +37356,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1064:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -42552,15 +37382,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1065:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -42578,53 +37405,41 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1066:
       if (acc == 4) {
-
         if (R[5] == F(0)) {
-
           R[7] = 128 * 0 + 258;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           R[7] = 128 * 0 + 258;
           if (R[5] == R[7]) {
-
             ob = (word *)R[3];
             R[3] = R[4];
             acc = 1;
 
           } else {
-
             R[8] = 128 * 2 + 258;
             if (R[5] == R[8]) {
-
               R[9] = G(R[1], 2);
               R[5] = R[4];
               ob = (word *)R[9];
               acc = 3;
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[9] = F((hval)ob >> TPOS & 63);
-
               }
 
               if (R[9] == F(0)) {
-
                 R[10] = G(R[1], 3);
                 *fp = make_header(4, TCLOS);
                 fp[1] = G(R[1], 4);
@@ -42638,18 +37453,14 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 3;
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[10] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 R[11] = 128 * 78 + 258;
                 if (R[10] == R[11]) {
-
                   R[12] = G(R[1], 3);
                   *fp = make_header(4, TCLOS);
                   fp[1] = G(R[1], 5);
@@ -42663,18 +37474,14 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 3;
 
                 } else {
-
                   {
-
                     word ob = R[5];
                     if (allocp(ob)) ob = V(ob);
                     R[12] = F((hval)ob >> TPOS & 63);
-
                   }
 
                   R[13] = 128 * 62 + 258;
                   if (R[12] == R[13]) {
-
                     R[14] = G(R[1], 6);
                     *fp = make_header(5, TCLOS);
                     fp[1] = G(R[1], 7);
@@ -42688,18 +37495,14 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 2;
 
                   } else {
-
                     {
-
                       word ob = R[5];
                       if (allocp(ob)) ob = V(ob);
                       R[14] = F((hval)ob >> TPOS & 63);
-
                     }
 
                     R[15] = 128 * 80 + 258;
                     if (R[14] == R[15]) {
-
                       R[16] = G(R[1], 6);
                       *fp = make_header(5, TCLOS);
                       fp[1] = G(R[1], 8);
@@ -42713,7 +37516,6 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 2;
 
                     } else {
-
                       R[16] = G(R[1], 9);
                       R[17] = G(R[1], 10);
                       R[6] = R[5];
@@ -42721,31 +37523,21 @@ super_dispatch:                                   /* run macro instructions */
                       R[4] = R[17];
                       ob = (word *)R[16];
                       acc = 4;
-
                     }
-
                   }
-
                 }
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1067:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = 128 * 0 + 258;
@@ -42758,15 +37550,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1068:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -42779,23 +37568,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1069:
       if (acc == 5) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(7, TCLOS);
           fp[1] = G(R[1], 3);
@@ -42811,21 +37595,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[10];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1070:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 4);
@@ -42846,7 +37625,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -42867,19 +37645,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[6];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1071:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -42902,15 +37676,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1072:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -42931,15 +37702,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1073:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -42960,15 +37728,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1074:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -42983,15 +37748,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1075:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -43011,116 +37773,90 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1076:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = F(0);
         R[7] = BOOL(R[5] == R[6]);
         if (R[7] == IFALSE) {
-
           R[8] = 128 * 62 + 258;
           R[9] = BOOL(R[5] == R[8]);
           if (R[9] == IFALSE) {
-
             R[10] = 128 * 78 + 258;
             R[11] = BOOL(R[5] == R[10]);
             if (R[11] == IFALSE) {
-
               R[12] = 128 * 80 + 258;
               R[13] = BOOL(R[5] == R[12]);
               if (R[13] == IFALSE) {
-
                 R[14] = 128 * 82 + 258;
                 R[15] = BOOL(R[5] == R[14]);
                 if (R[15] == IFALSE) {
-
                   R[16] = 128 * 84 + 258;
                   R[17] = BOOL(R[5] == R[16]);
                   if (R[17] == IFALSE) {
-
                     R[18] = IFALSE;
                     ob = (word *)R[3];
                     R[3] = R[18];
                     acc = 1;
 
                   } else {
-
                     R[18] = ITRUE;
                     ob = (word *)R[3];
                     R[3] = R[18];
                     acc = 1;
-
                   }
 
                 } else {
-
                   R[16] = ITRUE;
                   ob = (word *)R[3];
                   R[3] = R[16];
                   acc = 1;
-
                 }
 
               } else {
-
                 R[14] = ITRUE;
                 ob = (word *)R[3];
                 R[3] = R[14];
                 acc = 1;
-
               }
 
             } else {
-
               R[12] = ITRUE;
               ob = (word *)R[3];
               R[3] = R[12];
               acc = 1;
-
             }
 
           } else {
-
             R[10] = ITRUE;
             ob = (word *)R[3];
             R[3] = R[10];
             acc = 1;
-
           }
 
         } else {
-
           R[8] = ITRUE;
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1077:
       if (acc == 3) {
-
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 2);
         fp[3] = R[5];
@@ -43132,24 +37868,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1078:
       if (acc == 5) {
-
         if (R[6] == INULL) {
-
           R[8] = ITRUE;
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
 
         } else {
-
           assert(pairp(R[6]), R[6], 105);
           R[8] = G(R[6], 1);
           *fp = make_header(6, TPROC);
@@ -43165,28 +37896,22 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1079:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -43197,30 +37922,23 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[8];
           ob = (word *)R[7];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1080:
       if (acc == 5) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[8] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[9] = 128 * 82 + 258;
         if (R[8] == R[9]) {
-
           R[10] = 128 * 0 + 258;
           R[11] = prim_ref(R[4], R[10]);
           R[12] = 128 * 2 + 258;
@@ -43237,20 +37955,15 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[10] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[11] = 128 * 84 + 258;
           if (R[10] == R[11]) {
-
             {
-
               word *ob = (word *)R[4];
               hval  hdr;
               assert(allocp(R[4]), R[4], IFALSE);
@@ -43258,7 +37971,6 @@ super_dispatch:                                   /* run macro instructions */
               assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
               R[12] = ob[1];
               R[13] = ob[2];
-
             }
 
             *fp = make_header(6, TPROC);
@@ -43271,7 +37983,6 @@ super_dispatch:                                   /* run macro instructions */
             fp += 6;
             R[15] = 128 * 0 + 258;
             if (R[13] == R[15]) {
-
               R[16] = 128 * 208 + 258;
               R[17] = cons(R[16], R[5]);
               R[3] = cons(R[11], R[17]);
@@ -43279,10 +37990,8 @@ super_dispatch:                                   /* run macro instructions */
               acc = 1;
 
             } else {
-
               R[16] = 128 * 1 + 258;
               if (R[13] == R[16]) {
-
                 R[17] = 128 * 208 + 258;
                 R[18] = cons(R[17], R[5]);
                 R[19] = 128 * 88 + 258;
@@ -43291,7 +38000,6 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 1;
 
               } else {
-
                 R[17] = G(R[1], 3);
                 *fp = make_header(7, TCLOS);
                 fp[1] = G(R[1], 4);
@@ -43306,13 +38014,10 @@ super_dispatch:                                   /* run macro instructions */
                 R[4] = R[13];
                 ob = (word *)R[17];
                 acc = 3;
-
               }
-
             }
 
           } else {
-
             R[12] = G(R[1], 3);
             *fp = make_header(7, TCLOS);
             fp[1] = G(R[1], 6);
@@ -43326,23 +38031,17 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = F(0);
             ob = (word *)R[12];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1081:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -43362,7 +38061,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -43382,19 +38080,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1082:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         *fp = make_header(3, TPROC);
@@ -43413,15 +38107,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1083:
       if (acc == 1) {
-
         R[4] = 128 * 88 + 258;
         R[3] = cons(R[4], R[3]);
         R[6] = G(R[1], 2);
@@ -43429,17 +38120,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1084:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 3);
@@ -43454,7 +38141,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[2], 3);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -43469,21 +38155,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[9];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1085:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = 128 * 208 + 258;
           R[5] = G(R[1], 2);
           R[6] = cons(R[4], R[5]);
@@ -43502,7 +38183,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[4] = 128 * 208 + 258;
           R[5] = G(R[1], 2);
           R[6] = cons(R[4], R[5]);
@@ -43515,19 +38195,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[10];
           ob = (word *)R[7];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1086:
       if (acc == 1) {
-
         R[4] = 128 * 84 + 258;
         R[3] = cons(R[4], R[3]);
         R[6] = G(R[1], 2);
@@ -43535,15 +38211,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1087:
       if (acc == 1) {
-
         R[4] = 128 * 92 + 258;
         R[5] = cons(R[4], R[3]);
         R[6] = G(R[1], 5);
@@ -43558,15 +38231,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1088:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -43586,15 +38256,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1089:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[2], 3);
@@ -43609,15 +38276,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1090:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[2], 3);
@@ -43631,30 +38295,24 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1091:
       if (acc == 3) {
-
         R[6] = cons(R[5], R[4]);
         ob = (word *)R[3];
         R[3] = R[6];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1092:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -43670,15 +38328,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1093:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(4, TCLOS);
@@ -43688,29 +38343,23 @@ super_dispatch:                                   /* run macro instructions */
         R[6] = (word)fp;
         fp += 4;
         if (R[3] == IFALSE) {
-
           R[3] = 128 * 172 + 258;
           ob = (word *)R[6];
           acc = 1;
 
         } else {
-
           R[3] = 128 * 94 + 258;
           ob = (word *)R[6];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1094:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -43730,15 +38379,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1095:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -43759,15 +38405,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1096:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -43790,15 +38433,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1097:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -43816,15 +38456,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1098:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TPROC);
         fp[1] = G(R[1], 3);
@@ -43837,15 +38474,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1099:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TPROC);
         fp[1] = G(R[1], 3);
@@ -43858,85 +38492,65 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1100:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[3] = G(R[1], 3);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1101:
       if (acc == 3) {
-
         if (R[5] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           assert(pairp(R[5]), R[5], 169);
           R[6] = G(R[5], 2);
           if (R[6] == INULL) {
-
             ob = (word *)R[3];
             R[3] = R[5];
             acc = 1;
 
           } else {
-
             R[7] = G(R[1], 2);
             ob = (word *)R[7];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1102:
       if (acc == 3) {
-
         if (R[5] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[6] = G(R[1], 2);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[1], 3);
@@ -43952,30 +38566,24 @@ super_dispatch:                                   /* run macro instructions */
           R[7] = R[9];
           ob = (word *)R[10];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1103:
       if (acc == 1) {
-
         assert(pairp(R[3]), R[3], 169);
         R[4] = G(R[3], 2);
         if (R[4] == INULL) {
-
           R[3] = G(R[3], 1);
           R[6] = G(R[1], 3);
           ob = (word *)R[6];
           acc = 1;
 
         } else {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 3);
           R[4] = G(R[1], 2);
@@ -43984,30 +38592,24 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[6];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1104:
       if (acc == 4) {
-
         assert(pairp(R[5]), R[5], 169);
         R[7] = G(R[5], 2);
         if (R[7] == INULL) {
-
           R[8] = G(R[5], 1);
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
 
         } else {
-
           R[8] = G(R[1], 2);
           *fp = make_header(5, TPROC);
           fp[1] = G(R[1], 3);
@@ -44018,42 +38620,32 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1105:
       if (acc == 6) {
-
         if (R[5] == INULL) {
-
           if (R[6] == INULL) {
-
             ob = (word *)R[3];
             R[3] = R[6];
             acc = 1;
 
           } else {
-
             R[9] = INULL;
             R[10] = cons(R[6], R[9]);
             ob = (word *)R[3];
             R[3] = R[10];
             acc = 1;
-
           }
 
         } else {
-
           R[9] = 128 * 18 + 258;
           if (R[7] == R[9]) {
-
             assert(pairp(R[5]), R[5], 169);
             R[10] = G(R[5], 2);
             R[11] = G(R[5], 1);
@@ -44072,14 +38664,11 @@ super_dispatch:                                   /* run macro instructions */
             acc = 6;
 
           } else {
-
             R[10] = 128 * 0 + 258;
             {
-
               hval r = immval(R[7]) + immval(R[10]);
               R[12] = F(r >> FBITS);
               R[11] = F(r);
-
             }
 
             assert(pairp(R[5]), R[5], 169);
@@ -44100,21 +38689,16 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[9];
             ob = (word *)R[15];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1106:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -44131,28 +38715,22 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1107:
       if (acc == 4) {
-
         if (R[5] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           assert(pairp(R[5]), R[5], 105);
           R[7] = G(R[5], 1);
           R[8] = G(R[5], 2);
           if (R[8] == INULL) {
-
             R[9] = INULL;
             R[10] = cons(R[7], R[9]);
             ob = (word *)R[3];
@@ -44160,7 +38738,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             assert(pairp(R[8]), R[8], 105);
             R[9] = G(R[8], 1);
             R[10] = G(R[8], 2);
@@ -44177,37 +38754,28 @@ super_dispatch:                                   /* run macro instructions */
             R[6] = R[9];
             ob = (word *)R[11];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1108:
       if (acc == 5) {
-
         if (R[5] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           if (R[6] == INULL) {
-
             ob = (word *)R[3];
             R[3] = R[5];
             acc = 1;
 
           } else {
-
             assert(pairp(R[6]), R[6], 105);
             R[8] = G(R[6], 1);
             assert(pairp(R[5]), R[5], 105);
@@ -44226,23 +38794,17 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[9];
             ob = (word *)R[11];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1109:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -44263,7 +38825,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -44280,21 +38841,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = G(R[1], 3);
           ob = (word *)R[7];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1110:
       if (acc == 5) {
-
         if (R[4] == INULL) {
-
           R[8] = INULL;
           R[9] = cons(R[5], R[8]);
           ob = (word *)R[3];
@@ -44302,7 +38858,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           assert(pairp(R[4]), R[4], 105);
           R[8] = G(R[4], 1);
           *fp = make_header(7, TCLOS);
@@ -44318,21 +38873,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1111:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -44353,35 +38903,28 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 2);
           R[3] = cons(R[4], R[5]);
           R[7] = G(R[1], 6);
           ob = (word *)R[7];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1112:
       if (acc == 3) {
-
         if (R[4] == INULL) {
-
           R[6] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[6] = G(R[1], 2);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 3);
@@ -44392,21 +38935,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[6];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1113:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -44420,24 +38958,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 3);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1114:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = F(0);
         R[7] = R[5];
@@ -44446,23 +38979,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1115:
       if (acc == 3) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           R[6] = G(R[1], 2);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 3);
@@ -44473,21 +39001,16 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[6];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1116:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -44501,7 +39024,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -44518,19 +39040,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[5];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1117:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -44548,15 +39066,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1118:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -44574,15 +39089,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1119:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[8] = R[5];
@@ -44592,15 +39104,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1120:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -44618,15 +39127,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1121:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -44640,15 +39146,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1122:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -44662,27 +39165,21 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1123:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           if (R[4] == INULL) {
-
             R[5] = G(R[1], 5);
             R[3] = G(R[1], 3);
             ob = (word *)R[5];
             acc = 1;
 
           } else {
-
             R[5] = G(R[1], 5);
             R[6] = G(R[1], 3);
             R[7] = G(R[1], 4);
@@ -44695,11 +39192,9 @@ super_dispatch:                                   /* run macro instructions */
             fp += 5;
             ob = (word *)R[5];
             acc = 1;
-
           }
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -44717,19 +39212,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[7];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1124:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -44744,27 +39235,21 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1125:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           if (R[4] == INULL) {
-
             R[5] = G(R[1], 5);
             R[3] = G(R[1], 2);
             ob = (word *)R[5];
             acc = 1;
 
           } else {
-
             R[5] = G(R[1], 2);
             R[6] = G(R[1], 4);
             R[7] = G(R[1], 5);
@@ -44779,11 +39264,9 @@ super_dispatch:                                   /* run macro instructions */
             fp += 6;
             ob = (word *)R[4];
             acc = 1;
-
           }
 
         } else {
-
           R[4] = G(R[1], 3);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -44803,19 +39286,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[10];
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1126:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -44831,15 +39310,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1127:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -44853,27 +39329,21 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1128:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           if (R[4] == INULL) {
-
             R[5] = G(R[1], 5);
             R[3] = G(R[1], 2);
             ob = (word *)R[5];
             acc = 2;
 
           } else {
-
             R[5] = G(R[1], 2);
             R[6] = G(R[1], 5);
             R[7] = G(R[1], 3);
@@ -44886,11 +39356,9 @@ super_dispatch:                                   /* run macro instructions */
             fp += 5;
             ob = (word *)R[4];
             acc = 1;
-
           }
 
         } else {
-
           R[4] = G(R[1], 4);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -44899,19 +39367,15 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1129:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -44924,17 +39388,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1130:
       if (acc == 4) {
-
         if (R[5] == F(0)) {
-
           R[7] = INULL;
           R[8] = cons(R[5], R[7]);
           R[9] = cons(R[4], R[8]);
@@ -44946,30 +39406,22 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[7] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[8] = 128 * 84 + 258;
           if (R[7] == R[8]) {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[9] = F((hval)ob >> TPOS & 63);
-
             }
 
             if (R[9] == R[8]) {
-
               {
-
                 word *ob = (word *)R[4];
                 hval  hdr;
                 assert(allocp(R[4]), R[4], IFALSE);
@@ -44977,11 +39429,9 @@ super_dispatch:                                   /* run macro instructions */
                 assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                 R[10] = ob[1];
                 R[11] = ob[2];
-
               }
 
               {
-
                 word *ob = (word *)R[5];
                 hval  hdr;
                 assert(allocp(R[5]), R[5], IFALSE);
@@ -44989,7 +39439,6 @@ super_dispatch:                                   /* run macro instructions */
                 assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                 R[12] = ob[1];
                 R[13] = ob[2];
-
               }
 
               R[14] = G(R[1], 5);
@@ -45009,9 +39458,7 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               {
-
                 word *ob = (word *)R[4];
                 hval  hdr;
                 assert(allocp(R[4]), R[4], IFALSE);
@@ -45019,7 +39466,6 @@ super_dispatch:                                   /* run macro instructions */
                 assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                 R[10] = ob[1];
                 R[11] = ob[2];
-
               }
 
               R[12] = G(R[1], 5);
@@ -45035,23 +39481,17 @@ super_dispatch:                                   /* run macro instructions */
               R[4] = R[5];
               ob = (word *)R[12];
               acc = 3;
-
             }
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[9] = F((hval)ob >> TPOS & 63);
-
             }
 
             if (R[9] == R[8]) {
-
               {
-
                 word *ob = (word *)R[5];
                 hval  hdr;
                 assert(allocp(R[5]), R[5], IFALSE);
@@ -45059,7 +39499,6 @@ super_dispatch:                                   /* run macro instructions */
                 assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                 R[10] = ob[1];
                 R[11] = ob[2];
-
               }
 
               R[12] = G(R[1], 5);
@@ -45078,28 +39517,21 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               {
-
                 word ob = R[4];
                 if (allocp(ob)) ob = V(ob);
                 R[10] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[11] = 128 * 82 + 258;
               if (R[10] == R[11]) {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[12] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 if (R[12] == R[11]) {
-
                   R[13] = 128 * 0 + 258;
                   R[14] = prim_ref(R[4], R[13]);
                   R[15] = 128 * 2 + 258;
@@ -45119,7 +39551,6 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 3;
 
                 } else {
-
                   R[13] = 128 * 0 + 258;
                   R[14] = prim_ref(R[4], R[13]);
                   R[15] = 128 * 2 + 258;
@@ -45133,21 +39564,16 @@ super_dispatch:                                   /* run macro instructions */
                   fp += 4;
                   ob = (word *)R[17];
                   acc = 3;
-
                 }
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[12] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 if (R[12] == R[11]) {
-
                   R[13] = 128 * 2 + 258;
                   R[14] = prim_ref(R[5], R[13]);
                   R[15] = G(R[1], 5);
@@ -45162,31 +39588,22 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 3;
 
                 } else {
-
                   R[13] = G(R[1], 12);
                   ob = (word *)R[13];
                   acc = 3;
-
                 }
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1131:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 2 + 258;
         R[6] = prim_ref(R[4], R[5]);
@@ -45208,15 +39625,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1132:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -45240,15 +39654,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1133:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -45270,15 +39681,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1134:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -45301,15 +39709,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1135:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -45331,15 +39736,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1136:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -45362,15 +39764,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1137:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -45391,15 +39790,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1138:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -45425,15 +39821,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1139:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -45458,15 +39851,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1140:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -45494,15 +39884,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1141:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -45531,15 +39918,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1142:
       if (acc == 1) {
-
         R[4] = G(R[1], 7);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -45566,15 +39950,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1143:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -45599,15 +39980,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1144:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -45630,15 +40008,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1145:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -45656,65 +40031,49 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1146:
       if (acc == 4) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = F(0);
         R[9] = BOOL(R[7] == R[8]);
         if (R[9] == IFALSE) {
-
           R[10] = 128 * 62 + 258;
           R[11] = BOOL(R[7] == R[10]);
           if (R[11] == IFALSE) {
-
             R[12] = 128 * 78 + 258;
             R[13] = BOOL(R[7] == R[12]);
             if (R[13] == IFALSE) {
-
               R[14] = 128 * 80 + 258;
               R[15] = BOOL(R[7] == R[14]);
               if (R[15] == IFALSE) {
-
                 R[16] = 128 * 82 + 258;
                 R[17] = BOOL(R[7] == R[16]);
                 if (R[17] == IFALSE) {
-
                   R[18] = 128 * 84 + 258;
                   R[19] = BOOL(R[7] == R[18]);
                   if (R[19] == IFALSE) {
-
                     R[20] = G(R[1], 2);
                     ob = (word *)R[20];
                     acc = 3;
 
                   } else {
-
                     {
-
                       word ob = R[5];
                       if (allocp(ob)) ob = V(ob);
                       R[20] = F((hval)ob >> TPOS & 63);
-
                     }
 
                     if (R[20] == R[18]) {
-
                       {
-
                         word *ob = (word *)R[4];
                         hval  hdr;
                         assert(allocp(R[4]), R[4], IFALSE);
@@ -45722,11 +40081,9 @@ super_dispatch:                                   /* run macro instructions */
                         assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                         R[21] = ob[1];
                         R[22] = ob[2];
-
                       }
 
                       {
-
                         word *ob = (word *)R[5];
                         hval  hdr;
                         assert(allocp(R[5]), R[5], IFALSE);
@@ -45734,7 +40091,6 @@ super_dispatch:                                   /* run macro instructions */
                         assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                         R[23] = ob[1];
                         R[24] = ob[2];
-
                       }
 
                       *fp = make_header(8, TCLOS);
@@ -45753,9 +40109,7 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 4;
 
                     } else {
-
                       {
-
                         word *ob = (word *)R[4];
                         hval  hdr;
                         assert(allocp(R[4]), R[4], IFALSE);
@@ -45763,7 +40117,6 @@ super_dispatch:                                   /* run macro instructions */
                         assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                         R[21] = ob[1];
                         R[22] = ob[2];
-
                       }
 
                       *fp = make_header(6, TCLOS);
@@ -45777,28 +40130,21 @@ super_dispatch:                                   /* run macro instructions */
                       R[4] = R[21];
                       ob = (word *)R[6];
                       acc = 4;
-
                     }
-
                   }
 
                 } else {
-
                   {
-
                     word ob = R[5];
                     if (allocp(ob)) ob = V(ob);
                     R[18] = F((hval)ob >> TPOS & 63);
-
                   }
 
                   R[19] = BOOL(R[18] == R[16]);
                   if (R[19] == IFALSE) {
-
                     R[20] = 128 * 84 + 258;
                     R[21] = BOOL(R[18] == R[20]);
                     if (R[21] == IFALSE) {
-
                       R[22] = 128 * 0 + 258;
                       R[23] = prim_ref(R[4], R[22]);
                       *fp = make_header(4, TCLOS);
@@ -45812,9 +40158,7 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 4;
 
                     } else {
-
                       {
-
                         word *ob = (word *)R[5];
                         hval  hdr;
                         assert(allocp(R[5]), R[5], IFALSE);
@@ -45822,7 +40166,6 @@ super_dispatch:                                   /* run macro instructions */
                         assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                         R[22] = ob[1];
                         R[23] = ob[2];
-
                       }
 
                       *fp = make_header(6, TCLOS);
@@ -45836,11 +40179,9 @@ super_dispatch:                                   /* run macro instructions */
                       R[5] = R[22];
                       ob = (word *)R[6];
                       acc = 4;
-
                     }
 
                   } else {
-
                     R[20] = 128 * 0 + 258;
                     R[21] = prim_ref(R[4], R[20]);
                     R[22] = prim_ref(R[5], R[20]);
@@ -45856,37 +40197,28 @@ super_dispatch:                                   /* run macro instructions */
                     R[5] = R[22];
                     ob = (word *)R[6];
                     acc = 4;
-
                   }
-
                 }
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[16] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 R[17] = 128 * 82 + 258;
                 R[18] = BOOL(R[16] == R[17]);
                 if (R[18] == IFALSE) {
-
                   R[19] = 128 * 84 + 258;
                   R[20] = BOOL(R[16] == R[19]);
                   if (R[20] == IFALSE) {
-
                     R[21] = G(R[1], 2);
                     ob = (word *)R[21];
                     acc = 3;
 
                   } else {
-
                     {
-
                       word *ob = (word *)R[5];
                       hval  hdr;
                       assert(allocp(R[5]), R[5], IFALSE);
@@ -45894,7 +40226,6 @@ super_dispatch:                                   /* run macro instructions */
                       assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                       R[21] = ob[1];
                       R[22] = ob[2];
-
                     }
 
                     *fp = make_header(6, TCLOS);
@@ -45908,11 +40239,9 @@ super_dispatch:                                   /* run macro instructions */
                     R[5] = R[21];
                     ob = (word *)R[6];
                     acc = 4;
-
                   }
 
                 } else {
-
                   R[19] = 128 * 0 + 258;
                   R[20] = prim_ref(R[5], R[19]);
                   *fp = make_header(4, TCLOS);
@@ -45924,37 +40253,28 @@ super_dispatch:                                   /* run macro instructions */
                   R[5] = R[20];
                   ob = (word *)R[6];
                   acc = 4;
-
                 }
-
               }
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[14] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[15] = 128 * 82 + 258;
               R[16] = BOOL(R[14] == R[15]);
               if (R[16] == IFALSE) {
-
                 R[17] = 128 * 84 + 258;
                 R[18] = BOOL(R[14] == R[17]);
                 if (R[18] == IFALSE) {
-
                   R[19] = G(R[1], 2);
                   ob = (word *)R[19];
                   acc = 3;
 
                 } else {
-
                   {
-
                     word *ob = (word *)R[5];
                     hval  hdr;
                     assert(allocp(R[5]), R[5], IFALSE);
@@ -45962,7 +40282,6 @@ super_dispatch:                                   /* run macro instructions */
                     assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                     R[19] = ob[1];
                     R[20] = ob[2];
-
                   }
 
                   *fp = make_header(6, TCLOS);
@@ -45976,11 +40295,9 @@ super_dispatch:                                   /* run macro instructions */
                   R[5] = R[19];
                   ob = (word *)R[6];
                   acc = 4;
-
                 }
 
               } else {
-
                 R[17] = 128 * 0 + 258;
                 R[18] = prim_ref(R[5], R[17]);
                 *fp = make_header(4, TCLOS);
@@ -45992,37 +40309,28 @@ super_dispatch:                                   /* run macro instructions */
                 R[5] = R[18];
                 ob = (word *)R[6];
                 acc = 4;
-
               }
-
             }
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[12] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[13] = 128 * 82 + 258;
             R[14] = BOOL(R[12] == R[13]);
             if (R[14] == IFALSE) {
-
               R[15] = 128 * 84 + 258;
               R[16] = BOOL(R[12] == R[15]);
               if (R[16] == IFALSE) {
-
                 R[17] = G(R[1], 2);
                 ob = (word *)R[17];
                 acc = 3;
 
               } else {
-
                 {
-
                   word *ob = (word *)R[5];
                   hval  hdr;
                   assert(allocp(R[5]), R[5], IFALSE);
@@ -46030,7 +40338,6 @@ super_dispatch:                                   /* run macro instructions */
                   assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                   R[17] = ob[1];
                   R[18] = ob[2];
-
                 }
 
                 *fp = make_header(6, TCLOS);
@@ -46044,11 +40351,9 @@ super_dispatch:                                   /* run macro instructions */
                 R[5] = R[17];
                 ob = (word *)R[6];
                 acc = 4;
-
               }
 
             } else {
-
               R[15] = 128 * 0 + 258;
               R[16] = prim_ref(R[5], R[15]);
               *fp = make_header(4, TCLOS);
@@ -46060,37 +40365,28 @@ super_dispatch:                                   /* run macro instructions */
               R[5] = R[16];
               ob = (word *)R[6];
               acc = 4;
-
             }
-
           }
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[10] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[11] = 128 * 82 + 258;
           R[12] = BOOL(R[10] == R[11]);
           if (R[12] == IFALSE) {
-
             R[13] = 128 * 84 + 258;
             R[14] = BOOL(R[10] == R[13]);
             if (R[14] == IFALSE) {
-
               R[15] = G(R[1], 2);
               ob = (word *)R[15];
               acc = 3;
 
             } else {
-
               {
-
                 word *ob = (word *)R[5];
                 hval  hdr;
                 assert(allocp(R[5]), R[5], IFALSE);
@@ -46098,7 +40394,6 @@ super_dispatch:                                   /* run macro instructions */
                 assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                 R[15] = ob[1];
                 R[16] = ob[2];
-
               }
 
               *fp = make_header(6, TCLOS);
@@ -46112,11 +40407,9 @@ super_dispatch:                                   /* run macro instructions */
               R[5] = R[15];
               ob = (word *)R[6];
               acc = 4;
-
             }
 
           } else {
-
             R[13] = 128 * 0 + 258;
             R[14] = prim_ref(R[5], R[13]);
             *fp = make_header(4, TCLOS);
@@ -46128,21 +40421,16 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[14];
             ob = (word *)R[6];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1147:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 2 + 258;
         R[6] = prim_ref(R[4], R[5]);
@@ -46155,15 +40443,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1148:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -46189,15 +40474,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1149:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -46224,15 +40506,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1150:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -46254,15 +40533,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1151:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -46282,38 +40558,28 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1152:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = 128 * 84 + 258;
         if (R[6] == R[7]) {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[8] = F((hval)ob >> TPOS & 63);
-
           }
 
           if (R[8] == R[7]) {
-
             {
-
               word *ob = (word *)R[4];
               hval  hdr;
               assert(allocp(R[4]), R[4], IFALSE);
@@ -46321,11 +40587,9 @@ super_dispatch:                                   /* run macro instructions */
               assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
               R[9] = ob[1];
               R[10] = ob[2];
-
             }
 
             {
-
               word *ob = (word *)R[5];
               hval  hdr;
               assert(allocp(R[5]), R[5], IFALSE);
@@ -46333,7 +40597,6 @@ super_dispatch:                                   /* run macro instructions */
               assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
               R[11] = ob[1];
               R[12] = ob[2];
-
             }
 
             R[13] = G(R[1], 2);
@@ -46345,9 +40608,7 @@ super_dispatch:                                   /* run macro instructions */
             acc = 5;
 
           } else {
-
             {
-
               word *ob = (word *)R[4];
               hval  hdr;
               assert(allocp(R[4]), R[4], IFALSE);
@@ -46355,7 +40616,6 @@ super_dispatch:                                   /* run macro instructions */
               assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
               R[9] = ob[1];
               R[10] = ob[2];
-
             }
 
             R[11] = G(R[1], 2);
@@ -46365,13 +40625,10 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[10];
             ob = (word *)R[11];
             acc = 5;
-
           }
 
         } else {
-
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -46379,7 +40636,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[8] = ob[1];
             R[9] = ob[2];
-
           }
 
           R[10] = G(R[1], 2);
@@ -46388,19 +40644,15 @@ super_dispatch:                                   /* run macro instructions */
           R[7] = R[9];
           ob = (word *)R[10];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1153:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -46415,17 +40667,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1154:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -46438,7 +40686,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           *fp = make_header(4, TPROC);
@@ -46454,32 +40701,24 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1155:
       if (acc == 3) {
-
         {
-
           word ob = R[5];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = 128 * 84 + 258;
         if (R[6] == R[7]) {
-
           {
-
             word *ob = (word *)R[4];
             hval  hdr;
             assert(allocp(R[4]), R[4], IFALSE);
@@ -46487,11 +40726,9 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[8] = ob[1];
             R[9] = ob[2];
-
           }
 
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -46499,7 +40736,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[10] = ob[1];
             R[11] = ob[2];
-
           }
 
           R[12] = G(R[1], 2);
@@ -46516,9 +40752,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           {
-
             word *ob = (word *)R[4];
             hval  hdr;
             assert(allocp(R[4]), R[4], IFALSE);
@@ -46526,7 +40760,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[8] = ob[1];
             R[9] = ob[2];
-
           }
 
           R[10] = G(R[1], 2);
@@ -46539,19 +40772,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1156:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         *fp = make_header(3, 43);
         fp[1] = R[3];
@@ -46563,24 +40792,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1157:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[1], 3);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           *fp = make_header(3, 43);
           fp[1] = R[4];
@@ -46590,51 +40814,39 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = G(R[1], 3);
           ob = (word *)R[6];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1158:
       if (acc == 4) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = F(0);
         R[9] = BOOL(R[7] == R[8]);
         if (R[9] == IFALSE) {
-
           R[10] = 128 * 62 + 258;
           R[11] = BOOL(R[7] == R[10]);
           if (R[11] == IFALSE) {
-
             R[12] = 128 * 78 + 258;
             R[13] = BOOL(R[7] == R[12]);
             if (R[13] == IFALSE) {
-
               R[14] = 128 * 80 + 258;
               R[15] = BOOL(R[7] == R[14]);
               if (R[15] == IFALSE) {
-
                 R[16] = 128 * 82 + 258;
                 R[17] = BOOL(R[7] == R[16]);
                 if (R[17] == IFALSE) {
-
                   R[18] = 128 * 84 + 258;
                   R[19] = BOOL(R[7] == R[18]);
                   if (R[19] == IFALSE) {
-
                     R[20] = G(R[1], 2);
                     R[21] = G(R[1], 3);
                     R[6] = R[5];
@@ -46644,17 +40856,13 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 4;
 
                   } else {
-
                     {
-
                       word ob = R[5];
                       if (allocp(ob)) ob = V(ob);
                       R[20] = F((hval)ob >> TPOS & 63);
-
                     }
 
                     if (R[20] == R[18]) {
-
                       R[21] = 128 * 0 + 258;
                       R[22] = prim_ref(R[4], R[21]);
                       R[23] = prim_ref(R[5], R[21]);
@@ -46672,36 +40880,28 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 4;
 
                     } else {
-
                       R[21] = IFALSE;
                       ob = (word *)R[3];
                       R[3] = R[21];
                       acc = 1;
-
                     }
-
                   }
 
                 } else {
-
                   {
-
                     word ob = R[5];
                     if (allocp(ob)) ob = V(ob);
                     R[18] = F((hval)ob >> TPOS & 63);
-
                   }
 
                   R[19] = BOOL(R[18] == R[16]);
                   if (R[19] == IFALSE) {
-
                     R[20] = IFALSE;
                     ob = (word *)R[3];
                     R[3] = R[20];
                     acc = 1;
 
                   } else {
-
                     R[20] = 128 * 0 + 258;
                     R[21] = prim_ref(R[4], R[20]);
                     R[22] = prim_ref(R[5], R[20]);
@@ -46717,104 +40917,79 @@ super_dispatch:                                   /* run macro instructions */
                     R[5] = R[22];
                     ob = (word *)R[6];
                     acc = 4;
-
                   }
-
                 }
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[16] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 R[17] = BOOL(R[16] == R[14]);
                 if (R[17] == IFALSE) {
-
                   R[18] = IFALSE;
                   ob = (word *)R[3];
                   R[3] = R[18];
                   acc = 1;
 
                 } else {
-
                   R[18] = G(R[1], 6);
                   ob = (word *)R[18];
                   acc = 3;
-
                 }
-
               }
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[14] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[15] = BOOL(R[14] == R[12]);
               if (R[15] == IFALSE) {
-
                 R[16] = IFALSE;
                 ob = (word *)R[3];
                 R[3] = R[16];
                 acc = 1;
 
               } else {
-
                 R[16] = G(R[1], 6);
                 ob = (word *)R[16];
                 acc = 3;
-
               }
-
             }
 
           } else {
-
             R[12] = BOOL(R[4] == R[5]);
             ob = (word *)R[3];
             R[3] = R[12];
             acc = 1;
-
           }
 
         } else {
-
           R[10] = BOOL(R[4] == R[5]);
           ob = (word *)R[3];
           R[3] = R[10];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1159:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[5] = 128 * 2 + 258;
           R[6] = prim_ref(R[4], R[5]);
@@ -46826,19 +41001,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[9];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1160:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -46849,96 +41020,73 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1161:
       if (acc == 4) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = 128 * 82 + 258;
         if (R[7] == R[8]) {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = BOOL(R[9] == R[8]);
           if (R[10] == IFALSE) {
-
             R[11] = F(0);
             R[12] = BOOL(R[9] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = 128 * 62 + 258;
               R[14] = BOOL(R[9] == R[13]);
               if (R[14] == IFALSE) {
-
                 R[15] = 128 * 78 + 258;
                 R[16] = BOOL(R[9] == R[15]);
                 if (R[16] == IFALSE) {
-
                   R[17] = 128 * 80 + 258;
                   R[18] = BOOL(R[9] == R[17]);
                   if (R[18] == IFALSE) {
-
                     R[19] = G(R[1], 2);
                     ob = (word *)R[19];
                     acc = 3;
 
                   } else {
-
                     R[19] = G(R[2], 2);
                     ob = (word *)R[19];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[17] = G(R[2], 2);
                   ob = (word *)R[17];
                   acc = 3;
-
                 }
 
               } else {
-
                 R[15] = G(R[2], 2);
                 ob = (word *)R[15];
                 acc = 3;
-
               }
 
             } else {
-
               R[13] = G(R[2], 2);
               ob = (word *)R[13];
               acc = 3;
-
             }
 
           } else {
-
             R[11] = 128 * 2 + 258;
             R[12] = prim_ref(R[4], R[11]);
             R[13] = prim_ref(R[5], R[11]);
             if (R[12] == R[13]) {
-
               R[14] = 128 * 0 + 258;
               R[4] = prim_ref(R[4], R[14]);
               R[5] = prim_ref(R[5], R[14]);
@@ -46953,7 +41101,6 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[14] = 128 * 0 + 258;
               R[4] = prim_ref(R[4], R[14]);
               R[16] = prim_ref(R[5], R[14]);
@@ -46969,105 +41116,78 @@ super_dispatch:                                   /* run macro instructions */
               R[5] = R[13];
               ob = (word *)R[17];
               acc = 3;
-
             }
-
           }
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           if (R[9] == R[8]) {
-
             {
-
               word ob = R[4];
               if (allocp(ob)) ob = V(ob);
               R[10] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[11] = F(0);
             R[12] = BOOL(R[10] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = 128 * 62 + 258;
               R[14] = BOOL(R[10] == R[13]);
               if (R[14] == IFALSE) {
-
                 R[15] = 128 * 78 + 258;
                 R[16] = BOOL(R[10] == R[15]);
                 if (R[16] == IFALSE) {
-
                   R[17] = 128 * 80 + 258;
                   R[18] = BOOL(R[10] == R[17]);
                   if (R[18] == IFALSE) {
-
                     R[19] = G(R[1], 2);
                     ob = (word *)R[19];
                     acc = 3;
 
                   } else {
-
                     R[19] = G(R[2], 7);
                     ob = (word *)R[19];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[17] = G(R[2], 7);
                   ob = (word *)R[17];
                   acc = 3;
-
                 }
 
               } else {
-
                 R[15] = G(R[2], 7);
                 ob = (word *)R[15];
                 acc = 3;
-
               }
 
             } else {
-
               R[13] = G(R[2], 7);
               ob = (word *)R[13];
               acc = 3;
-
             }
 
           } else {
-
             R[10] = G(R[1], 2);
             ob = (word *)R[10];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1162:
       if (acc == 3) {
-
         {
-
           word *ob = (word *)R[5];
           hval  hdr;
           assert(allocp(R[5]), R[5], IFALSE);
@@ -47075,7 +41195,6 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[6] = ob[1];
           R[7] = ob[2];
-
         }
 
         R[8] = G(R[1], 2);
@@ -47092,15 +41211,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1163:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -47118,17 +41234,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1164:
       if (acc == 3) {
-
         {
-
           word *ob = (word *)R[4];
           hval  hdr;
           assert(allocp(R[4]), R[4], IFALSE);
@@ -47136,7 +41248,6 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[6] = ob[1];
           R[7] = ob[2];
-
         }
 
         R[8] = G(R[1], 2);
@@ -47152,15 +41263,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1165:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         *fp = make_header(3, 42);
         fp[1] = R[3];
@@ -47172,41 +41280,31 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1166:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = 128 * 82 + 258;
         if (R[6] == R[7]) {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[8] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[9] = BOOL(R[8] == R[7]);
           if (R[9] == IFALSE) {
-
             R[10] = 128 * 84 + 258;
             R[11] = BOOL(R[8] == R[10]);
             if (R[11] == IFALSE) {
-
               R[12] = 128 * 0 + 258;
               R[13] = prim_ref(R[4], R[12]);
               R[14] = 128 * 2 + 258;
@@ -47225,23 +41323,19 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[12] = G(R[1], 2);
               R[8] = R[5];
               R[5] = R[4];
               R[4] = R[8];
               ob = (word *)R[12];
               acc = 3;
-
             }
 
           } else {
-
             R[10] = 128 * 2 + 258;
             R[11] = prim_ref(R[4], R[10]);
             R[12] = prim_ref(R[5], R[10]);
             if (R[11] == R[12]) {
-
               R[13] = 128 * 0 + 258;
               R[4] = prim_ref(R[4], R[13]);
               R[5] = prim_ref(R[5], R[13]);
@@ -47256,7 +41350,6 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[13] = 128 * 0 + 258;
               R[4] = prim_ref(R[4], R[13]);
               R[15] = prim_ref(R[5], R[13]);
@@ -47272,29 +41365,22 @@ super_dispatch:                                   /* run macro instructions */
               R[5] = R[12];
               ob = (word *)R[16];
               acc = 3;
-
             }
-
           }
 
         } else {
-
           R[8] = G(R[1], 2);
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1167:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -47315,15 +41401,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1168:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -47344,15 +41427,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1169:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         *fp = make_header(4, TCLOS);
@@ -47370,15 +41450,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1170:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 2 + 258;
         R[6] = prim_ref(R[4], R[5]);
@@ -47392,26 +41469,20 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1171:
       if (acc == 4) {
-
         {
-
           word ob = R[5];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = 128 * 62 + 258;
         if (R[7] == R[8]) {
-
           R[9] = G(R[1], 2);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 3);
@@ -47424,18 +41495,14 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = 128 * 80 + 258;
           if (R[9] == R[10]) {
-
             R[11] = G(R[1], 2);
             *fp = make_header(5, TCLOS);
             fp[1] = G(R[1], 4);
@@ -47448,7 +41515,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             R[11] = G(R[1], 5);
             *fp = make_header(5, TCLOS);
             fp[1] = G(R[1], 6);
@@ -47459,23 +41525,17 @@ super_dispatch:                                   /* run macro instructions */
             fp += 5;
             ob = (word *)R[11];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1172:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -47494,7 +41554,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 4);
           R[7] = R[4];
@@ -47502,32 +41561,25 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[5];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1173:
       if (acc == 1) {
-
         R[4] = 128 * 0 + 258;
         if (R[3] == R[4]) {
-
           R[5] = G(R[1], 3);
           if (R[5] == R[4]) {
-
             R[6] = G(R[1], 4);
             R[3] = G(R[1], 2);
             ob = (word *)R[6];
             acc = 1;
 
           } else {
-
             R[6] = G(R[1], 2);
             *fp = make_header(3, 42);
             fp[1] = R[6];
@@ -47537,11 +41589,9 @@ super_dispatch:                                   /* run macro instructions */
             R[8] = G(R[1], 4);
             ob = (word *)R[8];
             acc = 1;
-
           }
 
         } else {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 3);
@@ -47560,21 +41610,16 @@ super_dispatch:                                   /* run macro instructions */
           R[3] = R[9];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1174:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -47593,7 +41638,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 2);
@@ -47604,19 +41648,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1175:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         *fp = make_header(4, TPROC);
@@ -47634,15 +41674,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1176:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -47660,90 +41697,69 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1177:
       if (acc == 3) {
-
         {
-
           word ob = R[5];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         if (R[6] == F(0)) {
-
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[7] = F((hval)ob >> TPOS & 63);
-
           }
 
           if (R[7] == F(0)) {
-
             R[8] = F(0);
             {
-
               uint64_t a = (uint64_t)immval(R[8]) << FBITS | immval(R[4]);
               hval     b = immval(R[5]);
               uint64_t q = a / b;
               R[9] = F(q >> FBITS);
               R[10] = F(q);
               R[11] = F(a - q * b);
-
             }
 
             if (R[11] == F(0)) {
-
               ob = (word *)R[3];
               R[3] = R[10];
               acc = 1;
 
             } else {
-
               R[12] = IFALSE;
               ob = (word *)R[3];
               R[3] = R[12];
               acc = 1;
-
             }
 
           } else {
-
             R[8] = IFALSE;
             ob = (word *)R[3];
             R[3] = R[8];
             acc = 1;
-
           }
 
         } else {
-
           R[7] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1178:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -47762,15 +41778,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1179:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         *fp = make_header(3, 42);
         fp[1] = R[4];
@@ -47782,15 +41795,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1180:
       if (acc == 2) {
-
         assert(pairp(R[4]), R[4], 105);
         R[5] = G(R[4], 1);
         R[6] = G(R[4], 2);
@@ -47800,26 +41810,20 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1181:
       if (acc == 4) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = 128 * 62 + 258;
         if (R[7] == R[8]) {
-
           R[9] = G(R[1], 2);
           *fp = make_header(5, TPROC);
           fp[1] = G(R[1], 3);
@@ -47832,18 +41836,14 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = 128 * 80 + 258;
           if (R[9] == R[10]) {
-
             R[11] = G(R[1], 2);
             *fp = make_header(5, TPROC);
             fp[1] = G(R[1], 4);
@@ -47856,17 +41856,13 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[11] = F((hval)ob >> TPOS & 63);
-
             }
 
             if (R[11] == R[8]) {
-
               R[12] = G(R[1], 2);
               *fp = make_header(5, TPROC);
               fp[1] = G(R[1], 5);
@@ -47880,17 +41876,13 @@ super_dispatch:                                   /* run macro instructions */
               acc = 2;
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[12] = F((hval)ob >> TPOS & 63);
-
               }
 
               if (R[12] == R[10]) {
-
                 R[13] = G(R[1], 2);
                 *fp = make_header(5, TPROC);
                 fp[1] = G(R[1], 6);
@@ -47904,75 +41896,54 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 2;
 
               } else {
-
                 {
-
                   word ob = R[4];
                   if (allocp(ob)) ob = V(ob);
                   R[13] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 if (R[13] == F(0)) {
-
                   R[14] = G(R[1], 7);
                   ob = (word *)R[14];
                   acc = 3;
 
                 } else {
-
                   {
-
                     word ob = R[5];
                     if (allocp(ob)) ob = V(ob);
                     R[14] = F((hval)ob >> TPOS & 63);
-
                   }
 
                   if (R[14] == F(0)) {
-
                     R[15] = G(R[1], 7);
                     ob = (word *)R[15];
                     acc = 3;
 
                   } else {
-
                     if (R[4] == R[5]) {
-
                       ob = (word *)R[3];
                       R[3] = R[4];
                       acc = 1;
 
                     } else {
-
                       R[15] = G(R[1], 8);
                       ob = (word *)R[15];
                       acc = 3;
-
                     }
-
                   }
-
                 }
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1182:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -47985,15 +41956,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1183:
       if (acc == 3) {
-
         R[6] = 128 * 0 + 258;
         R[7] = cons(R[6], R[4]);
         R[5] = cons(R[6], R[5]);
@@ -48004,21 +41972,17 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1184:
       if (acc == 5) {
-
         assert(pairp(R[4]), R[4], 169);
         R[8] = G(R[4], 2);
         assert(pairp(R[5]), R[5], 169);
         R[9] = G(R[5], 2);
         if (R[8] == F(0)) {
-
           R[10] = G(R[1], 2);
           R[5] = R[6];
           R[4] = R[9];
@@ -48026,9 +41990,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           if (R[9] == F(0)) {
-
             R[10] = G(R[1], 2);
             R[5] = R[6];
             R[4] = R[8];
@@ -48036,7 +41998,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[10] = G(R[4], 1);
             R[11] = G(R[1], 3);
             *fp = make_header(9, TCLOS);
@@ -48054,23 +42015,17 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[10];
             ob = (word *)R[11];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1185:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[1], 4);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -48093,7 +42048,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 4);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -48118,21 +42072,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1186:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 6);
           R[6] = G(R[1], 2);
@@ -48153,7 +42102,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 105);
           R[5] = G(R[4], 1);
@@ -48180,19 +42128,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[15];
           ob = (word *)R[9];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1187:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -48217,15 +42161,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1188:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         assert(pairp(R[4]), R[4], 105);
         R[5] = G(R[4], 1);
@@ -48251,15 +42192,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1189:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -48282,15 +42220,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1190:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -48314,17 +42249,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1191:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = 128 * 2 + 258;
           R[5] = G(R[1], 2);
           R[6] = cons(R[4], R[5]);
@@ -48340,7 +42271,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -48359,19 +42289,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1192:
       if (acc == 1) {
-
         R[4] = 128 * 2 + 258;
         R[5] = cons(R[4], R[3]);
         R[6] = 128 * 0 + 258;
@@ -48386,17 +42312,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1193:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -48417,7 +42339,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -48436,19 +42357,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[10];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1194:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -48468,15 +42385,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1195:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -48497,15 +42411,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1196:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[3] = cons(R[3], R[4]);
         R[6] = G(R[1], 3);
@@ -48513,31 +42424,24 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1197:
       if (acc == 2) {
-
         assert(pairp(R[4]), R[4], 105);
         R[5] = G(R[4], 1);
         R[6] = G(R[1], 2);
         if (R[5] == R[6]) {
-
           R[7] = G(R[4], 2);
           {
-
             word ob = R[7];
             if (allocp(ob)) ob = V(ob);
             R[8] = F((hval)ob >> TPOS & 63);
-
           }
 
           if (R[8] == F(0)) {
-
             R[9] = 128 * 0 + 258;
             R[10] = F(0);
             R[11] = cons(R[9], R[10]);
@@ -48546,12 +42450,10 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             R[9] = 128 * 2 + 258;
             R[10] = prim_ref(R[7], R[9]);
             R[11] = prim_ref(R[10], R[9]);
             if (R[11] == INULL) {
-
               R[12] = 128 * 0 + 258;
               R[13] = prim_ref(R[10], R[12]);
               R[14] = cons(R[12], R[13]);
@@ -48560,25 +42462,19 @@ super_dispatch:                                   /* run macro instructions */
               acc = 1;
 
             } else {
-
               R[12] = 128 * 0 + 258;
               R[13] = cons(R[12], R[10]);
               ob = (word *)R[3];
               R[3] = R[13];
               acc = 1;
-
             }
-
           }
 
         } else {
-
           {
-
             hval r = immval(R[5]) + immval(R[5]);
             R[8] = F(r >> FBITS);
             R[7] = F(r);
-
           }
 
           R[9] = G(R[4], 2);
@@ -48586,27 +42482,21 @@ super_dispatch:                                   /* run macro instructions */
           ob = (word *)R[3];
           R[3] = R[10];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1198:
       if (acc == 4) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           R[7] = G(R[1], 2);
           *fp = make_header(5, TPROC);
           fp[1] = G(R[1], 3);
@@ -48617,40 +42507,30 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[7];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1199:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = 128 * 82 + 258;
         if (R[6] == R[7]) {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[8] = F((hval)ob >> TPOS & 63);
-
           }
 
           if (R[8] == R[7]) {
-
             R[9] = 128 * 0 + 258;
             R[10] = prim_ref(R[4], R[9]);
             R[11] = 128 * 2 + 258;
@@ -48669,7 +42549,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[9] = 128 * 0 + 258;
             R[10] = prim_ref(R[4], R[9]);
             R[11] = 128 * 2 + 258;
@@ -48685,21 +42564,16 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[12];
             ob = (word *)R[13];
             acc = 3;
-
           }
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[8] = F((hval)ob >> TPOS & 63);
-
           }
 
           if (R[8] == R[7]) {
-
             R[9] = 128 * 2 + 258;
             R[10] = prim_ref(R[5], R[9]);
             R[11] = G(R[1], 2);
@@ -48714,25 +42588,19 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[9] = G(R[1], 6);
             ob = (word *)R[9];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1200:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 0 + 258;
         R[6] = prim_ref(R[4], R[5]);
@@ -48745,15 +42613,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1201:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 0 + 258;
         R[6] = prim_ref(R[4], R[5]);
@@ -48773,15 +42638,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1202:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[7] = INULL;
         R[10] = R[7];
@@ -48792,17 +42654,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1203:
       if (acc == 5) {
-
         if (R[4] == INULL) {
-
           R[8] = G(R[1], 2);
           *fp = make_header(4, TPROC);
           fp[1] = G(R[1], 3);
@@ -48815,9 +42673,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           if (R[6] == F(0)) {
-
             R[8] = G(R[1], 2);
             *fp = make_header(4, TPROC);
             fp[1] = G(R[1], 4);
@@ -48830,7 +42686,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             assert(pairp(R[4]), R[4], 169);
             R[8] = G(R[4], 2);
             R[9] = G(R[4], 1);
@@ -48848,21 +42703,16 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[6];
             ob = (word *)R[11];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1204:
       if (acc == 3) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 2);
         fp[2] = R[5];
@@ -48874,15 +42724,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1205:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -48899,17 +42746,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1206:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -48930,7 +42773,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -48949,21 +42791,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1207:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -48983,7 +42820,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -49002,21 +42838,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[7];
           ob = (word *)R[8];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1208:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 4);
@@ -49031,26 +42862,20 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[1], 5);
           R[3] = INULL;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1209:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           R[5] = INULL;
           R[6] = cons(R[4], R[5]);
@@ -49067,24 +42892,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 5);
           R[3] = INULL;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1210:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -49100,24 +42920,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1211:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 6);
           R[3] = INULL;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -49138,19 +42953,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1212:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -49171,31 +42982,24 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1213:
       if (acc == 4) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           if (R[4] == INULL) {
-
             ob = (word *)R[3];
             R[3] = R[4];
             acc = 1;
 
           } else {
-
             assert(pairp(R[4]), R[4], 169);
             R[7] = G(R[4], 2);
             R[8] = G(R[1], 2);
@@ -49211,38 +43015,29 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[10];
             ob = (word *)R[8];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1214:
       if (acc == 4) {
-
         if (R[5] == F(0)) {
-
           R[7] = INULL;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           if (R[4] == INULL) {
-
             ob = (word *)R[3];
             R[3] = R[4];
             acc = 1;
 
           } else {
-
             assert(pairp(R[4]), R[4], 105);
             R[7] = G(R[4], 1);
             R[8] = G(R[4], 2);
@@ -49260,21 +43055,16 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[11];
             ob = (word *)R[9];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1215:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
         R[7] = F(0);
@@ -49287,50 +43077,39 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1216:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[5] = 128 * 0 + 258;
         ob = (word *)R[6];
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1217:
       if (acc == 5) {
-
         if (R[5] == F(0)) {
-
           R[8] = cons(R[6], R[4]);
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
 
         } else {
-
           if (R[4] == INULL) {
-
             R[8] = G(R[1], 2);
             R[4] = G(R[1], 3);
             ob = (word *)R[8];
             acc = 3;
 
           } else {
-
             {
-
               word *ob = (word *)R[4];
               hval  hdr;
               assert(allocp(R[4]), R[4], IFALSE);
@@ -49338,7 +43117,6 @@ super_dispatch:                                   /* run macro instructions */
               assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
               R[8] = ob[1];
               R[9] = ob[2];
-
             }
 
             R[10] = G(R[1], 4);
@@ -49356,21 +43134,16 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[12];
             ob = (word *)R[10];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1218:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         assert(pairp(R[4]), R[4], 169);
         R[5] = G(R[4], 2);
@@ -49380,33 +43153,25 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1219:
       if (acc == 5) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[6];
           acc = 2;
 
         } else {
-
           if (R[4] == INULL) {
-
             R[8] = G(R[1], 2);
             R[4] = G(R[1], 3);
             ob = (word *)R[8];
             acc = 3;
 
           } else {
-
             {
-
               word *ob = (word *)R[4];
               hval  hdr;
               assert(allocp(R[4]), R[4], IFALSE);
@@ -49414,7 +43179,6 @@ super_dispatch:                                   /* run macro instructions */
               assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
               R[8] = ob[1];
               R[9] = ob[2];
-
             }
 
             R[10] = G(R[1], 4);
@@ -49432,32 +43196,24 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[12];
             ob = (word *)R[10];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1220:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           R[7] = G(R[1], 2);
           R[4] = G(R[1], 3);
           ob = (word *)R[7];
           acc = 3;
 
         } else {
-
           if (R[5] == F(0)) {
-
             assert(pairp(R[4]), R[4], 169);
             R[7] = G(R[4], 2);
             ob = (word *)R[3];
@@ -49465,7 +43221,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             assert(pairp(R[4]), R[4], 105);
             R[7] = G(R[4], 1);
             R[8] = G(R[4], 2);
@@ -49483,21 +43238,16 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[11];
             ob = (word *)R[9];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1221:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -49516,17 +43266,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1222:
       if (acc == 5) {
-
         if (R[4] == INULL) {
-
           R[8] = G(R[1], 2);
           R[4] = G(R[1], 3);
           R[5] = R[6];
@@ -49534,9 +43280,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           if (R[5] == F(0)) {
-
             assert(pairp(R[4]), R[4], 169);
             R[8] = G(R[4], 2);
             R[9] = cons(R[6], R[8]);
@@ -49545,7 +43289,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             assert(pairp(R[4]), R[4], 105);
             R[8] = G(R[4], 1);
             R[9] = G(R[4], 2);
@@ -49564,21 +43307,16 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[12];
             ob = (word *)R[10];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1223:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -49598,26 +43336,20 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1224:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           R[7] = G(R[1], 2);
           R[4] = G(R[1], 3);
           ob = (word *)R[7];
           acc = 3;
 
         } else {
-
           if (R[5] == F(0)) {
-
             assert(pairp(R[4]), R[4], 105);
             R[7] = G(R[4], 1);
             ob = (word *)R[3];
@@ -49625,7 +43357,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             assert(pairp(R[4]), R[4], 169);
             R[7] = G(R[4], 2);
             R[8] = G(R[1], 4);
@@ -49641,21 +43372,16 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[10];
             ob = (word *)R[8];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1225:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -49670,15 +43396,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1226:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -49692,39 +43415,30 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1227:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = F(0);
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 62 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 78 + 258;
             R[12] = BOOL(R[6] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = 128 * 80 + 258;
               R[14] = BOOL(R[6] == R[13]);
               if (R[14] == IFALSE) {
-
                 R[15] = G(R[1], 2);
                 R[16] = G(R[1], 3);
                 R[6] = R[5];
@@ -49734,27 +43448,20 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 4;
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[15] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 R[16] = BOOL(R[15] == R[7]);
                 if (R[16] == IFALSE) {
-
                   R[17] = BOOL(R[15] == R[9]);
                   if (R[17] == IFALSE) {
-
                     R[18] = BOOL(R[15] == R[11]);
                     if (R[18] == IFALSE) {
-
                       R[19] = BOOL(R[15] == R[13]);
                       if (R[19] == IFALSE) {
-
                         R[20] = G(R[1], 2);
                         R[21] = G(R[1], 3);
                         R[6] = R[5];
@@ -49764,7 +43471,6 @@ super_dispatch:                                   /* run macro instructions */
                         acc = 4;
 
                       } else {
-
                         R[20] = G(R[1], 4);
                         *fp = make_header(4, TCLOS);
                         fp[1] = G(R[1], 5);
@@ -49774,11 +43480,9 @@ super_dispatch:                                   /* run macro instructions */
                         fp += 4;
                         ob = (word *)R[20];
                         acc = 2;
-
                       }
 
                     } else {
-
                       R[19] = G(R[1], 4);
                       *fp = make_header(4, TCLOS);
                       fp[1] = G(R[1], 6);
@@ -49788,11 +43492,9 @@ super_dispatch:                                   /* run macro instructions */
                       fp += 4;
                       ob = (word *)R[19];
                       acc = 2;
-
                     }
 
                   } else {
-
                     R[18] = G(R[1], 7);
                     *fp = make_header(3, TCLOS);
                     fp[1] = G(R[1], 8);
@@ -49801,11 +43503,9 @@ super_dispatch:                                   /* run macro instructions */
                     fp += 3;
                     ob = (word *)R[18];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[17] = G(R[1], 7);
                   *fp = make_header(3, TCLOS);
                   fp[1] = G(R[1], 9);
@@ -49814,34 +43514,25 @@ super_dispatch:                                   /* run macro instructions */
                   fp += 3;
                   ob = (word *)R[17];
                   acc = 3;
-
                 }
-
               }
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[13] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[14] = BOOL(R[13] == R[7]);
               if (R[14] == IFALSE) {
-
                 R[15] = BOOL(R[13] == R[9]);
                 if (R[15] == IFALSE) {
-
                   R[16] = BOOL(R[13] == R[11]);
                   if (R[16] == IFALSE) {
-
                     R[17] = 128 * 80 + 258;
                     R[18] = BOOL(R[13] == R[17]);
                     if (R[18] == IFALSE) {
-
                       R[19] = G(R[1], 2);
                       R[20] = G(R[1], 3);
                       R[6] = R[5];
@@ -49851,7 +43542,6 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 4;
 
                     } else {
-
                       R[19] = G(R[1], 4);
                       *fp = make_header(4, TCLOS);
                       fp[1] = G(R[1], 10);
@@ -49862,19 +43552,15 @@ super_dispatch:                                   /* run macro instructions */
                       R[4] = R[5];
                       ob = (word *)R[19];
                       acc = 2;
-
                     }
 
                   } else {
-
                     R[17] = G(R[1], 11);
                     ob = (word *)R[17];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[16] = G(R[1], 7);
                   *fp = make_header(3, TPROC);
                   fp[1] = G(R[1], 12);
@@ -49883,11 +43569,9 @@ super_dispatch:                                   /* run macro instructions */
                   fp += 3;
                   ob = (word *)R[16];
                   acc = 3;
-
                 }
 
               } else {
-
                 R[15] = G(R[1], 7);
                 *fp = make_header(3, TPROC);
                 fp[1] = G(R[1], 13);
@@ -49896,35 +43580,26 @@ super_dispatch:                                   /* run macro instructions */
                 fp += 3;
                 ob = (word *)R[15];
                 acc = 3;
-
               }
-
             }
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[11] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[12] = BOOL(R[11] == R[7]);
             if (R[12] == IFALSE) {
-
               R[13] = BOOL(R[11] == R[9]);
               if (R[13] == IFALSE) {
-
                 R[14] = 128 * 78 + 258;
                 R[15] = BOOL(R[11] == R[14]);
                 if (R[15] == IFALSE) {
-
                   R[16] = 128 * 80 + 258;
                   R[17] = BOOL(R[11] == R[16]);
                   if (R[17] == IFALSE) {
-
                     R[18] = G(R[1], 2);
                     R[19] = G(R[1], 3);
                     R[6] = R[5];
@@ -49934,88 +43609,68 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 4;
 
                   } else {
-
                     ob = (word *)R[3];
                     R[3] = R[4];
                     acc = 1;
-
                   }
 
                 } else {
-
                   ob = (word *)R[3];
                   R[3] = R[4];
                   acc = 1;
-
                 }
 
               } else {
-
                 {
-
                   uint64_t a = (uint64_t)immval(R[7]) << FBITS | immval(R[4]);
                   hval     b = immval(R[5]);
                   uint64_t q = a / b;
                   R[14] = F(q >> FBITS);
                   R[15] = F(q);
                   R[16] = F(a - q * b);
-
                 }
 
                 R[17] = G(R[1], 4);
                 R[4] = R[16];
                 ob = (word *)R[17];
                 acc = 2;
-
               }
 
             } else {
-
               {
-
                 uint64_t a = (uint64_t)immval(R[7]) << FBITS | immval(R[4]);
                 hval     b = immval(R[5]);
                 uint64_t q = a / b;
                 R[13] = F(q >> FBITS);
                 R[14] = F(q);
                 R[15] = F(a - q * b);
-
               }
 
               R[16] = G(R[1], 4);
               R[4] = R[15];
               ob = (word *)R[16];
               acc = 2;
-
             }
-
           }
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = BOOL(R[9] == R[7]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 62 + 258;
             R[12] = BOOL(R[9] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = 128 * 78 + 258;
               R[14] = BOOL(R[9] == R[13]);
               if (R[14] == IFALSE) {
-
                 R[15] = 128 * 80 + 258;
                 R[16] = BOOL(R[9] == R[15]);
                 if (R[16] == IFALSE) {
-
                   R[17] = G(R[1], 2);
                   R[18] = G(R[1], 3);
                   R[6] = R[5];
@@ -50025,103 +43680,80 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 4;
 
                 } else {
-
                   ob = (word *)R[3];
                   R[3] = R[4];
                   acc = 1;
-
                 }
 
               } else {
-
                 ob = (word *)R[3];
                 R[3] = R[4];
                 acc = 1;
-
               }
 
             } else {
-
               {
-
                 uint64_t a = (uint64_t)immval(R[7]) << FBITS | immval(R[4]);
                 hval     b = immval(R[5]);
                 uint64_t q = a / b;
                 R[13] = F(q >> FBITS);
                 R[14] = F(q);
                 R[15] = F(a - q * b);
-
               }
 
               ob = (word *)R[3];
               R[3] = R[15];
               acc = 1;
-
             }
 
           } else {
-
             {
-
               uint64_t a = (uint64_t)immval(R[7]) << FBITS | immval(R[4]);
               hval     b = immval(R[5]);
               uint64_t q = a / b;
               R[11] = F(q >> FBITS);
               R[12] = F(q);
               R[13] = F(a - q * b);
-
             }
 
             ob = (word *)R[3];
             R[3] = R[13];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1228:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[3] = R[4];
         ob = (word *)R[5];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1229:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[3] = G(R[1], 2);
         ob = (word *)R[5];
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1230:
       if (acc == 3) {
-
         if (R[5] == F(0)) {
-
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 3);
           R[9] = R[6];
@@ -50132,31 +43764,24 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[6] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[7] = F(0);
           R[8] = BOOL(R[6] == R[7]);
           if (R[8] == IFALSE) {
-
             R[9] = 128 * 62 + 258;
             R[10] = BOOL(R[6] == R[9]);
             if (R[10] == IFALSE) {
-
               R[11] = 128 * 78 + 258;
               R[12] = BOOL(R[6] == R[11]);
               if (R[12] == IFALSE) {
-
                 R[13] = 128 * 80 + 258;
                 R[14] = BOOL(R[6] == R[13]);
                 if (R[14] == IFALSE) {
-
                   R[15] = G(R[1], 2);
                   R[16] = G(R[1], 3);
                   R[6] = R[5];
@@ -50166,27 +43791,20 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 4;
 
                 } else {
-
                   {
-
                     word ob = R[5];
                     if (allocp(ob)) ob = V(ob);
                     R[15] = F((hval)ob >> TPOS & 63);
-
                   }
 
                   R[16] = BOOL(R[15] == R[7]);
                   if (R[16] == IFALSE) {
-
                     R[17] = BOOL(R[15] == R[9]);
                     if (R[17] == IFALSE) {
-
                       R[18] = BOOL(R[15] == R[11]);
                       if (R[18] == IFALSE) {
-
                         R[19] = BOOL(R[15] == R[13]);
                         if (R[19] == IFALSE) {
-
                           R[20] = G(R[1], 2);
                           R[21] = G(R[1], 3);
                           R[6] = R[5];
@@ -50196,7 +43814,6 @@ super_dispatch:                                   /* run macro instructions */
                           acc = 4;
 
                         } else {
-
                           R[20] = G(R[1], 4);
                           *fp = make_header(4, TCLOS);
                           fp[1] = G(R[1], 5);
@@ -50206,11 +43823,9 @@ super_dispatch:                                   /* run macro instructions */
                           fp += 4;
                           ob = (word *)R[20];
                           acc = 2;
-
                         }
 
                       } else {
-
                         R[19] = G(R[1], 4);
                         *fp = make_header(4, TCLOS);
                         fp[1] = G(R[1], 6);
@@ -50220,11 +43835,9 @@ super_dispatch:                                   /* run macro instructions */
                         fp += 4;
                         ob = (word *)R[19];
                         acc = 2;
-
                       }
 
                     } else {
-
                       R[18] = G(R[1], 7);
                       *fp = make_header(3, TPROC);
                       fp[1] = G(R[1], 8);
@@ -50233,42 +43846,31 @@ super_dispatch:                                   /* run macro instructions */
                       fp += 3;
                       ob = (word *)R[18];
                       acc = 3;
-
                     }
 
                   } else {
-
                     R[17] = G(R[1], 9);
                     ob = (word *)R[17];
                     acc = 3;
-
                   }
-
                 }
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[13] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 R[14] = BOOL(R[13] == R[7]);
                 if (R[14] == IFALSE) {
-
                   R[15] = BOOL(R[13] == R[9]);
                   if (R[15] == IFALSE) {
-
                     R[16] = BOOL(R[13] == R[11]);
                     if (R[16] == IFALSE) {
-
                       R[17] = 128 * 80 + 258;
                       R[18] = BOOL(R[13] == R[17]);
                       if (R[18] == IFALSE) {
-
                         R[19] = G(R[1], 2);
                         R[20] = G(R[1], 3);
                         R[6] = R[5];
@@ -50278,7 +43880,6 @@ super_dispatch:                                   /* run macro instructions */
                         acc = 4;
 
                       } else {
-
                         R[19] = G(R[1], 4);
                         *fp = make_header(4, TCLOS);
                         fp[1] = G(R[1], 10);
@@ -50289,27 +43890,21 @@ super_dispatch:                                   /* run macro instructions */
                         R[4] = R[5];
                         ob = (word *)R[19];
                         acc = 2;
-
                       }
 
                     } else {
-
                       R[17] = G(R[1], 11);
                       ob = (word *)R[17];
                       acc = 3;
-
                     }
 
                   } else {
-
                     R[16] = G(R[1], 9);
                     ob = (word *)R[16];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[15] = G(R[1], 7);
                   *fp = make_header(3, TPROC);
                   fp[1] = G(R[1], 12);
@@ -50318,35 +43913,26 @@ super_dispatch:                                   /* run macro instructions */
                   fp += 3;
                   ob = (word *)R[15];
                   acc = 3;
-
                 }
-
               }
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[11] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[12] = BOOL(R[11] == R[7]);
               if (R[12] == IFALSE) {
-
                 R[13] = BOOL(R[11] == R[9]);
                 if (R[13] == IFALSE) {
-
                   R[14] = 128 * 78 + 258;
                   R[15] = BOOL(R[11] == R[14]);
                   if (R[15] == IFALSE) {
-
                     R[16] = 128 * 80 + 258;
                     R[17] = BOOL(R[11] == R[16]);
                     if (R[17] == IFALSE) {
-
                       R[18] = G(R[1], 2);
                       R[19] = G(R[1], 3);
                       R[6] = R[5];
@@ -50356,75 +43942,57 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 4;
 
                     } else {
-
                       ob = (word *)R[3];
                       R[3] = R[7];
                       acc = 1;
-
                     }
 
                   } else {
-
                     ob = (word *)R[3];
                     R[3] = R[7];
                     acc = 1;
-
                   }
 
                 } else {
-
                   {
-
                     uint64_t a = (uint64_t)immval(R[7]) << FBITS | immval(R[4]);
                     hval     b = immval(R[5]);
                     uint64_t q = a / b;
                     R[14] = F(q >> FBITS);
                     R[15] = F(q);
                     R[16] = F(a - q * b);
-
                   }
 
                   ob = (word *)R[3];
                   R[3] = R[15];
                   acc = 1;
-
                 }
 
               } else {
-
                 R[13] = G(R[1], 13);
                 ob = (word *)R[13];
                 acc = 3;
-
               }
-
             }
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[9] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[10] = BOOL(R[9] == R[7]);
             if (R[10] == IFALSE) {
-
               R[11] = 128 * 62 + 258;
               R[12] = BOOL(R[9] == R[11]);
               if (R[12] == IFALSE) {
-
                 R[13] = 128 * 78 + 258;
                 R[14] = BOOL(R[9] == R[13]);
                 if (R[14] == IFALSE) {
-
                   R[15] = 128 * 80 + 258;
                   R[16] = BOOL(R[9] == R[15]);
                   if (R[16] == IFALSE) {
-
                     R[17] = G(R[1], 2);
                     R[18] = G(R[1], 3);
                     R[6] = R[5];
@@ -50434,74 +44002,56 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 4;
 
                   } else {
-
                     ob = (word *)R[3];
                     R[3] = R[7];
                     acc = 1;
-
                   }
 
                 } else {
-
                   ob = (word *)R[3];
                   R[3] = R[7];
                   acc = 1;
-
                 }
 
               } else {
-
                 R[13] = G(R[1], 13);
                 ob = (word *)R[13];
                 acc = 3;
-
               }
 
             } else {
-
               {
-
                 uint64_t a = (uint64_t)immval(R[7]) << FBITS | immval(R[4]);
                 hval     b = immval(R[5]);
                 uint64_t q = a / b;
                 R[11] = F(q >> FBITS);
                 R[12] = F(q);
                 R[13] = F(a - q * b);
-
               }
 
               ob = (word *)R[3];
               R[3] = R[12];
               acc = 1;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1231:
       if (acc == 2) {
-
         {
-
           word ob = R[3];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = F(0);
         R[7] = BOOL(R[5] == R[6]);
         if (R[7] == IFALSE) {
-
           R[8] = G(R[2], 2);
           R[9] = G(R[1], 2);
           R[4] = R[3];
@@ -50510,63 +44060,50 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[8] = G(R[2], 3);
           R[9] = G(R[1], 2);
           R[4] = R[3];
           R[3] = R[9];
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1232:
       if (acc == 3) {
-
         R[6] = F(0);
         {
-
           uint64_t a = (uint64_t)immval(R[6]) << FBITS | immval(R[4]);
           hval     b = immval(R[5]);
           uint64_t q = a / b;
           R[7] = F(q >> FBITS);
           R[8] = F(q);
           R[9] = F(a - q * b);
-
         }
 
         if (R[8] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
 
         } else {
-
           R[10] = G(R[1], 2);
           R[4] = R[8];
           ob = (word *)R[10];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1233:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -50579,15 +44116,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1234:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -50606,37 +44140,29 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1235:
       if (acc == 4) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = 128 * 62 + 258;
         R[9] = BOOL(R[7] == R[8]);
         if (R[9] == IFALSE) {
-
           R[10] = 128 * 80 + 258;
           R[11] = BOOL(R[7] == R[10]);
           if (R[11] == IFALSE) {
-
             R[12] = G(R[1], 2);
             ob = (word *)R[12];
             acc = 3;
 
           } else {
-
             R[12] = G(R[1], 3);
             *fp = make_header(5, TCLOS);
             fp[1] = G(R[1], 4);
@@ -50647,11 +44173,9 @@ super_dispatch:                                   /* run macro instructions */
             fp += 5;
             ob = (word *)R[12];
             acc = 2;
-
           }
 
         } else {
-
           R[10] = G(R[1], 3);
           *fp = make_header(5, TCLOS);
           fp[1] = G(R[1], 5);
@@ -50662,19 +44186,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[10];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1236:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         *fp = make_header(3, TCLOS);
@@ -50692,39 +44212,30 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1237:
       if (acc == 2) {
-
         if (R[4] == IFALSE) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           R[5] = G(R[1], 2);
           ob = (word *)R[5];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1238:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -50741,17 +44252,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1239:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -50773,7 +44280,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 4);
           R[6] = 128 * 0 + 258;
@@ -50790,21 +44296,16 @@ super_dispatch:                                   /* run macro instructions */
           R[8] = R[10];
           ob = (word *)R[11];
           acc = 6;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1240:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 4);
@@ -50824,24 +44325,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 4);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1241:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -50860,60 +44356,47 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1242:
       if (acc == 7) {
-
         {
-
           word ob = R[6];
           if (allocp(ob)) ob = V(ob);
           R[10] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[11] = 128 * 62 + 258;
         if (R[10] == R[11]) {
-
           R[12] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[12];
           acc = 1;
 
         } else {
-
           {
-
             word ob = R[6];
             if (allocp(ob)) ob = V(ob);
             R[12] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[13] = 128 * 80 + 258;
           if (R[12] == R[13]) {
-
             R[14] = IFALSE;
             ob = (word *)R[3];
             R[3] = R[14];
             acc = 1;
 
           } else {
-
             if (R[6] == F(0)) {
-
               R[14] = G(R[1], 2);
               R[4] = R[8];
               ob = (word *)R[14];
               acc = 2;
 
             } else {
-
               R[14] = G(R[1], 3);
               *fp = make_header(9, TCLOS);
               fp[1] = G(R[1], 4);
@@ -50930,29 +44413,21 @@ super_dispatch:                                   /* run macro instructions */
               R[4] = R[6];
               ob = (word *)R[14];
               acc = 3;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1243:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[1], 5);
           R[5] = 128 * 44 + 258;
           if (R[4] == R[5]) {
-
             R[6] = G(R[1], 2);
             R[7] = 128 * 2 + 258;
             R[8] = prim_ref(R[6], R[7]);
@@ -50970,38 +44445,30 @@ super_dispatch:                                   /* run macro instructions */
             fp += 6;
             R[14] = prim_ref(R[8], R[7]);
             if (R[14] == INULL) {
-
               R[15] = 128 * 0 + 258;
               R[3] = prim_ref(R[8], R[15]);
               ob = (word *)R[13];
               acc = 1;
 
             } else {
-
               R[3] = R[8];
               ob = (word *)R[13];
               acc = 1;
-
             }
 
           } else {
-
             R[6] = G(R[1], 6);
             {
-
               hval r = immval(R[6]) + immval(R[6]);
               R[8] = F(r >> FBITS);
               R[7] = F(r);
-
             }
 
             R[9] = 128 * 0 + 258;
             {
-
               hval r = immval(R[4]) + immval(R[9]);
               R[11] = F(r >> FBITS);
               R[10] = F(r);
-
             }
 
             R[9] = G(R[1], 8);
@@ -51014,11 +44481,9 @@ super_dispatch:                                   /* run macro instructions */
             R[7] = R[15];
             ob = (word *)R[9];
             acc = 7;
-
           }
 
         } else {
-
           R[4] = G(R[2], 3);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -51043,19 +44508,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1244:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -51082,15 +44543,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1245:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 0 + 258;
         R[6] = prim_ref(R[4], R[5]);
@@ -51115,15 +44573,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1246:
       if (acc == 1) {
-
         R[4] = F(0);
         R[5] = G(R[1], 2);
         *fp = make_header(3, 40);
@@ -51147,33 +44602,26 @@ super_dispatch:                                   /* run macro instructions */
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1247:
       if (acc == 6) {
-
         R[9] = G(R[1], 2);
         ob = (word *)R[9];
         acc = 7;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1248:
       if (acc == 3) {
-
         R[6] = 128 * 2 + 258;
         R[7] = prim_ref(R[4], R[6]);
         if (R[7] == INULL) {
-
           R[8] = 128 * 0 + 258;
           R[9] = prim_ref(R[4], R[8]);
           ob = (word *)R[3];
@@ -51181,36 +44629,28 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[8] = 128 * 0 + 258;
           R[9] = prim_ref(R[4], R[8]);
           if (R[9] == F(0)) {
-
             R[4] = prim_ref(R[4], R[6]);
             ob = (word *)R[5];
             acc = 3;
 
           } else {
-
             R[10] = G(R[1], 2);
             R[5] = INULL;
             ob = (word *)R[10];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1249:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         *fp = make_header(3, TCLOS);
@@ -51227,15 +44667,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1250:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 2 + 258;
         R[6] = prim_ref(R[4], R[5]);
@@ -51255,15 +44692,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1251:
       if (acc == 3) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 2);
         fp[2] = R[5];
@@ -51274,15 +44708,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1252:
       if (acc == 3) {
-
         R[6] = G(R[2], 2);
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
@@ -51301,19 +44732,15 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1253:
       if (acc == 1) {
-
         R[4] = 128 * 2 + 258;
         R[5] = prim_less(R[3], R[4]);
         if (R[5] == IFALSE) {
-
           R[6] = G(R[2], 2);
           R[7] = G(R[1], 3);
           R[8] = G(R[1], 4);
@@ -51332,26 +44759,21 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[6] = G(R[2], 4);
           R[3] = G(R[1], 4);
           R[4] = G(R[1], 3);
           R[5] = G(R[1], 2);
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1254:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -51370,15 +44792,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1255:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[1], 3);
@@ -51392,15 +44811,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1256:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -51422,17 +44838,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1257:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 6);
           R[5] = G(R[1], 5);
           R[6] = G(R[1], 4);
@@ -51446,26 +44858,20 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[4] = G(R[1], 5);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1258:
       if (acc == 3) {
-
         if (R[5] == F(0)) {
-
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 3);
           R[9] = R[6];
@@ -51476,31 +44882,24 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           {
-
             word ob = R[4];
             if (allocp(ob)) ob = V(ob);
             R[6] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[7] = F(0);
           R[8] = BOOL(R[6] == R[7]);
           if (R[8] == IFALSE) {
-
             R[9] = 128 * 78 + 258;
             R[10] = BOOL(R[6] == R[9]);
             if (R[10] == IFALSE) {
-
               R[11] = 128 * 62 + 258;
               R[12] = BOOL(R[6] == R[11]);
               if (R[12] == IFALSE) {
-
                 R[13] = 128 * 80 + 258;
                 R[14] = BOOL(R[6] == R[13]);
                 if (R[14] == IFALSE) {
-
                   R[15] = G(R[1], 2);
                   R[16] = G(R[1], 3);
                   R[6] = R[5];
@@ -51510,27 +44909,20 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 4;
 
                 } else {
-
                   {
-
                     word ob = R[5];
                     if (allocp(ob)) ob = V(ob);
                     R[15] = F((hval)ob >> TPOS & 63);
-
                   }
 
                   R[16] = BOOL(R[15] == R[7]);
                   if (R[16] == IFALSE) {
-
                     R[17] = BOOL(R[15] == R[11]);
                     if (R[17] == IFALSE) {
-
                       R[18] = BOOL(R[15] == R[9]);
                       if (R[18] == IFALSE) {
-
                         R[19] = BOOL(R[15] == R[13]);
                         if (R[19] == IFALSE) {
-
                           R[20] = G(R[1], 2);
                           R[21] = G(R[1], 3);
                           R[6] = R[5];
@@ -51540,7 +44932,6 @@ super_dispatch:                                   /* run macro instructions */
                           acc = 4;
 
                         } else {
-
                           R[20] = G(R[1], 4);
                           *fp = make_header(4, TCLOS);
                           fp[1] = G(R[1], 5);
@@ -51550,11 +44941,9 @@ super_dispatch:                                   /* run macro instructions */
                           fp += 4;
                           ob = (word *)R[20];
                           acc = 2;
-
                         }
 
                       } else {
-
                         R[19] = G(R[1], 4);
                         *fp = make_header(4, TCLOS);
                         fp[1] = G(R[1], 6);
@@ -51564,11 +44953,9 @@ super_dispatch:                                   /* run macro instructions */
                         fp += 4;
                         ob = (word *)R[19];
                         acc = 2;
-
                       }
 
                     } else {
-
                       R[18] = G(R[1], 7);
                       *fp = make_header(3, TCLOS);
                       fp[1] = G(R[1], 8);
@@ -51577,11 +44964,9 @@ super_dispatch:                                   /* run macro instructions */
                       fp += 3;
                       ob = (word *)R[18];
                       acc = 3;
-
                     }
 
                   } else {
-
                     R[17] = G(R[1], 7);
                     *fp = make_header(3, TCLOS);
                     fp[1] = G(R[1], 9);
@@ -51590,34 +44975,25 @@ super_dispatch:                                   /* run macro instructions */
                     fp += 3;
                     ob = (word *)R[17];
                     acc = 3;
-
                   }
-
                 }
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[13] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 R[14] = BOOL(R[13] == R[7]);
                 if (R[14] == IFALSE) {
-
                   R[15] = BOOL(R[13] == R[11]);
                   if (R[15] == IFALSE) {
-
                     R[16] = BOOL(R[13] == R[9]);
                     if (R[16] == IFALSE) {
-
                       R[17] = 128 * 80 + 258;
                       R[18] = BOOL(R[13] == R[17]);
                       if (R[18] == IFALSE) {
-
                         R[19] = G(R[1], 2);
                         R[20] = G(R[1], 3);
                         R[6] = R[5];
@@ -51627,27 +45003,21 @@ super_dispatch:                                   /* run macro instructions */
                         acc = 4;
 
                       } else {
-
                         R[8] = R[3];
                         R[3] = R[7];
                         ob = (word *)R[8];
                         acc = 2;
-
                       }
 
                     } else {
-
                       R[8] = R[3];
                       R[3] = R[7];
                       ob = (word *)R[8];
                       acc = 2;
-
                     }
 
                   } else {
-
                     {
-
                       uint64_t a =
                           (uint64_t)immval(R[7]) << FBITS | immval(R[4]);
                       hval     b = immval(R[5]);
@@ -51655,7 +45025,6 @@ super_dispatch:                                   /* run macro instructions */
                       R[16] = F(q >> FBITS);
                       R[17] = F(q);
                       R[18] = F(a - q * b);
-
                     }
 
                     R[19] = G(R[1], 4);
@@ -51668,20 +45037,16 @@ super_dispatch:                                   /* run macro instructions */
                     R[4] = R[18];
                     ob = (word *)R[19];
                     acc = 2;
-
                   }
 
                 } else {
-
                   {
-
                     uint64_t a = (uint64_t)immval(R[7]) << FBITS | immval(R[4]);
                     hval     b = immval(R[5]);
                     uint64_t q = a / b;
                     R[15] = F(q >> FBITS);
                     R[16] = F(q);
                     R[17] = F(a - q * b);
-
                   }
 
                   R[18] = G(R[1], 4);
@@ -51694,35 +45059,26 @@ super_dispatch:                                   /* run macro instructions */
                   R[4] = R[16];
                   ob = (word *)R[18];
                   acc = 2;
-
                 }
-
               }
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[11] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[12] = BOOL(R[11] == R[7]);
               if (R[12] == IFALSE) {
-
                 R[13] = BOOL(R[11] == R[9]);
                 if (R[13] == IFALSE) {
-
                   R[14] = 128 * 62 + 258;
                   R[15] = BOOL(R[11] == R[14]);
                   if (R[15] == IFALSE) {
-
                     R[16] = 128 * 80 + 258;
                     R[17] = BOOL(R[11] == R[16]);
                     if (R[17] == IFALSE) {
-
                       R[18] = G(R[1], 2);
                       R[19] = G(R[1], 3);
                       R[6] = R[5];
@@ -51732,7 +45088,6 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 4;
 
                     } else {
-
                       R[18] = G(R[1], 4);
                       *fp = make_header(4, TCLOS);
                       fp[1] = G(R[1], 12);
@@ -51743,11 +45098,9 @@ super_dispatch:                                   /* run macro instructions */
                       R[4] = R[5];
                       ob = (word *)R[18];
                       acc = 2;
-
                     }
 
                   } else {
-
                     R[16] = G(R[1], 7);
                     *fp = make_header(3, TCLOS);
                     fp[1] = G(R[1], 13);
@@ -51756,19 +45109,15 @@ super_dispatch:                                   /* run macro instructions */
                     fp += 3;
                     ob = (word *)R[16];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[14] = G(R[1], 14);
                   ob = (word *)R[14];
                   acc = 3;
-
                 }
 
               } else {
-
                 R[13] = G(R[1], 7);
                 *fp = make_header(3, TPROC);
                 fp[1] = G(R[1], 15);
@@ -51777,36 +45126,27 @@ super_dispatch:                                   /* run macro instructions */
                 fp += 3;
                 ob = (word *)R[13];
                 acc = 3;
-
               }
-
             }
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[9] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[10] = BOOL(R[9] == R[7]);
             if (R[10] == IFALSE) {
-
               R[11] = 128 * 78 + 258;
               R[12] = BOOL(R[9] == R[11]);
               if (R[12] == IFALSE) {
-
                 R[13] = 128 * 62 + 258;
                 R[14] = BOOL(R[9] == R[13]);
                 if (R[14] == IFALSE) {
-
                   R[15] = 128 * 80 + 258;
                   R[16] = BOOL(R[9] == R[15]);
                   if (R[16] == IFALSE) {
-
                     R[17] = G(R[1], 2);
                     R[18] = G(R[1], 3);
                     R[6] = R[5];
@@ -51816,25 +45156,20 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 4;
 
                   } else {
-
                     R[8] = R[3];
                     R[3] = R[7];
                     ob = (word *)R[8];
                     acc = 2;
-
                   }
 
                 } else {
-
                   {
-
                     uint64_t a = (uint64_t)immval(R[7]) << FBITS | immval(R[4]);
                     hval     b = immval(R[5]);
                     uint64_t q = a / b;
                     R[15] = F(q >> FBITS);
                     R[16] = F(q);
                     R[17] = F(a - q * b);
-
                   }
 
                   R[18] = G(R[1], 4);
@@ -51847,29 +45182,23 @@ super_dispatch:                                   /* run macro instructions */
                   R[4] = R[16];
                   ob = (word *)R[18];
                   acc = 2;
-
                 }
 
               } else {
-
                 R[8] = R[3];
                 R[3] = R[7];
                 ob = (word *)R[8];
                 acc = 2;
-
               }
 
             } else {
-
               {
-
                 uint64_t a = (uint64_t)immval(R[7]) << FBITS | immval(R[4]);
                 hval     b = immval(R[5]);
                 uint64_t q = a / b;
                 R[11] = F(q >> FBITS);
                 R[12] = F(q);
                 R[13] = F(a - q * b);
-
               }
 
               R[7] = R[3];
@@ -51877,37 +45206,28 @@ super_dispatch:                                   /* run macro instructions */
               R[4] = R[13];
               ob = (word *)R[7];
               acc = 2;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1259:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         ob = (word *)R[5];
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1260:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         *fp = make_header(4, TPROC);
@@ -51922,15 +45242,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1261:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
@@ -51945,15 +45262,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1262:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -51969,15 +45283,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1263:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(4, TCLOS);
@@ -51993,15 +45304,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1264:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(3, TCLOS);
@@ -52018,15 +45326,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1265:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         *fp = make_header(4, TPROC);
@@ -52039,29 +45344,23 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1266:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         ob = (word *)R[5];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1267:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -52072,15 +45371,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1268:
       if (acc == 2) {
-
         R[5] = G(R[2], 2);
         R[6] = G(R[1], 2);
         R[4] = R[3];
@@ -52089,15 +45385,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1269:
       if (acc == 3) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 2);
         fp[2] = R[5];
@@ -52109,15 +45402,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1270:
       if (acc == 4) {
-
         R[7] = G(R[2], 2);
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
@@ -52135,19 +45425,15 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1271:
       if (acc == 1) {
-
         R[4] = 128 * 2 + 258;
         R[5] = prim_less(R[3], R[4]);
         if (R[5] == IFALSE) {
-
           R[6] = G(R[2], 2);
           R[7] = G(R[1], 3);
           R[8] = G(R[1], 4);
@@ -52169,7 +45455,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[6] = G(R[2], 4);
           R[7] = G(R[1], 5);
           R[4] = G(R[1], 3);
@@ -52180,19 +45465,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[10];
           ob = (word *)R[11];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1272:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -52213,15 +45494,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1273:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -52242,15 +45520,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1274:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 3);
@@ -52265,15 +45540,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1275:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -52297,17 +45569,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1276:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -52328,7 +45596,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 6);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 2);
@@ -52337,47 +45604,36 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[6];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1277:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = F(0);
         R[7] = BOOL(R[5] == R[6]);
         if (R[7] == IFALSE) {
-
           R[8] = 128 * 62 + 258;
           R[9] = BOOL(R[5] == R[8]);
           if (R[9] == IFALSE) {
-
             R[10] = 128 * 78 + 258;
             R[11] = BOOL(R[5] == R[10]);
             if (R[11] == IFALSE) {
-
               R[12] = 128 * 80 + 258;
               R[13] = BOOL(R[5] == R[12]);
               if (R[13] == IFALSE) {
-
                 R[14] = 128 * 82 + 258;
                 R[15] = BOOL(R[5] == R[14]);
                 if (R[15] == IFALSE) {
-
                   R[16] = G(R[1], 2);
                   R[17] = G(R[1], 3);
                   R[5] = R[4];
@@ -52386,29 +45642,22 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 3;
 
                 } else {
-
                   R[16] = 128 * 0 + 258;
                   R[17] = prim_ref(R[4], R[16]);
                   {
-
                     word ob = R[17];
                     if (allocp(ob)) ob = V(ob);
                     R[18] = F((hval)ob >> TPOS & 63);
-
                   }
 
                   R[19] = BOOL(R[18] == R[6]);
                   if (R[19] == IFALSE) {
-
                     R[20] = BOOL(R[18] == R[8]);
                     if (R[20] == IFALSE) {
-
                       R[21] = BOOL(R[18] == R[10]);
                       if (R[21] == IFALSE) {
-
                         R[22] = BOOL(R[18] == R[12]);
                         if (R[22] == IFALSE) {
-
                           R[23] = G(R[1], 2);
                           R[24] = G(R[1], 4);
                           R[5] = R[4];
@@ -52417,127 +45666,98 @@ super_dispatch:                                   /* run macro instructions */
                           acc = 3;
 
                         } else {
-
                           R[23] = ITRUE;
                           ob = (word *)R[3];
                           R[3] = R[23];
                           acc = 1;
-
                         }
 
                       } else {
-
                         R[22] = IFALSE;
                         ob = (word *)R[3];
                         R[3] = R[22];
                         acc = 1;
-
                       }
 
                     } else {
-
                       R[21] = ITRUE;
                       ob = (word *)R[3];
                       R[3] = R[21];
                       acc = 1;
-
                     }
 
                   } else {
-
                     R[20] = IFALSE;
                     ob = (word *)R[3];
                     R[3] = R[20];
                     acc = 1;
-
                   }
-
                 }
 
               } else {
-
                 R[14] = ITRUE;
                 ob = (word *)R[3];
                 R[3] = R[14];
                 acc = 1;
-
               }
 
             } else {
-
               R[12] = IFALSE;
               ob = (word *)R[3];
               R[3] = R[12];
               acc = 1;
-
             }
 
           } else {
-
             R[10] = ITRUE;
             ob = (word *)R[3];
             R[3] = R[10];
             acc = 1;
-
           }
 
         } else {
-
           R[8] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1278:
       if (acc == 5) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[8] = F((hval)ob >> TPOS & 63);
-
         }
 
         if (R[8] == F(0)) {
-
           R[9] = F(0);
           ob = (word *)R[3];
           R[3] = R[9];
           acc = 1;
 
         } else {
-
           R[9] = 128 * 2 + 258;
           R[10] = prim_ref(R[4], R[9]);
           R[11] = prim_ref(R[5], R[9]);
           if (R[10] == INULL) {
-
             if (R[11] == INULL) {
-
               R[12] = 128 * 0 + 258;
               R[13] = prim_ref(R[5], R[12]);
               R[14] = G(R[1], 2);
               if (R[13] == R[14]) {
-
                 if (R[6] == F(0)) {
-
                   R[15] = F(0);
                   ob = (word *)R[3];
                   R[3] = R[15];
                   acc = 1;
 
                 } else {
-
                   R[15] = prim_ref(R[4], R[12]);
                   R[16] = G(R[1], 3);
                   *fp = make_header(4, TCLOS);
@@ -52550,11 +45770,9 @@ super_dispatch:                                   /* run macro instructions */
                   R[5] = R[12];
                   ob = (word *)R[16];
                   acc = 3;
-
                 }
 
               } else {
-
                 R[15] = prim_ref(R[4], R[12]);
                 R[16] = G(R[1], 5);
                 *fp = make_header(5, TCLOS);
@@ -52568,22 +45786,17 @@ super_dispatch:                                   /* run macro instructions */
                 R[4] = R[13];
                 ob = (word *)R[16];
                 acc = 3;
-
               }
 
             } else {
-
               R[12] = F(0);
               ob = (word *)R[3];
               R[3] = R[12];
               acc = 1;
-
             }
 
           } else {
-
             if (R[11] == INULL) {
-
               R[12] = prim_ref(R[4], R[9]);
               R[13] = G(R[1], 5);
               *fp = make_header(6, TPROC);
@@ -52600,32 +45813,24 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               R[4] = prim_ref(R[4], R[9]);
               R[5] = prim_ref(R[5], R[9]);
               ob = (word *)R[7];
               acc = 5;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1279:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = prim_less(R[4], R[3]);
         if (R[5] == IFALSE) {
-
           R[6] = G(R[2], 2);
           R[7] = G(R[1], 4);
           R[8] = G(R[1], 3);
@@ -52637,7 +45842,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[6] = G(R[2], 3);
           R[7] = G(R[1], 4);
           R[8] = G(R[1], 3);
@@ -52647,19 +45851,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[8];
           ob = (word *)R[9];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1280:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -52673,17 +45873,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1281:
       if (acc == 5) {
-
         if (R[4] == R[5]) {
-
           R[8] = G(R[1], 2);
           R[5] = 128 * 0 + 258;
           R[4] = R[6];
@@ -52691,20 +45887,15 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[8] = prim_less(R[4], R[5]);
           if (R[8] == IFALSE) {
-
             {
-
               hval r = immval(R[5]) + immval(R[5]);
               R[10] = F(r >> FBITS);
               R[9] = F(r);
-
             }
 
             if (R[10] == F(0)) {
-
               R[11] = G(R[1], 3);
               *fp = make_header(6, TPROC);
               fp[1] = G(R[1], 4);
@@ -52719,48 +45910,37 @@ super_dispatch:                                   /* run macro instructions */
               acc = 2;
 
             } else {
-
               R[11] = G(R[1], 2);
               R[4] = R[6];
               R[5] = R[10];
               ob = (word *)R[11];
               acc = 3;
-
             }
 
           } else {
-
             R[9] = G(R[1], 2);
             R[5] = 128 * 0 + 258;
             R[4] = R[6];
             ob = (word *)R[9];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1282:
       if (acc == 5) {
-
         if (R[6] == F(0)) {
-
           R[8] = F(0);
           ob = (word *)R[3];
           R[3] = R[8];
           acc = 1;
 
         } else {
-
           if (R[4] == R[5]) {
-
             R[8] = G(R[1], 2);
             R[5] = 128 * 0 + 258;
             R[4] = R[6];
@@ -52768,18 +45948,14 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             R[8] = prim_less(R[5], R[4]);
             if (R[8] == IFALSE) {
-
               R[9] = 128 * 0 + 258;
               {
-
                 hval x = immval(R[5]);
                 uint n = immval(R[9]);
                 R[10] = F(x >> n);
                 R[11] = F(x << (FBITS - n));
-
               }
 
               R[12] = G(R[1], 2);
@@ -52797,27 +45973,20 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               ob = (word *)R[3];
               R[3] = R[6];
               acc = 1;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1283:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -52832,61 +46001,47 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1284:
       if (acc == 4) {
-
         if (R[4] == F(0)) {
-
           R[7] = F(0);
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           if (R[5] == F(0)) {
-
             R[7] = F(0);
             ob = (word *)R[3];
             R[3] = R[7];
             acc = 1;
 
           } else {
-
             {
-
               word ob = R[4];
               if (allocp(ob)) ob = V(ob);
               R[7] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[8] = F(0);
             R[9] = BOOL(R[7] == R[8]);
             if (R[9] == IFALSE) {
-
               R[10] = 128 * 62 + 258;
               R[11] = BOOL(R[7] == R[10]);
               if (R[11] == IFALSE) {
-
                 R[12] = 128 * 78 + 258;
                 R[13] = BOOL(R[7] == R[12]);
                 if (R[13] == IFALSE) {
-
                   R[14] = 128 * 80 + 258;
                   R[15] = BOOL(R[7] == R[14]);
                   if (R[15] == IFALSE) {
-
                     R[16] = 128 * 82 + 258;
                     R[17] = BOOL(R[7] == R[16]);
                     if (R[17] == IFALSE) {
-
                       R[18] = G(R[1], 2);
                       R[19] = G(R[1], 3);
                       R[6] = R[5];
@@ -52896,18 +46051,14 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 4;
 
                     } else {
-
                       {
-
                         word ob = R[5];
                         if (allocp(ob)) ob = V(ob);
                         R[18] = F((hval)ob >> TPOS & 63);
-
                       }
 
                       R[19] = BOOL(R[18] == R[16]);
                       if (R[19] == IFALSE) {
-
                         R[9] = R[5];
                         R[5] = R[4];
                         R[4] = R[9];
@@ -52915,7 +46066,6 @@ super_dispatch:                                   /* run macro instructions */
                         acc = 4;
 
                       } else {
-
                         R[20] = G(R[1], 2);
                         R[21] = G(R[1], 3);
                         R[6] = R[5];
@@ -52923,33 +46073,24 @@ super_dispatch:                                   /* run macro instructions */
                         R[4] = R[21];
                         ob = (word *)R[20];
                         acc = 4;
-
                       }
-
                     }
 
                   } else {
-
                     {
-
                       word ob = R[5];
                       if (allocp(ob)) ob = V(ob);
                       R[16] = F((hval)ob >> TPOS & 63);
-
                     }
 
                     R[17] = BOOL(R[16] == R[8]);
                     if (R[17] == IFALSE) {
-
                       R[18] = BOOL(R[16] == R[10]);
                       if (R[18] == IFALSE) {
-
                         R[19] = BOOL(R[16] == R[12]);
                         if (R[19] == IFALSE) {
-
                           R[20] = BOOL(R[16] == R[14]);
                           if (R[20] == IFALSE) {
-
                             R[21] = G(R[1], 2);
                             R[22] = G(R[1], 3);
                             R[6] = R[5];
@@ -52959,15 +46100,12 @@ super_dispatch:                                   /* run macro instructions */
                             acc = 4;
 
                           } else {
-
                             R[21] = G(R[1], 4);
                             ob = (word *)R[21];
                             acc = 3;
-
                           }
 
                         } else {
-
                           R[20] = G(R[1], 4);
                           *fp = make_header(3, TCLOS);
                           fp[1] = G(R[1], 5);
@@ -52976,11 +46114,9 @@ super_dispatch:                                   /* run macro instructions */
                           fp += 3;
                           ob = (word *)R[20];
                           acc = 3;
-
                         }
 
                       } else {
-
                         R[19] = G(R[1], 6);
                         R[9] = R[5];
                         R[5] = R[4];
@@ -52988,11 +46124,9 @@ super_dispatch:                                   /* run macro instructions */
                         R[4] = R[9];
                         ob = (word *)R[19];
                         acc = 4;
-
                       }
 
                     } else {
-
                       R[18] = G(R[1], 6);
                       *fp = make_header(3, TCLOS);
                       fp[1] = G(R[1], 7);
@@ -53005,34 +46139,25 @@ super_dispatch:                                   /* run macro instructions */
                       R[4] = R[9];
                       ob = (word *)R[18];
                       acc = 4;
-
                     }
-
                   }
 
                 } else {
-
                   {
-
                     word ob = R[5];
                     if (allocp(ob)) ob = V(ob);
                     R[14] = F((hval)ob >> TPOS & 63);
-
                   }
 
                   R[15] = BOOL(R[14] == R[8]);
                   if (R[15] == IFALSE) {
-
                     R[16] = BOOL(R[14] == R[10]);
                     if (R[16] == IFALSE) {
-
                       R[17] = BOOL(R[14] == R[12]);
                       if (R[17] == IFALSE) {
-
                         R[18] = 128 * 80 + 258;
                         R[19] = BOOL(R[14] == R[18]);
                         if (R[19] == IFALSE) {
-
                           R[20] = G(R[1], 2);
                           R[21] = G(R[1], 3);
                           R[6] = R[5];
@@ -53042,7 +46167,6 @@ super_dispatch:                                   /* run macro instructions */
                           acc = 4;
 
                         } else {
-
                           R[20] = G(R[1], 4);
                           *fp = make_header(3, TCLOS);
                           fp[1] = G(R[1], 8);
@@ -53051,19 +46175,15 @@ super_dispatch:                                   /* run macro instructions */
                           fp += 3;
                           ob = (word *)R[20];
                           acc = 3;
-
                         }
 
                       } else {
-
                         R[18] = G(R[1], 4);
                         ob = (word *)R[18];
                         acc = 3;
-
                       }
 
                     } else {
-
                       R[17] = G(R[1], 6);
                       *fp = make_header(3, TCLOS);
                       fp[1] = G(R[1], 9);
@@ -53076,11 +46196,9 @@ super_dispatch:                                   /* run macro instructions */
                       R[4] = R[9];
                       ob = (word *)R[17];
                       acc = 4;
-
                     }
 
                   } else {
-
                     R[16] = G(R[1], 6);
                     R[9] = R[5];
                     R[5] = R[4];
@@ -53088,35 +46206,26 @@ super_dispatch:                                   /* run macro instructions */
                     R[4] = R[9];
                     ob = (word *)R[16];
                     acc = 4;
-
                   }
-
                 }
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[12] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 R[13] = BOOL(R[12] == R[8]);
                 if (R[13] == IFALSE) {
-
                   R[14] = BOOL(R[12] == R[10]);
                   if (R[14] == IFALSE) {
-
                     R[15] = 128 * 78 + 258;
                     R[16] = BOOL(R[12] == R[15]);
                     if (R[16] == IFALSE) {
-
                       R[17] = 128 * 80 + 258;
                       R[18] = BOOL(R[12] == R[17]);
                       if (R[18] == IFALSE) {
-
                         R[19] = G(R[1], 2);
                         R[20] = G(R[1], 3);
                         R[6] = R[5];
@@ -53126,16 +46235,13 @@ super_dispatch:                                   /* run macro instructions */
                         acc = 4;
 
                       } else {
-
                         R[19] = G(R[1], 6);
                         R[6] = R[8];
                         ob = (word *)R[19];
                         acc = 4;
-
                       }
 
                     } else {
-
                       R[17] = G(R[1], 6);
                       *fp = make_header(3, TCLOS);
                       fp[1] = G(R[1], 10);
@@ -53145,22 +46251,17 @@ super_dispatch:                                   /* run macro instructions */
                       R[6] = R[8];
                       ob = (word *)R[17];
                       acc = 4;
-
                     }
 
                   } else {
-
                     {
-
                       uint64_t p = (uint64_t)immval(R[4]) * immval(R[5]);
                       R[15] = F(p);
                       R[16] = F(p >> FBITS);
-
                     }
 
                     R[17] = BOOL(R[16] == R[8]);
                     if (R[17] == IFALSE) {
-
                       R[18] = INULL;
                       *fp = make_header(3, 40);
                       fp[1] = R[16];
@@ -53177,23 +46278,17 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 1;
 
                     } else {
-
                       ob = (word *)R[3];
                       R[3] = R[15];
                       acc = 1;
-
                     }
-
                   }
 
                 } else {
-
                   {
-
                     uint64_t p = (uint64_t)immval(R[4]) * immval(R[5]);
                     R[14] = F(p);
                     R[15] = F(p >> FBITS);
-
                   }
 
                   R[16] = BOOL(R[15] == R[8]);
@@ -53203,7 +46298,6 @@ super_dispatch:                                   /* run macro instructions */
                   R[17] = (word)fp;
                   fp += 3;
                   if (R[16] == IFALSE) {
-
                     R[18] = INULL;
                     *fp = make_header(3, 40);
                     fp[1] = R[15];
@@ -53219,42 +46313,31 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 1;
 
                   } else {
-
                     R[3] = R[14];
                     ob = (word *)R[17];
                     acc = 1;
-
                   }
-
                 }
-
               }
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[10] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[11] = BOOL(R[10] == R[8]);
               if (R[11] == IFALSE) {
-
                 R[12] = 128 * 62 + 258;
                 R[13] = BOOL(R[10] == R[12]);
                 if (R[13] == IFALSE) {
-
                   R[14] = 128 * 78 + 258;
                   R[15] = BOOL(R[10] == R[14]);
                   if (R[15] == IFALSE) {
-
                     R[16] = 128 * 80 + 258;
                     R[17] = BOOL(R[10] == R[16]);
                     if (R[17] == IFALSE) {
-
                       R[18] = G(R[1], 2);
                       R[19] = G(R[1], 3);
                       R[6] = R[5];
@@ -53264,7 +46347,6 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 4;
 
                     } else {
-
                       R[18] = G(R[1], 6);
                       *fp = make_header(3, TCLOS);
                       fp[1] = G(R[1], 12);
@@ -53274,26 +46356,20 @@ super_dispatch:                                   /* run macro instructions */
                       R[6] = R[8];
                       ob = (word *)R[18];
                       acc = 4;
-
                     }
 
                   } else {
-
                     R[16] = G(R[1], 6);
                     R[6] = R[8];
                     ob = (word *)R[16];
                     acc = 4;
-
                   }
 
                 } else {
-
                   {
-
                     uint64_t p = (uint64_t)immval(R[4]) * immval(R[5]);
                     R[14] = F(p);
                     R[15] = F(p >> FBITS);
-
                   }
 
                   R[16] = BOOL(R[15] == R[8]);
@@ -53303,7 +46379,6 @@ super_dispatch:                                   /* run macro instructions */
                   R[17] = (word)fp;
                   fp += 3;
                   if (R[16] == IFALSE) {
-
                     R[18] = INULL;
                     *fp = make_header(3, 40);
                     fp[1] = R[15];
@@ -53319,28 +46394,21 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 1;
 
                   } else {
-
                     R[3] = R[14];
                     ob = (word *)R[17];
                     acc = 1;
-
                   }
-
                 }
 
               } else {
-
                 {
-
                   uint64_t p = (uint64_t)immval(R[4]) * immval(R[5]);
                   R[12] = F(p);
                   R[13] = F(p >> FBITS);
-
                 }
 
                 R[14] = BOOL(R[13] == R[8]);
                 if (R[14] == IFALSE) {
-
                   R[15] = INULL;
                   *fp = make_header(3, 40);
                   fp[1] = R[13];
@@ -53357,98 +46425,72 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 1;
 
                 } else {
-
                   ob = (word *)R[3];
                   R[3] = R[12];
                   acc = 1;
-
                 }
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1285:
       if (acc == 4) {
-
         if (R[4] == F(0)) {
-
           R[7] = F(0);
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           if (R[5] == F(0)) {
-
             R[7] = F(0);
             ob = (word *)R[3];
             R[3] = R[7];
             acc = 1;
 
           } else {
-
             R[7] = 128 * 0 + 258;
             if (R[4] == R[7]) {
-
               ob = (word *)R[3];
               R[3] = R[5];
               acc = 1;
 
             } else {
-
               if (R[5] == R[7]) {
-
                 ob = (word *)R[3];
                 R[3] = R[4];
                 acc = 1;
 
               } else {
-
                 {
-
                   word ob = R[4];
                   if (allocp(ob)) ob = V(ob);
                   R[8] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 if (R[8] == F(0)) {
-
                   {
-
                     word ob = R[5];
                     if (allocp(ob)) ob = V(ob);
                     R[9] = F((hval)ob >> TPOS & 63);
-
                   }
 
                   if (R[9] == F(0)) {
-
                     {
-
                       uint64_t p = (uint64_t)immval(R[4]) * immval(R[5]);
                       R[10] = F(p);
                       R[11] = F(p >> FBITS);
-
                     }
 
                     R[12] = F(0);
                     R[13] = BOOL(R[11] == R[12]);
                     if (R[13] == IFALSE) {
-
                       R[14] = INULL;
                       *fp = make_header(3, 40);
                       fp[1] = R[11];
@@ -53465,34 +46507,26 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 1;
 
                     } else {
-
                       ob = (word *)R[3];
                       R[3] = R[10];
                       acc = 1;
-
                     }
 
                   } else {
-
                     R[10] = G(R[1], 2);
                     R[6] = F(0);
                     ob = (word *)R[10];
                     acc = 4;
-
                   }
 
                 } else {
-
                   {
-
                     word ob = R[5];
                     if (allocp(ob)) ob = V(ob);
                     R[9] = F((hval)ob >> TPOS & 63);
-
                   }
 
                   if (R[9] == F(0)) {
-
                     R[10] = G(R[1], 2);
                     R[6] = F(0);
                     R[9] = R[5];
@@ -53502,28 +46536,22 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 4;
 
                   } else {
-
                     R[10] = 128 * 2 + 258;
                     R[11] = prim_ref(R[4], R[10]);
                     if (R[11] == INULL) {
-
                       R[12] = prim_ref(R[5], R[10]);
                       if (R[12] == INULL) {
-
                         R[13] = prim_ref(R[4], R[7]);
                         R[14] = prim_ref(R[5], R[7]);
                         {
-
                           uint64_t p = (uint64_t)immval(R[13]) * immval(R[14]);
                           R[15] = F(p);
                           R[16] = F(p >> FBITS);
-
                         }
 
                         R[17] = F(0);
                         R[18] = BOOL(R[16] == R[17]);
                         if (R[18] == IFALSE) {
-
                           R[19] = INULL;
                           *fp = make_header(3, 40);
                           fp[1] = R[16];
@@ -53540,28 +46568,22 @@ super_dispatch:                                   /* run macro instructions */
                           acc = 1;
 
                         } else {
-
                           ob = (word *)R[3];
                           R[3] = R[15];
                           acc = 1;
-
                         }
 
                       } else {
-
                         R[4] = prim_ref(R[4], R[7]);
                         R[14] = G(R[1], 2);
                         R[6] = F(0);
                         ob = (word *)R[14];
                         acc = 4;
-
                       }
 
                     } else {
-
                       R[12] = prim_ref(R[5], R[10]);
                       if (R[12] == INULL) {
-
                         R[13] = prim_ref(R[5], R[7]);
                         R[14] = G(R[1], 2);
                         R[6] = F(0);
@@ -53571,7 +46593,6 @@ super_dispatch:                                   /* run macro instructions */
                         acc = 4;
 
                       } else {
-
                         R[13] = G(R[1], 3);
                         *fp = make_header(6, TCLOS);
                         fp[1] = G(R[1], 4);
@@ -53589,37 +46610,25 @@ super_dispatch:                                   /* run macro instructions */
                         R[9] = R[8];
                         ob = (word *)R[13];
                         acc = 9;
-
                       }
-
                     }
-
                   }
-
                 }
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1286:
       if (acc == 5) {
-
         R[8] = 128 * 58 + 258;
         R[9] = prim_less(R[7], R[8]);
         if (R[9] == IFALSE) {
-
           R[10] = G(R[1], 4);
           R[11] = G(R[1], 5);
           *fp = make_header(9, TCLOS);
@@ -53640,26 +46649,21 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[10] = G(R[2], 3);
           R[3] = G(R[1], 5);
           R[4] = G(R[1], 3);
           R[5] = G(R[1], 2);
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1287:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -53686,15 +46690,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1288:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -53721,15 +46722,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1289:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -53754,15 +46752,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1290:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -53785,15 +46780,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1291:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -53814,15 +46806,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1292:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -53845,15 +46834,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1293:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
@@ -53865,13 +46851,11 @@ super_dispatch:                                   /* run macro instructions */
         R[7] = (word)fp;
         fp += 5;
         if (R[3] == F(0)) {
-
           R[3] = G(R[1], 2);
           ob = (word *)R[7];
           acc = 1;
 
         } else {
-
           R[8] = G(R[2], 2);
           R[9] = G(R[1], 2);
           R[5] = R[3];
@@ -53880,28 +46864,22 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[9];
           ob = (word *)R[8];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1294:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         if (R[4] == F(0)) {
-
           R[5] = G(R[1], 4);
           ob = (word *)R[5];
           acc = 1;
 
         } else {
-
           R[5] = G(R[2], 2);
           R[6] = G(R[1], 4);
           *fp = make_header(5, TCLOS);
@@ -53917,21 +46895,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[9];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1295:
       if (acc == 10) {
-
         if (R[4] == INULL) {
-
           R[13] = G(R[1], 2);
           *fp = make_header(7, TCLOS);
           fp[1] = G(R[1], 3);
@@ -53947,9 +46920,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           if (R[5] == INULL) {
-
             R[13] = G(R[1], 2);
             *fp = make_header(7, TCLOS);
             fp[1] = G(R[1], 4);
@@ -53965,11 +46936,8 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             if (R[10] == IFALSE) {
-
               {
-
                 word *ob = (word *)R[6];
                 hval  hdr;
                 assert(allocp(R[6]), R[6], IFALSE);
@@ -53977,11 +46945,9 @@ super_dispatch:                                   /* run macro instructions */
                 assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                 R[13] = ob[1];
                 R[14] = ob[2];
-
               }
 
               {
-
                 word *ob = (word *)R[7];
                 hval  hdr;
                 assert(allocp(R[7]), R[7], IFALSE);
@@ -53989,16 +46955,13 @@ super_dispatch:                                   /* run macro instructions */
                 assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                 R[15] = ob[1];
                 R[16] = ob[2];
-
               }
 
               R[17] = 128 * 0 + 258;
               {
-
                 hval r = immval(R[11]) + immval(R[17]);
                 R[19] = F(r >> FBITS);
                 R[18] = F(r);
-
               }
 
               R[20] = 128 * 2 + 258;
@@ -54022,30 +46985,23 @@ super_dispatch:                                   /* run macro instructions */
               acc = 10;
 
             } else {
-
               R[13] = 128 * 2 + 258;
               R[4] = prim_ref(R[4], R[13]);
               R[5] = prim_ref(R[5], R[13]);
               R[10] = IFALSE;
               ob = (word *)R[12];
               acc = 10;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1296:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -54067,15 +47023,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1297:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -54097,15 +47050,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1298:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -54127,15 +47077,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1299:
       if (acc == 1) {
-
         R[4] = G(R[1], 6);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -54151,40 +47098,31 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1300:
       if (acc == 9) {
-
         R[12] = G(R[1], 2);
         ob = (word *)R[12];
         acc = 10;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1301:
       if (acc == 3) {
-
         if (R[4] == INULL) {
-
           R[6] = F(0);
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           {
-
             word *ob = (word *)R[4];
             hval  hdr;
             assert(allocp(R[4]), R[4], IFALSE);
@@ -54192,50 +47130,38 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[6] = ob[1];
             R[7] = ob[2];
-
           }
 
           if (R[7] == INULL) {
-
             ob = (word *)R[3];
             R[3] = R[6];
             acc = 1;
 
           } else {
-
             if (R[6] == F(0)) {
-
               R[4] = R[7];
               ob = (word *)R[5];
               acc = 3;
 
             } else {
-
               R[8] = G(R[1], 2);
               R[5] = INULL;
               ob = (word *)R[8];
               acc = 3;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1302:
       if (acc == 2) {
-
         R[5] = 128 * 2 + 258;
         R[6] = prim_ref(R[4], R[5]);
         if (R[6] == INULL) {
-
           R[7] = 128 * 0 + 258;
           R[8] = prim_ref(R[4], R[7]);
           ob = (word *)R[3];
@@ -54243,32 +47169,25 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1303:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           R[7] = INULL;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           R[7] = 128 * 0 + 258;
           R[8] = prim_ref(R[4], R[7]);
           R[9] = 128 * 2 + 258;
@@ -54282,19 +47201,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1304:
       if (acc == 1) {
-
         R[4] = F(0);
         *fp = make_header(3, 40);
         fp[1] = R[4];
@@ -54318,36 +47233,27 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1305:
       if (acc == 5) {
-
         if (R[6] == F(0)) {
-
           if (R[4] == INULL) {
-
             R[8] = G(R[1], 2);
             R[4] = R[5];
             ob = (word *)R[8];
             acc = 2;
 
           } else {
-
             R[8] = G(R[1], 3);
             ob = (word *)R[8];
             acc = 3;
-
           }
 
         } else {
-
           if (R[4] == INULL) {
-
             R[8] = G(R[1], 4);
             *fp = make_header(5, TCLOS);
             fp[1] = G(R[1], 5);
@@ -54362,17 +47268,13 @@ super_dispatch:                                   /* run macro instructions */
             acc = 3;
 
           } else {
-
             {
-
               word ob = R[4];
               if (allocp(ob)) ob = V(ob);
               R[8] = F((hval)ob >> TPOS & 63);
-
             }
 
             if (R[8] == F(0)) {
-
               R[9] = INULL;
               *fp = make_header(3, 40);
               fp[1] = R[4];
@@ -54383,28 +47285,21 @@ super_dispatch:                                   /* run macro instructions */
               acc = 5;
 
             } else {
-
               {
-
                 word ob = R[6];
                 if (allocp(ob)) ob = V(ob);
                 R[9] = F((hval)ob >> TPOS & 63);
-
               }
 
               if (R[9] == F(0)) {
-
                 R[10] = 128 * 0 + 258;
                 {
-
                   hval r = immval(R[6]) - immval(R[10]);
                   R[12] = F(r >> FBITS & 1);
                   R[11] = F(r);
-
                 }
 
                 {
-
                   word *ob = (word *)R[4];
                   hval  hdr;
                   assert(allocp(R[4]), R[4], IFALSE);
@@ -54412,7 +47307,6 @@ super_dispatch:                                   /* run macro instructions */
                   assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
                   R[13] = ob[1];
                   R[14] = ob[2];
-
                 }
 
                 *fp = make_header(4, TPROC);
@@ -54427,7 +47321,6 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 5;
 
               } else {
-
                 R[10] = 128 * 0 + 258;
                 R[11] = prim_ref(R[4], R[10]);
                 R[12] = 128 * 2 + 258;
@@ -54446,25 +47339,18 @@ super_dispatch:                                   /* run macro instructions */
                 R[5] = R[10];
                 ob = (word *)R[14];
                 acc = 3;
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1306:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 6);
@@ -54484,15 +47370,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1307:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 4);
         *fp = make_header(3, TPROC);
@@ -54513,25 +47396,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1308:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         if (R[5] == F(0)) {
-
           R[6] = INULL;
           *fp = make_header(3, 40);
           fp[1] = R[4];
@@ -54543,34 +47420,26 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1309:
       if (acc == 5) {
-
         if (R[5] == INULL) {
-
           if (R[6] == F(0)) {
-
             R[8] = INULL;
             ob = (word *)R[3];
             R[3] = R[8];
             acc = 1;
 
           } else {
-
             R[8] = INULL;
             *fp = make_header(3, 40);
             fp[1] = R[6];
@@ -54580,21 +47449,16 @@ super_dispatch:                                   /* run macro instructions */
             ob = (word *)R[3];
             R[3] = R[9];
             acc = 1;
-
           }
 
         } else {
-
           if (R[6] == F(0)) {
-
             R[8] = 128 * 0 + 258;
             R[9] = prim_ref(R[5], R[8]);
             {
-
               uint64_t p = (uint64_t)immval(R[4]) * immval(R[9]);
               R[10] = F(p);
               R[11] = F(p >> FBITS);
-
             }
 
             R[12] = 128 * 2 + 258;
@@ -54610,31 +47474,24 @@ super_dispatch:                                   /* run macro instructions */
             acc = 5;
 
           } else {
-
             R[8] = 128 * 0 + 258;
             R[9] = prim_ref(R[5], R[8]);
             {
-
               uint64_t p = (uint64_t)immval(R[4]) * immval(R[9]);
               R[10] = F(p);
               R[11] = F(p >> FBITS);
-
             }
 
             {
-
               hval r = immval(R[10]) + immval(R[6]);
               R[13] = F(r >> FBITS);
               R[12] = F(r);
-
             }
 
             {
-
               hval r = immval(R[11]) + immval(R[13]);
               R[15] = F(r >> FBITS);
               R[14] = F(r);
-
             }
 
             R[16] = 128 * 2 + 258;
@@ -54648,37 +47505,28 @@ super_dispatch:                                   /* run macro instructions */
             R[6] = R[14];
             ob = (word *)R[7];
             acc = 5;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1310:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = F(0);
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 78 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = G(R[1], 2);
             R[12] = G(R[1], 3);
             R[6] = R[5];
@@ -54688,21 +47536,16 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[11] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[12] = BOOL(R[11] == R[7]);
             if (R[12] == IFALSE) {
-
               R[13] = BOOL(R[11] == R[9]);
               if (R[13] == IFALSE) {
-
                 R[14] = G(R[1], 2);
                 R[15] = G(R[1], 3);
                 R[6] = R[5];
@@ -54712,15 +47555,12 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 4;
 
               } else {
-
                 R[14] = G(R[1], 4);
                 ob = (word *)R[14];
                 acc = 3;
-
               }
 
             } else {
-
               R[13] = 128 * 0 + 258;
               R[14] = prim_ref(R[4], R[13]);
               R[15] = R[5] ^ (FMAX << IPOS & R[14]);
@@ -54734,28 +47574,21 @@ super_dispatch:                                   /* run macro instructions */
               ob = (word *)R[3];
               R[3] = R[18];
               acc = 1;
-
             }
-
           }
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = BOOL(R[9] == R[7]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 78 + 258;
             R[12] = BOOL(R[9] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = G(R[1], 2);
               R[14] = G(R[1], 3);
               R[6] = R[5];
@@ -54765,7 +47598,6 @@ super_dispatch:                                   /* run macro instructions */
               acc = 4;
 
             } else {
-
               R[13] = 128 * 0 + 258;
               R[14] = prim_ref(R[5], R[13]);
               R[15] = R[4] ^ (FMAX << IPOS & R[14]);
@@ -54779,46 +47611,35 @@ super_dispatch:                                   /* run macro instructions */
               ob = (word *)R[3];
               R[3] = R[18];
               acc = 1;
-
             }
 
           } else {
-
             R[11] = R[4] ^ (FMAX << IPOS & R[5]);
             ob = (word *)R[3];
             R[3] = R[11];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1311:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = F(0);
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 78 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = G(R[1], 2);
             R[12] = G(R[1], 3);
             R[6] = R[5];
@@ -54828,21 +47649,16 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[11] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[12] = BOOL(R[11] == R[7]);
             if (R[12] == IFALSE) {
-
               R[13] = BOOL(R[11] == R[9]);
               if (R[13] == IFALSE) {
-
                 R[14] = G(R[1], 2);
                 R[15] = G(R[1], 3);
                 R[6] = R[5];
@@ -54852,15 +47668,12 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 4;
 
               } else {
-
                 R[14] = G(R[1], 4);
                 ob = (word *)R[14];
                 acc = 3;
-
               }
 
             } else {
-
               R[13] = 128 * 0 + 258;
               R[14] = prim_ref(R[4], R[13]);
               R[15] = R[5] | R[14];
@@ -54874,28 +47687,21 @@ super_dispatch:                                   /* run macro instructions */
               ob = (word *)R[3];
               R[3] = R[18];
               acc = 1;
-
             }
-
           }
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = BOOL(R[9] == R[7]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 78 + 258;
             R[12] = BOOL(R[9] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = G(R[1], 2);
               R[14] = G(R[1], 3);
               R[6] = R[5];
@@ -54905,7 +47711,6 @@ super_dispatch:                                   /* run macro instructions */
               acc = 4;
 
             } else {
-
               R[13] = 128 * 0 + 258;
               R[14] = prim_ref(R[5], R[13]);
               R[15] = R[4] | R[14];
@@ -54919,46 +47724,35 @@ super_dispatch:                                   /* run macro instructions */
               ob = (word *)R[3];
               R[3] = R[18];
               acc = 1;
-
             }
 
           } else {
-
             R[11] = R[4] | R[5];
             ob = (word *)R[3];
             R[3] = R[11];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1312:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = F(0);
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 78 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = G(R[1], 2);
             R[12] = G(R[1], 3);
             R[6] = R[5];
@@ -54968,21 +47762,16 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[11] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[12] = BOOL(R[11] == R[7]);
             if (R[12] == IFALSE) {
-
               R[13] = BOOL(R[11] == R[9]);
               if (R[13] == IFALSE) {
-
                 R[14] = G(R[1], 2);
                 R[15] = G(R[1], 3);
                 R[6] = R[5];
@@ -54992,43 +47781,33 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 4;
 
               } else {
-
                 R[14] = G(R[1], 4);
                 ob = (word *)R[14];
                 acc = 3;
-
               }
 
             } else {
-
               R[13] = 128 * 0 + 258;
               R[14] = prim_ref(R[4], R[13]);
               R[15] = R[14] & R[5];
               ob = (word *)R[3];
               R[3] = R[15];
               acc = 1;
-
             }
-
           }
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = BOOL(R[9] == R[7]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 78 + 258;
             R[12] = BOOL(R[9] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = G(R[1], 2);
               R[14] = G(R[1], 3);
               R[6] = R[5];
@@ -55038,50 +47817,39 @@ super_dispatch:                                   /* run macro instructions */
               acc = 4;
 
             } else {
-
               R[13] = 128 * 0 + 258;
               R[14] = prim_ref(R[5], R[13]);
               R[15] = R[4] & R[14];
               ob = (word *)R[3];
               R[3] = R[15];
               acc = 1;
-
             }
 
           } else {
-
             R[11] = R[4] & R[5];
             ob = (word *)R[3];
             R[3] = R[11];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1313:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[1], 2);
           R[3] = F(0);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = 128 * 2 + 258;
           R[5] = prim_ref(R[3], R[4]);
           if (R[5] == INULL) {
-
             R[6] = 128 * 0 + 258;
             R[3] = prim_ref(R[3], R[6]);
             R[8] = G(R[1], 2);
@@ -55089,41 +47857,31 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             R[6] = G(R[1], 2);
             ob = (word *)R[6];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1314:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           if (R[5] == INULL) {
-
             ob = (word *)R[3];
             R[3] = R[4];
             acc = 1;
 
           } else {
-
             R[7] = 128 * 0 + 258;
             R[8] = prim_ref(R[4], R[7]);
             R[9] = prim_ref(R[5], R[7]);
@@ -55139,33 +47897,25 @@ super_dispatch:                                   /* run macro instructions */
             fp += 4;
             ob = (word *)R[6];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1315:
       if (acc == 1) {
-
         if (R[3] == INULL) {
-
           R[4] = G(R[1], 2);
           if (R[4] == F(0)) {
-
             R[5] = G(R[1], 3);
             R[3] = INULL;
             ob = (word *)R[5];
             acc = 1;
 
           } else {
-
             *fp = make_header(3, 40);
             fp[1] = R[4];
             fp[2] = R[3];
@@ -55174,11 +47924,9 @@ super_dispatch:                                   /* run macro instructions */
             R[6] = G(R[1], 3);
             ob = (word *)R[6];
             acc = 1;
-
           }
 
         } else {
-
           R[4] = G(R[1], 2);
           *fp = make_header(3, 40);
           fp[1] = R[4];
@@ -55188,35 +47936,27 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = G(R[1], 3);
           ob = (word *)R[6];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1316:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           if (R[5] == INULL) {
-
             ob = (word *)R[3];
             R[3] = R[4];
             acc = 1;
 
           } else {
-
             R[7] = 128 * 0 + 258;
             R[8] = prim_ref(R[4], R[7]);
             R[9] = prim_ref(R[5], R[7]);
@@ -55232,39 +47972,30 @@ super_dispatch:                                   /* run macro instructions */
             fp += 4;
             ob = (word *)R[6];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1317:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           R[7] = F(0);
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           if (R[5] == INULL) {
-
             R[7] = F(0);
             ob = (word *)R[3];
             R[3] = R[7];
             acc = 1;
 
           } else {
-
             R[7] = 128 * 0 + 258;
             R[8] = prim_ref(R[4], R[7]);
             R[9] = prim_ref(R[5], R[7]);
@@ -55280,40 +48011,30 @@ super_dispatch:                                   /* run macro instructions */
             fp += 4;
             ob = (word *)R[6];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1318:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[1], 3);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           {
-
             word ob = R[3];
             if (allocp(ob)) ob = V(ob);
             R[4] = F((hval)ob >> TPOS & 63);
-
           }
 
           if (R[4] == F(0)) {
-
             R[5] = INULL;
             *fp = make_header(3, 40);
             fp[1] = R[3];
@@ -55331,7 +48052,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             R[5] = G(R[1], 2);
             *fp = make_header(3, 40);
             fp[1] = R[5];
@@ -55341,84 +48061,64 @@ super_dispatch:                                   /* run macro instructions */
             R[7] = G(R[1], 3);
             ob = (word *)R[7];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1319:
       if (acc == 4) {
-
         if (R[4] == F(0)) {
-
           R[7] = F(0);
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[7] = F((hval)ob >> TPOS & 63);
-
           }
 
           if (R[7] == F(0)) {
-
             R[8] = F(0);
             R[9] = 128 * 46 + 258;
             {
-
               uint64_t a = (uint64_t)immval(R[8]) << FBITS | immval(R[5]);
               hval     b = immval(R[9]);
               uint64_t q = a / b;
               R[10] = F(q >> FBITS);
               R[11] = F(q);
               R[12] = F(a - q * b);
-
             }
 
             {
-
               hval r = immval(R[9]) - immval(R[12]);
               R[14] = F(r >> FBITS & 1);
               R[13] = F(r);
-
             }
 
             {
-
               word ob = R[4];
               if (allocp(ob)) ob = V(ob);
               R[15] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[16] = BOOL(R[15] == R[8]);
             if (R[16] == IFALSE) {
-
               R[17] = 128 * 62 + 258;
               R[18] = BOOL(R[15] == R[17]);
               if (R[18] == IFALSE) {
-
                 R[19] = 128 * 78 + 258;
                 R[20] = BOOL(R[15] == R[19]);
                 if (R[20] == IFALSE) {
-
                   R[21] = 128 * 80 + 258;
                   R[22] = BOOL(R[15] == R[21]);
                   if (R[22] == IFALSE) {
-
                     R[23] = G(R[1], 2);
                     R[24] = G(R[1], 3);
                     R[6] = R[5];
@@ -55428,7 +48128,6 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 4;
 
                   } else {
-
                     R[23] = G(R[1], 4);
                     *fp = make_header(4, TCLOS);
                     fp[1] = G(R[1], 5);
@@ -55440,11 +48139,9 @@ super_dispatch:                                   /* run macro instructions */
                     R[5] = R[13];
                     ob = (word *)R[23];
                     acc = 4;
-
                   }
 
                 } else {
-
                   R[21] = G(R[1], 4);
                   *fp = make_header(4, TCLOS);
                   fp[1] = G(R[1], 6);
@@ -55456,31 +48153,24 @@ super_dispatch:                                   /* run macro instructions */
                   R[5] = R[13];
                   ob = (word *)R[21];
                   acc = 4;
-
                 }
 
               } else {
-
                 {
-
                   hval x = immval(R[4]);
                   uint n = immval(R[13]);
                   R[19] = F(x >> n);
                   R[20] = F(x << (FBITS - n));
-
                 }
 
                 if (R[19] == F(0)) {
-
                   if (R[11] == F(0)) {
-
                     R[21] = G(R[1], 7);
                     R[4] = R[20];
                     ob = (word *)R[21];
                     acc = 2;
 
                   } else {
-
                     R[21] = INULL;
                     *fp = make_header(3, 40);
                     fp[1] = R[20];
@@ -55496,11 +48186,9 @@ super_dispatch:                                   /* run macro instructions */
                     R[5] = R[11];
                     ob = (word *)R[23];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[21] = INULL;
                   *fp = make_header(3, 40);
                   fp[1] = R[19];
@@ -55521,32 +48209,24 @@ super_dispatch:                                   /* run macro instructions */
                   R[5] = R[11];
                   ob = (word *)R[24];
                   acc = 3;
-
                 }
-
               }
 
             } else {
-
               {
-
                 hval x = immval(R[4]);
                 uint n = immval(R[13]);
                 R[17] = F(x >> n);
                 R[18] = F(x << (FBITS - n));
-
               }
 
               if (R[17] == F(0)) {
-
                 if (R[11] == F(0)) {
-
                   ob = (word *)R[3];
                   R[3] = R[18];
                   acc = 1;
 
                 } else {
-
                   R[19] = INULL;
                   *fp = make_header(3, 40);
                   fp[1] = R[18];
@@ -55557,13 +48237,10 @@ super_dispatch:                                   /* run macro instructions */
                   R[5] = R[11];
                   ob = (word *)R[21];
                   acc = 3;
-
                 }
 
               } else {
-
                 if (R[11] == F(0)) {
-
                   R[19] = INULL;
                   *fp = make_header(3, 40);
                   fp[1] = R[17];
@@ -55580,7 +48257,6 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 1;
 
                 } else {
-
                   R[19] = INULL;
                   *fp = make_header(3, 40);
                   fp[1] = R[17];
@@ -55596,26 +48272,19 @@ super_dispatch:                                   /* run macro instructions */
                   R[5] = R[11];
                   ob = (word *)R[22];
                   acc = 3;
-
                 }
-
               }
-
             }
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[8] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[9] = 128 * 78 + 258;
             if (R[8] == R[9]) {
-
               *fp = make_header(5, TCLOS);
               fp[1] = G(R[1], 11);
               fp[4] = R[6];
@@ -55628,7 +48297,6 @@ super_dispatch:                                   /* run macro instructions */
               acc = 4;
 
             } else {
-
               R[10] = G(R[1], 2);
               R[11] = G(R[1], 3);
               R[6] = R[5];
@@ -55636,23 +48304,17 @@ super_dispatch:                                   /* run macro instructions */
               R[4] = R[11];
               ob = (word *)R[10];
               acc = 4;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1320:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 4);
@@ -55671,30 +48333,23 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1321:
       if (acc == 4) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           R[7] = 128 * 0 + 258;
           {
-
             hval r = immval(R[5]) - immval(R[7]);
             R[9] = F(r >> FBITS & 1);
             R[8] = F(r);
-
           }
 
           R[10] = F(0);
@@ -55706,30 +48361,23 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1322:
       if (acc == 5) {
-
         if (R[4] == INULL) {
-
           if (R[6] == F(0)) {
-
             R[8] = INULL;
             ob = (word *)R[3];
             R[3] = R[8];
             acc = 1;
 
           } else {
-
             R[8] = INULL;
             *fp = make_header(3, 40);
             fp[1] = R[6];
@@ -55739,20 +48387,16 @@ super_dispatch:                                   /* run macro instructions */
             ob = (word *)R[3];
             R[3] = R[9];
             acc = 1;
-
           }
 
         } else {
-
           R[8] = 128 * 0 + 258;
           R[9] = prim_ref(R[4], R[8]);
           {
-
             hval x = immval(R[9]);
             uint n = immval(R[5]);
             R[10] = F(x >> n);
             R[11] = F(x << (FBITS - n));
-
           }
 
           R[12] = R[6] | R[11];
@@ -55767,35 +48411,27 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[10];
           ob = (word *)R[7];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1323:
       if (acc == 4) {
-
         {
-
           word ob = R[5];
           if (allocp(ob)) ob = V(ob);
           R[7] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[8] = F(0);
         R[9] = BOOL(R[7] == R[8]);
         if (R[9] == IFALSE) {
-
           R[10] = 128 * 78 + 258;
           R[11] = BOOL(R[7] == R[10]);
           if (R[11] == IFALSE) {
-
             R[12] = G(R[1], 2);
             R[13] = G(R[1], 3);
             R[6] = R[5];
@@ -55805,15 +48441,12 @@ super_dispatch:                                   /* run macro instructions */
             acc = 4;
 
           } else {
-
             if (R[4] == F(0)) {
-
               ob = (word *)R[3];
               R[3] = R[8];
               acc = 1;
 
             } else {
-
               R[12] = 128 * 2 + 258;
               R[13] = prim_ref(R[4], R[12]);
               R[14] = G(R[1], 4);
@@ -55829,50 +48462,38 @@ super_dispatch:                                   /* run macro instructions */
               R[5] = R[16];
               ob = (word *)R[14];
               acc = 3;
-
             }
-
           }
 
         } else {
-
           R[10] = 128 * 46 + 258;
           {
-
             uint64_t a = (uint64_t)immval(R[8]) << FBITS | immval(R[5]);
             hval     b = immval(R[10]);
             uint64_t q = a / b;
             R[11] = F(q >> FBITS);
             R[12] = F(q);
             R[13] = F(a - q * b);
-
           }
 
           if (R[12] == F(0)) {
-
             {
-
               word ob = R[4];
               if (allocp(ob)) ob = V(ob);
               R[14] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[15] = BOOL(R[14] == R[8]);
             if (R[15] == IFALSE) {
-
               R[16] = 128 * 62 + 258;
               R[17] = BOOL(R[14] == R[16]);
               if (R[17] == IFALSE) {
-
                 R[18] = 128 * 78 + 258;
                 R[19] = BOOL(R[14] == R[18]);
                 if (R[19] == IFALSE) {
-
                   R[20] = 128 * 80 + 258;
                   R[21] = BOOL(R[14] == R[20]);
                   if (R[21] == IFALSE) {
-
                     R[22] = G(R[1], 2);
                     R[23] = G(R[1], 3);
                     R[6] = R[5];
@@ -55882,7 +48503,6 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 4;
 
                   } else {
-
                     R[22] = G(R[1], 6);
                     *fp = make_header(3, TCLOS);
                     fp[1] = G(R[1], 7);
@@ -55892,88 +48512,67 @@ super_dispatch:                                   /* run macro instructions */
                     R[5] = R[13];
                     ob = (word *)R[22];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[20] = G(R[1], 6);
                   R[5] = R[13];
                   ob = (word *)R[20];
                   acc = 3;
-
                 }
 
               } else {
-
                 {
-
                   hval x = immval(R[4]);
                   uint n = immval(R[13]);
                   R[18] = F(x >> n);
                   R[19] = F(x << (FBITS - n));
-
                 }
 
                 if (R[18] == F(0)) {
-
                   ob = (word *)R[3];
                   R[3] = R[8];
                   acc = 1;
 
                 } else {
-
                   R[20] = G(R[1], 8);
                   R[4] = R[18];
                   ob = (word *)R[20];
                   acc = 2;
-
                 }
-
               }
 
             } else {
-
               {
-
                 hval x = immval(R[4]);
                 uint n = immval(R[13]);
                 R[16] = F(x >> n);
                 R[17] = F(x << (FBITS - n));
-
               }
 
               ob = (word *)R[3];
               R[3] = R[16];
               acc = 1;
-
             }
 
           } else {
-
             {
-
               word ob = R[4];
               if (allocp(ob)) ob = V(ob);
               R[14] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[15] = BOOL(R[14] == R[8]);
             if (R[15] == IFALSE) {
-
               R[16] = 128 * 62 + 258;
               R[17] = BOOL(R[14] == R[16]);
               if (R[17] == IFALSE) {
-
                 R[18] = 128 * 78 + 258;
                 R[19] = BOOL(R[14] == R[18]);
                 if (R[19] == IFALSE) {
-
                   R[20] = 128 * 80 + 258;
                   R[21] = BOOL(R[14] == R[20]);
                   if (R[21] == IFALSE) {
-
                     R[22] = G(R[1], 2);
                     R[23] = G(R[1], 3);
                     R[6] = R[5];
@@ -55983,7 +48582,6 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 4;
 
                   } else {
-
                     R[22] = G(R[1], 9);
                     *fp = make_header(4, TCLOS);
                     fp[1] = G(R[1], 10);
@@ -55994,11 +48592,9 @@ super_dispatch:                                   /* run macro instructions */
                     R[5] = R[12];
                     ob = (word *)R[22];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[20] = G(R[1], 9);
                   *fp = make_header(4, TCLOS);
                   fp[1] = G(R[1], 11);
@@ -56009,39 +48605,29 @@ super_dispatch:                                   /* run macro instructions */
                   R[5] = R[12];
                   ob = (word *)R[20];
                   acc = 3;
-
                 }
 
               } else {
-
                 ob = (word *)R[3];
                 R[3] = R[8];
                 acc = 1;
-
               }
 
             } else {
-
               ob = (word *)R[3];
               R[3] = R[8];
               acc = 1;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1324:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         *fp = make_header(3, TCLOS);
@@ -56057,38 +48643,29 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1325:
       if (acc == 4) {
-
         if (R[5] == F(0)) {
-
           ob = (word *)R[3];
           R[3] = R[4];
           acc = 1;
 
         } else {
-
           if (R[4] == INULL) {
-
             ob = (word *)R[3];
             R[3] = R[4];
             acc = 1;
 
           } else {
-
             R[7] = 128 * 0 + 258;
             {
-
               hval r = immval(R[5]) - immval(R[7]);
               R[9] = F(r >> FBITS & 1);
               R[8] = F(r);
-
             }
 
             R[10] = 128 * 2 + 258;
@@ -56096,39 +48673,30 @@ super_dispatch:                                   /* run macro instructions */
             R[5] = R[8];
             ob = (word *)R[6];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1326:
       if (acc == 3) {
-
         if (R[4] == INULL) {
-
           R[6] = F(0);
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[6] = 128 * 0 + 258;
           R[7] = prim_ref(R[4], R[6]);
           {
-
             hval x = immval(R[7]);
             uint n = immval(R[5]);
             R[8] = F(x >> n);
             R[9] = F(x << (FBITS - n));
-
           }
 
           R[10] = 128 * 2 + 258;
@@ -56140,32 +48708,24 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[11];
           ob = (word *)R[12];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1327:
       if (acc == 6) {
-
         if (R[5] == INULL) {
-
           if (R[7] == IFALSE) {
-
             if (R[4] == F(0)) {
-
               R[9] = IFALSE;
               ob = (word *)R[3];
               R[3] = R[9];
               acc = 1;
 
             } else {
-
               R[9] = INULL;
               *fp = make_header(3, 40);
               fp[1] = R[4];
@@ -56175,28 +48735,22 @@ super_dispatch:                                   /* run macro instructions */
               ob = (word *)R[3];
               R[3] = R[10];
               acc = 1;
-
             }
 
           } else {
-
             ob = (word *)R[3];
             R[3] = R[4];
             acc = 1;
-
           }
 
         } else {
-
           R[9] = 128 * 0 + 258;
           R[10] = prim_ref(R[5], R[9]);
           {
-
             hval x = immval(R[10]);
             uint n = immval(R[6]);
             R[11] = F(x >> n);
             R[12] = F(x << (FBITS - n));
-
           }
 
           R[13] = R[4] | R[12];
@@ -56213,46 +48767,35 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[11];
           ob = (word *)R[8];
           acc = 6;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1328:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           if (R[4] == F(0)) {
-
             R[5] = G(R[1], 2);
             if (R[5] == IFALSE) {
-
               R[6] = G(R[1], 4);
               R[3] = IFALSE;
               ob = (word *)R[6];
               acc = 1;
 
             } else {
-
               R[6] = G(R[1], 4);
               R[3] = F(0);
               ob = (word *)R[6];
               acc = 1;
-
             }
 
           } else {
-
             R[5] = G(R[1], 2);
             if (R[5] == IFALSE) {
-
               R[6] = INULL;
               *fp = make_header(3, 40);
               fp[1] = R[4];
@@ -56264,18 +48807,14 @@ super_dispatch:                                   /* run macro instructions */
               acc = 1;
 
             } else {
-
               R[6] = G(R[1], 4);
               R[3] = R[4];
               ob = (word *)R[6];
               acc = 1;
-
             }
-
           }
 
         } else {
-
           R[4] = G(R[1], 3);
           *fp = make_header(3, 40);
           fp[1] = R[4];
@@ -56285,21 +48824,16 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = G(R[1], 4);
           ob = (word *)R[6];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1329:
       if (acc == 3) {
-
         if (R[5] == F(0)) {
-
           R[6] = G(R[1], 2);
           R[7] = G(R[1], 3);
           R[9] = R[6];
@@ -56310,7 +48844,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 4;
 
         } else {
-
           R[6] = G(R[1], 4);
           *fp = make_header(4, TCLOS);
           fp[1] = G(R[1], 5);
@@ -56321,21 +48854,16 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = INULL;
           ob = (word *)R[6];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1330:
       if (acc == 1) {
-
         {
-
           word *ob = (word *)R[3];
           hval  hdr;
           assert(allocp(R[3]), R[3], IFALSE);
@@ -56343,7 +48871,6 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[4] = ob[1];
           R[5] = ob[2];
-
         }
 
         R[6] = G(R[2], 2);
@@ -56358,23 +48885,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1331:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           R[7] = 128 * 2 + 258;
           R[8] = prim_ref(R[4], R[7]);
           R[9] = 128 * 0 + 258;
@@ -56387,25 +48909,19 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1332:
       if (acc == 6) {
-
         if (R[5] == INULL) {
-
           R[9] = 128 * 2 + 258;
           R[10] = prim_ref(R[7], R[9]);
           if (R[10] == INULL) {
-
             R[11] = 128 * 0 + 258;
             R[12] = prim_ref(R[7], R[11]);
             R[7] = R[3];
@@ -56414,18 +48930,14 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             R[8] = R[3];
             R[3] = R[7];
             ob = (word *)R[8];
             acc = 2;
-
           }
 
         } else {
-
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -56433,22 +48945,18 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[9] = ob[1];
             R[10] = ob[2];
-
           }
 
           {
-
             uint64_t a = (uint64_t)immval(R[4]) << FBITS | immval(R[9]);
             hval     b = immval(R[6]);
             uint64_t q = a / b;
             R[11] = F(q >> FBITS);
             R[12] = F(q);
             R[13] = F(a - q * b);
-
           }
 
           if (R[11] == F(0)) {
-
             *fp = make_header(3, 40);
             fp[1] = R[12];
             fp[2] = R[7];
@@ -56460,7 +48968,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 6;
 
           } else {
-
             *fp = make_header(3, 40);
             fp[1] = R[11];
             fp[2] = R[7];
@@ -56475,71 +48982,53 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[13];
             ob = (word *)R[8];
             acc = 6;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1333:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = F(0);
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 62 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 78 + 258;
             R[12] = BOOL(R[6] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = 128 * 80 + 258;
               R[14] = BOOL(R[6] == R[13]);
               if (R[14] == IFALSE) {
-
                 R[15] = G(R[1], 2);
                 ob = (word *)R[15];
                 acc = 3;
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[15] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 R[16] = BOOL(R[15] == R[7]);
                 if (R[16] == IFALSE) {
-
                   R[17] = BOOL(R[15] == R[9]);
                   if (R[17] == IFALSE) {
-
                     R[18] = BOOL(R[15] == R[11]);
                     if (R[18] == IFALSE) {
-
                       R[19] = BOOL(R[15] == R[13]);
                       if (R[19] == IFALSE) {
-
                         R[20] = G(R[1], 2);
                         R[8] = R[5];
                         R[5] = R[4];
@@ -56548,7 +49037,6 @@ super_dispatch:                                   /* run macro instructions */
                         acc = 3;
 
                       } else {
-
                         R[20] = G(R[2], 2);
                         *fp = make_header(3, TCLOS);
                         fp[1] = G(R[2], 3);
@@ -56558,22 +49046,18 @@ super_dispatch:                                   /* run macro instructions */
                         R[6] = R[7];
                         ob = (word *)R[20];
                         acc = 4;
-
                       }
 
                     } else {
-
                       R[19] = G(R[2], 4);
                       R[8] = R[5];
                       R[5] = R[4];
                       R[4] = R[8];
                       ob = (word *)R[19];
                       acc = 3;
-
                     }
 
                   } else {
-
                     R[18] = G(R[2], 5);
                     *fp = make_header(3, TCLOS);
                     fp[1] = G(R[2], 6);
@@ -56585,11 +49069,9 @@ super_dispatch:                                   /* run macro instructions */
                     R[4] = R[8];
                     ob = (word *)R[18];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[17] = G(R[2], 7);
                   R[6] = ITRUE;
                   R[9] = R[5];
@@ -56597,34 +49079,25 @@ super_dispatch:                                   /* run macro instructions */
                   R[4] = R[9];
                   ob = (word *)R[17];
                   acc = 4;
-
                 }
-
               }
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[13] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[14] = BOOL(R[13] == R[7]);
               if (R[14] == IFALSE) {
-
                 R[15] = BOOL(R[13] == R[9]);
                 if (R[15] == IFALSE) {
-
                   R[16] = BOOL(R[13] == R[11]);
                   if (R[16] == IFALSE) {
-
                     R[17] = 128 * 80 + 258;
                     R[18] = BOOL(R[13] == R[17]);
                     if (R[18] == IFALSE) {
-
                       R[19] = G(R[1], 2);
                       R[8] = R[5];
                       R[5] = R[4];
@@ -56633,68 +49106,52 @@ super_dispatch:                                   /* run macro instructions */
                       acc = 3;
 
                     } else {
-
                       R[19] = G(R[2], 4);
                       ob = (word *)R[19];
                       acc = 3;
-
                     }
 
                   } else {
-
                     R[17] = G(R[2], 2);
                     R[6] = R[7];
                     ob = (word *)R[17];
                     acc = 4;
-
                   }
 
                 } else {
-
                   R[16] = G(R[2], 8);
                   R[6] = ITRUE;
                   ob = (word *)R[16];
                   acc = 4;
-
                 }
 
               } else {
-
                 R[15] = G(R[2], 5);
                 R[8] = R[5];
                 R[5] = R[4];
                 R[4] = R[8];
                 ob = (word *)R[15];
                 acc = 3;
-
               }
-
             }
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[11] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[12] = BOOL(R[11] == R[7]);
             if (R[12] == IFALSE) {
-
               R[13] = BOOL(R[11] == R[9]);
               if (R[13] == IFALSE) {
-
                 R[14] = 128 * 78 + 258;
                 R[15] = BOOL(R[11] == R[14]);
                 if (R[15] == IFALSE) {
-
                   R[16] = 128 * 80 + 258;
                   R[17] = BOOL(R[11] == R[16]);
                   if (R[17] == IFALSE) {
-
                     R[18] = G(R[1], 2);
                     R[8] = R[5];
                     R[5] = R[4];
@@ -56703,7 +49160,6 @@ super_dispatch:                                   /* run macro instructions */
                     acc = 3;
 
                   } else {
-
                     R[18] = G(R[2], 5);
                     *fp = make_header(3, TCLOS);
                     fp[1] = G(R[2], 9);
@@ -56712,11 +49168,9 @@ super_dispatch:                                   /* run macro instructions */
                     fp += 3;
                     ob = (word *)R[18];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[16] = G(R[2], 8);
                   R[6] = ITRUE;
                   R[9] = R[5];
@@ -56724,36 +49178,27 @@ super_dispatch:                                   /* run macro instructions */
                   R[4] = R[9];
                   ob = (word *)R[16];
                   acc = 4;
-
                 }
 
               } else {
-
                 R[14] = G(R[2], 10);
                 ob = (word *)R[14];
                 acc = 3;
-
               }
 
             } else {
-
               {
-
                 hval r = immval(R[5]) - immval(R[4]);
                 R[14] = F(r >> FBITS & 1);
                 R[13] = F(r);
-
               }
 
               R[15] = BOOL(R[14] == R[7]);
               if (R[15] == IFALSE) {
-
                 {
-
                   hval r = immval(R[4]) - immval(R[5]);
                   R[17] = F(r >> FBITS & 1);
                   R[16] = F(r);
-
                 }
 
                 R[18] = G(R[2], 11);
@@ -56762,42 +49207,31 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 2;
 
               } else {
-
                 ob = (word *)R[3];
                 R[3] = R[13];
                 acc = 1;
-
               }
-
             }
-
           }
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = BOOL(R[9] == R[7]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 62 + 258;
             R[12] = BOOL(R[9] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = 128 * 78 + 258;
               R[14] = BOOL(R[9] == R[13]);
               if (R[14] == IFALSE) {
-
                 R[15] = 128 * 80 + 258;
                 R[16] = BOOL(R[9] == R[15]);
                 if (R[16] == IFALSE) {
-
                   R[17] = G(R[1], 2);
                   R[8] = R[5];
                   R[5] = R[4];
@@ -56806,41 +49240,31 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 3;
 
                 } else {
-
                   R[17] = G(R[2], 7);
                   R[6] = ITRUE;
                   ob = (word *)R[17];
                   acc = 4;
-
                 }
 
               } else {
-
                 R[15] = G(R[2], 5);
                 ob = (word *)R[15];
                 acc = 3;
-
               }
 
             } else {
-
               {
-
                 hval r = immval(R[4]) - immval(R[5]);
                 R[14] = F(r >> FBITS & 1);
                 R[13] = F(r);
-
               }
 
               R[15] = BOOL(R[14] == R[7]);
               if (R[15] == IFALSE) {
-
                 {
-
                   hval r = immval(R[5]) - immval(R[4]);
                   R[17] = F(r >> FBITS & 1);
                   R[16] = F(r);
-
                 }
 
                 R[18] = G(R[2], 11);
@@ -56849,28 +49273,21 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 2;
 
               } else {
-
                 ob = (word *)R[3];
                 R[3] = R[13];
                 acc = 1;
-
               }
-
             }
 
           } else {
-
             {
-
               hval r = immval(R[4]) + immval(R[5]);
               R[12] = F(r >> FBITS);
               R[11] = F(r);
-
             }
 
             R[13] = BOOL(R[12] == R[7]);
             if (R[13] == IFALSE) {
-
               R[14] = G(R[2], 12);
               *fp = make_header(3, 40);
               fp[1] = R[11];
@@ -56882,27 +49299,20 @@ super_dispatch:                                   /* run macro instructions */
               acc = 1;
 
             } else {
-
               ob = (word *)R[3];
               R[3] = R[11];
               acc = 1;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1334:
       if (acc == 2) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 2);
         fp[2] = R[4];
@@ -56913,82 +49323,63 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1335:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = F(0);
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 62 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 78 + 258;
             R[12] = BOOL(R[6] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = 128 * 80 + 258;
               R[14] = BOOL(R[6] == R[13]);
               if (R[14] == IFALSE) {
-
                 R[15] = G(R[1], 2);
                 ob = (word *)R[15];
                 acc = 3;
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[15] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 R[16] = BOOL(R[15] == R[7]);
                 if (R[16] == IFALSE) {
-
                   R[17] = BOOL(R[15] == R[9]);
                   if (R[17] == IFALSE) {
-
                     R[18] = BOOL(R[15] == R[11]);
                     if (R[18] == IFALSE) {
-
                       R[19] = BOOL(R[15] == R[13]);
                       if (R[19] == IFALSE) {
-
                         R[20] = G(R[1], 2);
                         ob = (word *)R[20];
                         acc = 3;
 
                       } else {
-
                         R[20] = G(R[2], 2);
                         R[8] = R[5];
                         R[5] = R[4];
                         R[4] = R[8];
                         ob = (word *)R[20];
                         acc = 3;
-
                       }
 
                     } else {
-
                       R[19] = G(R[2], 3);
                       *fp = make_header(3, TCLOS);
                       fp[1] = G(R[2], 4);
@@ -56998,11 +49389,9 @@ super_dispatch:                                   /* run macro instructions */
                       R[6] = R[7];
                       ob = (word *)R[19];
                       acc = 4;
-
                     }
 
                   } else {
-
                     R[18] = G(R[2], 5);
                     R[6] = ITRUE;
                     R[9] = R[5];
@@ -57010,11 +49399,9 @@ super_dispatch:                                   /* run macro instructions */
                     R[4] = R[9];
                     ob = (word *)R[18];
                     acc = 4;
-
                   }
 
                 } else {
-
                   R[17] = G(R[2], 6);
                   *fp = make_header(3, TCLOS);
                   fp[1] = G(R[2], 7);
@@ -57026,107 +49413,81 @@ super_dispatch:                                   /* run macro instructions */
                   R[4] = R[8];
                   ob = (word *)R[17];
                   acc = 3;
-
                 }
-
               }
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[13] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[14] = BOOL(R[13] == R[7]);
               if (R[14] == IFALSE) {
-
                 R[15] = BOOL(R[13] == R[9]);
                 if (R[15] == IFALSE) {
-
                   R[16] = BOOL(R[13] == R[11]);
                   if (R[16] == IFALSE) {
-
                     R[17] = 128 * 80 + 258;
                     R[18] = BOOL(R[13] == R[17]);
                     if (R[18] == IFALSE) {
-
                       R[19] = G(R[1], 2);
                       ob = (word *)R[19];
                       acc = 3;
 
                     } else {
-
                       R[19] = G(R[2], 3);
                       R[6] = R[7];
                       ob = (word *)R[19];
                       acc = 4;
-
                     }
 
                   } else {
-
                     R[17] = G(R[2], 2);
                     ob = (word *)R[17];
                     acc = 3;
-
                   }
 
                 } else {
-
                   R[16] = G(R[2], 6);
                   R[8] = R[5];
                   R[5] = R[4];
                   R[4] = R[8];
                   ob = (word *)R[16];
                   acc = 3;
-
                 }
 
               } else {
-
                 R[15] = G(R[2], 8);
                 R[6] = ITRUE;
                 ob = (word *)R[15];
                 acc = 4;
-
               }
-
             }
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[11] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[12] = BOOL(R[11] == R[7]);
             if (R[12] == IFALSE) {
-
               R[13] = BOOL(R[11] == R[9]);
               if (R[13] == IFALSE) {
-
                 R[14] = 128 * 78 + 258;
                 R[15] = BOOL(R[11] == R[14]);
                 if (R[15] == IFALSE) {
-
                   R[16] = 128 * 80 + 258;
                   R[17] = BOOL(R[11] == R[16]);
                   if (R[17] == IFALSE) {
-
                     R[18] = G(R[1], 2);
                     ob = (word *)R[18];
                     acc = 3;
 
                   } else {
-
                     R[18] = G(R[2], 8);
                     R[6] = ITRUE;
                     R[9] = R[5];
@@ -57134,11 +49495,9 @@ super_dispatch:                                   /* run macro instructions */
                     R[4] = R[9];
                     ob = (word *)R[18];
                     acc = 4;
-
                   }
 
                 } else {
-
                   R[16] = G(R[2], 6);
                   *fp = make_header(3, TCLOS);
                   fp[1] = G(R[2], 9);
@@ -57147,28 +49506,21 @@ super_dispatch:                                   /* run macro instructions */
                   fp += 3;
                   ob = (word *)R[16];
                   acc = 3;
-
                 }
 
               } else {
-
                 {
-
                   hval r = immval(R[5]) - immval(R[4]);
                   R[15] = F(r >> FBITS & 1);
                   R[14] = F(r);
-
                 }
 
                 R[16] = BOOL(R[15] == R[7]);
                 if (R[16] == IFALSE) {
-
                   {
-
                     hval r = immval(R[4]) - immval(R[5]);
                     R[18] = F(r >> FBITS & 1);
                     R[17] = F(r);
-
                   }
 
                   R[19] = G(R[2], 10);
@@ -57177,84 +49529,63 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 2;
 
                 } else {
-
                   ob = (word *)R[3];
                   R[3] = R[14];
                   acc = 1;
-
                 }
-
               }
 
             } else {
-
               R[13] = G(R[2], 11);
               ob = (word *)R[13];
               acc = 3;
-
             }
-
           }
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = BOOL(R[9] == R[7]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 62 + 258;
             R[12] = BOOL(R[9] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = 128 * 78 + 258;
               R[14] = BOOL(R[9] == R[13]);
               if (R[14] == IFALSE) {
-
                 R[15] = 128 * 80 + 258;
                 R[16] = BOOL(R[9] == R[15]);
                 if (R[16] == IFALSE) {
-
                   R[17] = G(R[1], 2);
                   ob = (word *)R[17];
                   acc = 3;
 
                 } else {
-
                   R[17] = G(R[2], 6);
                   ob = (word *)R[17];
                   acc = 3;
-
                 }
 
               } else {
-
                 R[15] = G(R[2], 5);
                 R[6] = ITRUE;
                 ob = (word *)R[15];
                 acc = 4;
-
               }
 
             } else {
-
               {
-
                 hval r = immval(R[4]) + immval(R[5]);
                 R[14] = F(r >> FBITS);
                 R[13] = F(r);
-
               }
 
               R[15] = BOOL(R[14] == R[7]);
               if (R[15] == IFALSE) {
-
                 R[16] = G(R[2], 12);
                 *fp = make_header(3, 40);
                 fp[1] = R[13];
@@ -57266,34 +49597,25 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 1;
 
               } else {
-
                 ob = (word *)R[3];
                 R[3] = R[13];
                 acc = 1;
-
               }
-
             }
 
           } else {
-
             {
-
               hval r = immval(R[4]) - immval(R[5]);
               R[12] = F(r >> FBITS & 1);
               R[11] = F(r);
-
             }
 
             R[13] = BOOL(R[12] == R[7]);
             if (R[13] == IFALSE) {
-
               {
-
                 hval r = immval(R[5]) - immval(R[4]);
                 R[15] = F(r >> FBITS & 1);
                 R[14] = F(r);
-
               }
 
               R[16] = G(R[2], 10);
@@ -57302,44 +49624,33 @@ super_dispatch:                                   /* run macro instructions */
               acc = 2;
 
             } else {
-
               ob = (word *)R[3];
               R[3] = R[11];
               acc = 1;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1336:
       if (acc == 3) {
-
         {
-
           hval r = immval(R[4]) + immval(R[5]);
           R[7] = F(r >> FBITS);
           R[6] = F(r);
-
         }
 
         if (R[7] == F(0)) {
-
           R[8] = G(R[1], 2);
           R[4] = R[6];
           ob = (word *)R[8];
           acc = 2;
 
         } else {
-
           R[8] = G(R[1], 3);
           *fp = make_header(3, 41);
           fp[1] = R[6];
@@ -57349,19 +49660,15 @@ super_dispatch:                                   /* run macro instructions */
           ob = (word *)R[3];
           R[3] = R[9];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1337:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -57378,17 +49685,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1338:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -57405,7 +49708,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 5;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           *fp = make_header(3, TCLOS);
@@ -57425,37 +49727,28 @@ super_dispatch:                                   /* run macro instructions */
           R[7] = R[10];
           ob = (word *)R[11];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1339:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           {
-
             word ob = R[3];
             if (allocp(ob)) ob = V(ob);
             R[4] = F((hval)ob >> TPOS & 63);
-
           }
 
           if (R[4] == F(0)) {
-
             R[5] = G(R[2], 2);
             R[6] = G(R[1], 2);
             R[4] = R[3];
@@ -57464,70 +49757,54 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             R[5] = G(R[2], 3);
             R[6] = G(R[1], 2);
             R[4] = R[3];
             R[3] = R[6];
             ob = (word *)R[5];
             acc = 2;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1340:
       if (acc == 6) {
-
         if (R[4] == INULL) {
-
           R[9] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[9];
           acc = 1;
 
         } else {
-
           if (R[5] == INULL) {
-
             if (R[6] == F(0)) {
-
               ob = (word *)R[3];
               R[3] = R[4];
               acc = 1;
 
             } else {
-
               R[9] = G(R[1], 2);
               R[5] = R[6];
               R[6] = R[7];
               ob = (word *)R[9];
               acc = 4;
-
             }
 
           } else {
-
             R[9] = 128 * 0 + 258;
             R[10] = prim_ref(R[4], R[9]);
             R[11] = prim_ref(R[5], R[9]);
             {
-
               hval r = immval(R[10]) - immval(R[11]);
               R[13] = F(r >> FBITS & 1);
               R[12] = F(r);
-
             }
 
             if (R[6] == F(0)) {
-
               R[14] = 128 * 2 + 258;
               R[4] = prim_ref(R[4], R[14]);
               R[5] = prim_ref(R[5], R[14]);
@@ -57544,13 +49821,10 @@ super_dispatch:                                   /* run macro instructions */
               acc = 6;
 
             } else {
-
               {
-
                 hval r = immval(R[12]) - immval(R[9]);
                 R[15] = F(r >> FBITS & 1);
                 R[14] = F(r);
-
               }
 
               R[16] = 128 * 2 + 258;
@@ -57567,23 +49841,17 @@ super_dispatch:                                   /* run macro instructions */
               R[7] = IFALSE;
               ob = (word *)R[8];
               acc = 6;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1341:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -57598,27 +49866,21 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1342:
       if (acc == 1) {
-
         {
-
           word ob = R[3];
           if (allocp(ob)) ob = V(ob);
           R[4] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[5] = F(0);
         R[6] = BOOL(R[4] == R[5]);
         if (R[6] == IFALSE) {
-
           R[7] = G(R[2], 2);
           R[8] = G(R[1], 2);
           R[4] = R[3];
@@ -57627,61 +49889,47 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[7] = G(R[2], 3);
           R[8] = G(R[1], 2);
           R[4] = R[3];
           R[3] = R[8];
           ob = (word *)R[7];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1343:
       if (acc == 5) {
-
         R[8] = 128 * 0 + 258;
         R[9] = prim_ref(R[4], R[8]);
         {
-
           hval r = immval(R[9]) - immval(R[5]);
           R[11] = F(r >> FBITS & 1);
           R[10] = F(r);
-
         }
 
         if (R[11] == F(0)) {
-
           if (R[10] == F(0)) {
-
             R[12] = 128 * 2 + 258;
             R[13] = prim_ref(R[4], R[12]);
             if (R[13] == INULL) {
-
               if (R[6] == IFALSE) {
-
                 R[14] = IFALSE;
                 ob = (word *)R[3];
                 R[3] = R[14];
                 acc = 1;
 
               } else {
-
                 ob = (word *)R[3];
                 R[3] = R[10];
                 acc = 1;
-
               }
 
             } else {
-
               *fp = make_header(3, 40);
               fp[1] = R[10];
               fp[2] = R[13];
@@ -57690,11 +49938,9 @@ super_dispatch:                                   /* run macro instructions */
               ob = (word *)R[3];
               R[3] = R[14];
               acc = 1;
-
             }
 
           } else {
-
             R[12] = 128 * 2 + 258;
             R[13] = prim_ref(R[4], R[12]);
             *fp = make_header(3, 40);
@@ -57705,11 +49951,9 @@ super_dispatch:                                   /* run macro instructions */
             ob = (word *)R[3];
             R[3] = R[14];
             acc = 1;
-
           }
 
         } else {
-
           R[12] = 128 * 2 + 258;
           R[4] = prim_ref(R[4], R[12]);
           *fp = make_header(5, TPROC);
@@ -57723,34 +49967,26 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[11];
           ob = (word *)R[7];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1344:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           if (R[4] == IFALSE) {
-
             R[5] = G(R[1], 2);
             if (R[5] == F(0)) {
-
               R[6] = G(R[1], 4);
               R[3] = IFALSE;
               ob = (word *)R[6];
               acc = 1;
 
             } else {
-
               R[6] = INULL;
               *fp = make_header(3, 40);
               fp[1] = R[5];
@@ -57760,20 +49996,16 @@ super_dispatch:                                   /* run macro instructions */
               R[8] = G(R[1], 4);
               ob = (word *)R[8];
               acc = 1;
-
             }
 
           } else {
-
             R[5] = G(R[1], 4);
             R[3] = G(R[1], 2);
             ob = (word *)R[5];
             acc = 1;
-
           }
 
         } else {
-
           R[4] = G(R[1], 2);
           *fp = make_header(3, 40);
           fp[1] = R[4];
@@ -57783,93 +50015,70 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = G(R[1], 4);
           ob = (word *)R[6];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1345:
       if (acc == 5) {
-
         if (R[4] == INULL) {
-
           if (R[5] == INULL) {
-
             if (R[6] == F(0)) {
-
               R[8] = INULL;
               ob = (word *)R[3];
               R[3] = R[8];
               acc = 1;
 
             } else {
-
               R[8] = G(R[1], 2);
               ob = (word *)R[3];
               R[3] = R[8];
               acc = 1;
-
             }
 
           } else {
-
             if (R[6] == F(0)) {
-
               ob = (word *)R[3];
               R[3] = R[5];
               acc = 1;
 
             } else {
-
               R[8] = G(R[1], 3);
               R[4] = R[6];
               ob = (word *)R[8];
               acc = 3;
-
             }
-
           }
 
         } else {
-
           if (R[5] == INULL) {
-
             if (R[6] == F(0)) {
-
               ob = (word *)R[3];
               R[3] = R[4];
               acc = 1;
 
             } else {
-
               R[8] = G(R[1], 3);
               R[5] = R[4];
               R[4] = R[6];
               ob = (word *)R[8];
               acc = 3;
-
             }
 
           } else {
-
             R[8] = 128 * 0 + 258;
             R[9] = prim_ref(R[4], R[8]);
             R[10] = prim_ref(R[5], R[8]);
             {
-
               hval r = immval(R[9]) + immval(R[10]);
               R[12] = F(r >> FBITS);
               R[11] = F(r);
-
             }
 
             if (R[6] == F(0)) {
-
               R[13] = 128 * 2 + 258;
               R[4] = prim_ref(R[4], R[13]);
               R[5] = prim_ref(R[5], R[13]);
@@ -57884,13 +50093,10 @@ super_dispatch:                                   /* run macro instructions */
               acc = 5;
 
             } else {
-
               {
-
                 hval r = immval(R[11]) + immval(R[6]);
                 R[14] = F(r >> FBITS);
                 R[13] = F(r);
-
               }
 
               R[15] = 128 * 2 + 258;
@@ -57905,25 +50111,18 @@ super_dispatch:                                   /* run macro instructions */
               fp += 4;
               ob = (word *)R[7];
               acc = 5;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1346:
       if (acc == 4) {
-
         {
-
           word *ob = (word *)R[5];
           hval  hdr;
           assert(allocp(R[5]), R[5], IFALSE);
@@ -57931,19 +50130,15 @@ super_dispatch:                                   /* run macro instructions */
           assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
           R[7] = ob[1];
           R[8] = ob[2];
-
         }
 
         {
-
           hval r = immval(R[4]) + immval(R[7]);
           R[10] = F(r >> FBITS);
           R[9] = F(r);
-
         }
 
         if (R[10] == F(0)) {
-
           *fp = make_header(3, 40);
           fp[1] = R[9];
           fp[2] = R[8];
@@ -57954,9 +50149,7 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           if (R[8] == INULL) {
-
             R[11] = G(R[1], 2);
             *fp = make_header(3, 40);
             fp[1] = R[9];
@@ -57968,7 +50161,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 1;
 
           } else {
-
             *fp = make_header(4, TPROC);
             fp[1] = G(R[1], 3);
             fp[3] = R[3];
@@ -57979,21 +50171,16 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[10];
             ob = (word *)R[6];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1347:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         *fp = make_header(3, 40);
         fp[1] = R[4];
@@ -58005,15 +50192,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1348:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -58027,60 +50211,46 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1349:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         if (R[6] == F(0)) {
-
           R[7] = G(R[1], 2);
           if (R[4] == R[7]) {
-
             R[8] = G(R[1], 3);
             ob = (word *)R[3];
             R[3] = R[8];
             acc = 1;
 
           } else {
-
             R[8] = 128 * 0 + 258;
             {
-
               hval r = immval(R[4]) + immval(R[8]);
               R[10] = F(r >> FBITS);
               R[9] = F(r);
-
             }
 
             ob = (word *)R[3];
             R[3] = R[9];
             acc = 1;
-
           }
 
         } else {
-
           R[7] = 128 * 78 + 258;
           if (R[6] == R[7]) {
-
             R[8] = 128 * 0 + 258;
             R[9] = prim_ref(R[4], R[8]);
             R[10] = G(R[1], 2);
             if (R[9] == R[10]) {
-
               R[11] = 128 * 2 + 258;
               R[4] = prim_ref(R[4], R[11]);
               *fp = make_header(3, TPROC);
@@ -58092,13 +50262,10 @@ super_dispatch:                                   /* run macro instructions */
               acc = 3;
 
             } else {
-
               {
-
                 hval r = immval(R[9]) + immval(R[8]);
                 R[12] = F(r >> FBITS);
                 R[11] = F(r);
-
               }
 
               R[13] = 128 * 2 + 258;
@@ -58111,20 +50278,16 @@ super_dispatch:                                   /* run macro instructions */
               ob = (word *)R[3];
               R[3] = R[15];
               acc = 1;
-
             }
 
           } else {
-
             if (R[4] == INULL) {
-
               R[8] = G(R[1], 5);
               ob = (word *)R[3];
               R[3] = R[8];
               acc = 1;
 
             } else {
-
               R[8] = G(R[1], 6);
               R[9] = G(R[1], 7);
               R[5] = R[4];
@@ -58132,23 +50295,17 @@ super_dispatch:                                   /* run macro instructions */
               R[4] = R[9];
               ob = (word *)R[8];
               acc = 4;
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1350:
       if (acc == 1) {
-
         R[4] = F(0);
         *fp = make_header(3, 40);
         fp[1] = R[4];
@@ -58160,15 +50317,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1351:
       if (acc == 3) {
-
         R[6] = INULL;
         R[7] = cons(R[5], R[6]);
         R[5] = cons(R[4], R[7]);
@@ -58178,15 +50332,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1352:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -58199,17 +50350,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1353:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 3);
@@ -58222,23 +50369,18 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           R[4] = G(R[1], 4);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1354:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[8] = R[5];
         R[5] = R[4];
@@ -58247,39 +50389,30 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1355:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = F(0);
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 62 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 78 + 258;
             R[12] = BOOL(R[6] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = 128 * 80 + 258;
               R[14] = BOOL(R[6] == R[13]);
               if (R[14] == IFALSE) {
-
                 R[15] = G(R[1], 2);
                 R[16] = G(R[1], 3);
                 R[6] = R[5];
@@ -58289,113 +50422,86 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 4;
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[15] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 R[16] = BOOL(R[15] == R[13]);
                 if (R[16] == IFALSE) {
-
                   R[17] = IFALSE;
                   ob = (word *)R[3];
                   R[3] = R[17];
                   acc = 1;
 
                 } else {
-
                   R[17] = G(R[1], 4);
                   ob = (word *)R[17];
                   acc = 3;
-
                 }
-
               }
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[13] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[14] = BOOL(R[13] == R[11]);
               if (R[14] == IFALSE) {
-
                 R[15] = IFALSE;
                 ob = (word *)R[3];
                 R[3] = R[15];
                 acc = 1;
 
               } else {
-
                 R[15] = G(R[1], 4);
                 ob = (word *)R[15];
                 acc = 3;
-
               }
-
             }
 
           } else {
-
             R[11] = BOOL(R[4] == R[5]);
             ob = (word *)R[3];
             R[3] = R[11];
             acc = 1;
-
           }
 
         } else {
-
           R[9] = BOOL(R[4] == R[5]);
           ob = (word *)R[3];
           R[3] = R[9];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1356:
       if (acc == 3) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[6] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[7] = F(0);
         R[8] = BOOL(R[6] == R[7]);
         if (R[8] == IFALSE) {
-
           R[9] = 128 * 62 + 258;
           R[10] = BOOL(R[6] == R[9]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 78 + 258;
             R[12] = BOOL(R[6] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = 128 * 80 + 258;
               R[14] = BOOL(R[6] == R[13]);
               if (R[14] == IFALSE) {
-
                 R[15] = G(R[1], 2);
                 R[16] = G(R[1], 3);
                 R[6] = R[5];
@@ -58405,25 +50511,20 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 4;
 
               } else {
-
                 {
-
                   word ob = R[5];
                   if (allocp(ob)) ob = V(ob);
                   R[15] = F((hval)ob >> TPOS & 63);
-
                 }
 
                 R[16] = BOOL(R[15] == R[13]);
                 if (R[16] == IFALSE) {
-
                   R[17] = ITRUE;
                   ob = (word *)R[3];
                   R[3] = R[17];
                   acc = 1;
 
                 } else {
-
                   R[17] = G(R[1], 4);
                   *fp = make_header(3, TPROC);
                   fp[1] = G(R[1], 5);
@@ -58433,191 +50534,145 @@ super_dispatch:                                   /* run macro instructions */
                   R[6] = IFALSE;
                   ob = (word *)R[17];
                   acc = 4;
-
                 }
-
               }
 
             } else {
-
               {
-
                 word ob = R[5];
                 if (allocp(ob)) ob = V(ob);
                 R[13] = F((hval)ob >> TPOS & 63);
-
               }
 
               R[14] = BOOL(R[13] == R[11]);
               if (R[14] == IFALSE) {
-
                 R[15] = IFALSE;
                 ob = (word *)R[3];
                 R[3] = R[15];
                 acc = 1;
 
               } else {
-
                 R[15] = G(R[1], 4);
                 R[6] = IFALSE;
                 ob = (word *)R[15];
                 acc = 4;
-
               }
-
             }
 
           } else {
-
             {
-
               word ob = R[5];
               if (allocp(ob)) ob = V(ob);
               R[11] = F((hval)ob >> TPOS & 63);
-
             }
 
             R[12] = BOOL(R[11] == R[7]);
             if (R[12] == IFALSE) {
-
               R[13] = BOOL(R[11] == R[9]);
               if (R[13] == IFALSE) {
-
                 R[14] = 128 * 78 + 258;
                 R[15] = BOOL(R[11] == R[14]);
                 if (R[15] == IFALSE) {
-
                   R[16] = IFALSE;
                   ob = (word *)R[3];
                   R[3] = R[16];
                   acc = 1;
 
                 } else {
-
                   R[16] = ITRUE;
                   ob = (word *)R[3];
                   R[3] = R[16];
                   acc = 1;
-
                 }
 
               } else {
-
                 if (R[4] == R[5]) {
-
                   R[14] = IFALSE;
                   ob = (word *)R[3];
                   R[3] = R[14];
                   acc = 1;
 
                 } else {
-
                   R[14] = prim_less(R[5], R[4]);
                   ob = (word *)R[3];
                   R[3] = R[14];
                   acc = 1;
-
                 }
-
               }
 
             } else {
-
               R[13] = ITRUE;
               ob = (word *)R[3];
               R[3] = R[13];
               acc = 1;
-
             }
-
           }
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[9] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[10] = BOOL(R[9] == R[7]);
           if (R[10] == IFALSE) {
-
             R[11] = 128 * 78 + 258;
             R[12] = BOOL(R[9] == R[11]);
             if (R[12] == IFALSE) {
-
               R[13] = IFALSE;
               ob = (word *)R[3];
               R[3] = R[13];
               acc = 1;
 
             } else {
-
               R[13] = ITRUE;
               ob = (word *)R[3];
               R[3] = R[13];
               acc = 1;
-
             }
 
           } else {
-
             R[11] = prim_less(R[4], R[5]);
             ob = (word *)R[3];
             R[3] = R[11];
             acc = 1;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1357:
       if (acc == 5) {
-
         if (R[4] == R[5]) {
-
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           if (R[4] == INULL) {
-
             R[8] = ITRUE;
             ob = (word *)R[3];
             R[3] = R[8];
             acc = 1;
 
           } else {
-
             if (R[5] == INULL) {
-
               R[8] = IFALSE;
               ob = (word *)R[3];
               R[3] = R[8];
               acc = 1;
 
             } else {
-
               R[8] = 128 * 0 + 258;
               R[9] = prim_ref(R[4], R[8]);
               R[10] = prim_ref(R[5], R[8]);
               R[11] = prim_less(R[9], R[10]);
               if (R[11] == IFALSE) {
-
                 if (R[9] == R[10]) {
-
                   R[12] = 128 * 2 + 258;
                   R[4] = prim_ref(R[4], R[12]);
                   R[5] = prim_ref(R[5], R[12]);
@@ -58625,75 +50680,58 @@ super_dispatch:                                   /* run macro instructions */
                   acc = 5;
 
                 } else {
-
                   R[12] = 128 * 2 + 258;
                   R[4] = prim_ref(R[4], R[12]);
                   R[5] = prim_ref(R[5], R[12]);
                   R[6] = IFALSE;
                   ob = (word *)R[7];
                   acc = 5;
-
                 }
 
               } else {
-
                 R[12] = 128 * 2 + 258;
                 R[4] = prim_ref(R[4], R[12]);
                 R[5] = prim_ref(R[5], R[12]);
                 R[6] = ITRUE;
                 ob = (word *)R[7];
                 acc = 5;
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1358:
       if (acc == 4) {
-
         if (R[4] == R[5]) {
-
           R[7] = ITRUE;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           if (R[4] == INULL) {
-
             R[7] = IFALSE;
             ob = (word *)R[3];
             R[3] = R[7];
             acc = 1;
 
           } else {
-
             if (R[5] == INULL) {
-
               R[7] = IFALSE;
               ob = (word *)R[3];
               R[3] = R[7];
               acc = 1;
 
             } else {
-
               R[7] = 128 * 0 + 258;
               R[8] = prim_ref(R[4], R[7]);
               R[9] = prim_ref(R[5], R[7]);
               if (R[8] == R[9]) {
-
                 R[10] = 128 * 2 + 258;
                 R[4] = prim_ref(R[4], R[10]);
                 R[5] = prim_ref(R[5], R[10]);
@@ -58701,112 +50739,84 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 4;
 
               } else {
-
                 R[10] = IFALSE;
                 ob = (word *)R[3];
                 R[3] = R[10];
                 acc = 1;
-
               }
-
             }
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1359:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = F(0);
         R[7] = BOOL(R[5] == R[6]);
         if (R[7] == IFALSE) {
-
           R[8] = 128 * 62 + 258;
           R[9] = BOOL(R[5] == R[8]);
           if (R[9] == IFALSE) {
-
             R[10] = 128 * 78 + 258;
             R[11] = BOOL(R[5] == R[10]);
             if (R[11] == IFALSE) {
-
               R[12] = 128 * 80 + 258;
               R[13] = BOOL(R[5] == R[12]);
               if (R[13] == IFALSE) {
-
                 R[14] = IFALSE;
                 ob = (word *)R[3];
                 R[3] = R[14];
                 acc = 1;
 
               } else {
-
                 R[14] = G(R[1], 2);
                 ob = (word *)R[14];
                 acc = 2;
-
               }
 
             } else {
-
               R[12] = G(R[1], 3);
               ob = (word *)R[12];
               acc = 2;
-
             }
 
           } else {
-
             R[10] = R[6] ^ (FMAX << IPOS & R[4]);
             ob = (word *)R[3];
             R[3] = R[10];
             acc = 1;
-
           }
 
         } else {
-
           if (R[4] == F(0)) {
-
             ob = (word *)R[3];
             R[3] = R[6];
             acc = 1;
 
           } else {
-
             R[8] = G(R[1], 4);
             ob = (word *)R[8];
             acc = 2;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1360:
       if (acc == 4) {
-
         R[7] = INULL;
         R[8] = cons(R[6], R[7]);
         R[9] = cons(R[5], R[8]);
@@ -58817,15 +50827,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1361:
       if (acc == 2) {
-
         R[5] = 128 * 0 + 258;
         R[6] = prim_ref(R[4], R[5]);
         R[7] = 128 * 2 + 258;
@@ -58840,15 +50847,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1362:
       if (acc == 2) {
-
         R[5] = 128 * 0 + 258;
         R[6] = prim_ref(R[4], R[5]);
         R[7] = 128 * 2 + 258;
@@ -58863,15 +50867,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1363:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[2], 3);
@@ -58884,15 +50885,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1364:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[7] = R[4];
@@ -58902,30 +50900,24 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1365:
       if (acc == 4) {
-
         R[7] = cons(R[5], R[4]);
         ob = (word *)R[3];
         R[3] = R[7];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1366:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(3, TPROC);
         fp[1] = G(R[1], 3);
@@ -58936,15 +50928,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1367:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -58958,15 +50947,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1368:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(3, TPROC);
         fp[1] = G(R[1], 3);
@@ -58977,15 +50963,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1369:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
         R[7] = INULL;
@@ -58998,15 +50981,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1370:
       if (acc == 4) {
-
         R[7] = cons(R[5], R[6]);
         R[8] = cons(R[7], R[4]);
         ob = (word *)R[3];
@@ -59014,15 +50994,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1371:
       if (acc == 3) {
-
         assert(pairp(R[5]), R[5], 105);
         R[6] = G(R[5], 1);
         R[7] = G(R[5], 2);
@@ -59033,15 +51010,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1372:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 6);
@@ -59063,15 +51037,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1373:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -59087,15 +51058,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1374:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -59109,15 +51077,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1375:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -59133,15 +51098,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1376:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 5);
         R[6] = G(R[1], 4);
@@ -59158,41 +51120,32 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1377:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 2);
           R[3] = ITRUE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1378:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = INULL;
         R[7] = R[5];
@@ -59201,17 +51154,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1379:
       if (acc == 5) {
-
         if (R[5] == INULL) {
-
           R[8] = G(R[1], 2);
           *fp = make_header(4, TPROC);
           fp[1] = G(R[1], 3);
@@ -59224,11 +51173,9 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           assert(pairp(R[5]), R[5], 169);
           R[8] = G(R[5], 2);
           if (R[8] == INULL) {
-
             assert(pairp(R[4]), R[4], 105);
             R[9] = G(R[4], 1);
             R[10] = cons(R[9], R[6]);
@@ -59244,7 +51191,6 @@ super_dispatch:                                   /* run macro instructions */
             acc = 2;
 
           } else {
-
             assert(pairp(R[4]), R[4], 169);
             R[9] = G(R[4], 2);
             assert(pairp(R[8]), R[8], 169);
@@ -59254,21 +51200,16 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[9];
             ob = (word *)R[7];
             acc = 5;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1380:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         assert(pairp(R[4]), R[4], 169);
         R[5] = G(R[4], 2);
@@ -59278,15 +51219,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1381:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -59307,15 +51245,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1382:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -59334,15 +51269,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1383:
       if (acc == 4) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 2);
         fp[2] = R[4];
@@ -59356,17 +51288,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1384:
       if (acc == 5) {
-
         if (R[5] == INULL) {
-
           R[8] = G(R[2], 2);
           *fp = make_header(4, TPROC);
           fp[1] = G(R[2], 3);
@@ -59379,7 +51307,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           assert(pairp(R[5]), R[5], 105);
           R[8] = G(R[5], 1);
           R[9] = G(R[1], 2);
@@ -59394,19 +51321,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[9];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1385:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         assert(pairp(R[5]), R[5], 169);
         R[6] = G(R[5], 2);
@@ -59422,15 +51345,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1386:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
@@ -59447,15 +51367,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1387:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -59467,15 +51384,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1388:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 3);
@@ -59491,15 +51405,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1389:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TPROC);
         fp[1] = G(R[2], 2);
@@ -59512,43 +51423,34 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1390:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[3] = G(R[1], 3);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           R[5] = G(R[1], 3);
           R[3] = cons(R[4], R[5]);
           R[7] = G(R[1], 4);
           ob = (word *)R[7];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1391:
       if (acc == 3) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 2);
         fp[2] = R[4];
@@ -59561,17 +51463,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1392:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           R[7] = G(R[2], 2);
           *fp = make_header(3, TPROC);
           fp[1] = G(R[2], 3);
@@ -59583,7 +51481,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           assert(pairp(R[4]), R[4], 105);
           R[7] = G(R[4], 1);
           R[8] = G(R[1], 2);
@@ -59598,21 +51495,16 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1393:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 4);
@@ -59629,7 +51521,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 169);
           R[5] = G(R[4], 2);
@@ -59642,19 +51533,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1394:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[7] = R[4];
@@ -59663,15 +51550,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1395:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = INULL;
         R[7] = R[4];
@@ -59680,23 +51564,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1396:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           assert(pairp(R[4]), R[4], 169);
           R[7] = G(R[4], 2);
           R[8] = G(R[4], 1);
@@ -59704,19 +51583,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1397:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(5, TCLOS);
         fp[1] = G(R[1], 3);
@@ -59729,36 +51604,29 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1398:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[3] = G(R[1], 2);
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 169);
           R[5] = G(R[4], 2);
           if (R[5] == INULL) {
-
             R[3] = G(R[4], 1);
             R[7] = G(R[1], 4);
             ob = (word *)R[7];
             acc = 1;
 
           } else {
-
             R[6] = G(R[4], 1);
             R[4] = G(R[4], 2);
             R[5] = G(R[1], 3);
@@ -59771,21 +51639,16 @@ super_dispatch:                                   /* run macro instructions */
             fp += 4;
             ob = (word *)R[5];
             acc = 3;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1399:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -59798,15 +51661,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1400:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[7] = G(R[1], 3);
         R[9] = R[6];
@@ -59816,77 +51676,59 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1401:
       if (acc == 3) {
-
         ob = (word *)R[3];
         R[3] = R[5];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1402:
       if (acc == 4) {
-
         if (R[5] == INULL) {
-
           R[7] = IFALSE;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           assert(pairp(R[5]), R[5], 105);
           R[7] = G(R[5], 1);
           if (R[7] == R[4]) {
-
             ob = (word *)R[3];
             R[3] = R[5];
             acc = 1;
 
           } else {
-
             R[5] = G(R[5], 2);
             ob = (word *)R[6];
             acc = 4;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1403:
       if (acc == 4) {
-
         if (R[5] == INULL) {
-
           R[7] = INULL;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           {
-
             word *ob = (word *)R[5];
             hval  hdr;
             assert(allocp(R[5]), R[5], IFALSE);
@@ -59894,7 +51736,6 @@ super_dispatch:                                   /* run macro instructions */
             assert_not(rawp(hdr) || objsize(hdr) != 3, ob, IFALSE);
             R[7] = ob[1];
             R[8] = ob[2];
-
           }
 
           *fp = make_header(6, TCLOS);
@@ -59909,19 +51750,15 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1404:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 5);
         *fp = make_header(4, TPROC);
@@ -59939,23 +51776,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1405:
       if (acc == 5) {
-
         if (R[6] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           assert(pairp(R[6]), R[6], 105);
           R[8] = G(R[6], 1);
           R[6] = G(R[6], 2);
@@ -59968,19 +51800,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[7];
           acc = 5;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1406:
       if (acc == 1) {
-
         R[4] = G(R[1], 4);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -59993,17 +51821,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1407:
       if (acc == 6) {
-
         if (R[7] == INULL) {
-
           R[7] = R[3];
           R[3] = R[5];
           R[4] = R[6];
@@ -60011,7 +51835,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           assert(pairp(R[7]), R[7], 105);
           R[9] = G(R[7], 1);
           *fp = make_header(6, TPROC);
@@ -60028,19 +51851,15 @@ super_dispatch:                                   /* run macro instructions */
           R[6] = R[9];
           ob = (word *)R[11];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1408:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         assert(pairp(R[5]), R[5], 169);
         R[6] = G(R[5], 2);
@@ -60057,15 +51876,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1409:
       if (acc == 5) {
-
         *fp = make_header(7, TCLOS);
         fp[1] = G(R[1], 2);
         fp[6] = R[3];
@@ -60080,17 +51896,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1410:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 4);
           R[5] = G(R[1], 3);
           R[6] = G(R[1], 5);
@@ -60110,24 +51922,19 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 6);
           R[3] = INULL;
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1411:
       if (acc == 2) {
-
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 5);
         *fp = make_header(4, TPROC);
@@ -60146,23 +51953,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1412:
       if (acc == 5) {
-
         if (R[6] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           assert(pairp(R[6]), R[6], 105);
           R[8] = G(R[6], 1);
           *fp = make_header(6, TPROC);
@@ -60178,19 +51980,15 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[8];
           ob = (word *)R[10];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1413:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         assert(pairp(R[4]), R[4], 169);
         R[5] = G(R[4], 2);
@@ -60207,24 +52005,19 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1414:
       if (acc == 3) {
-
         if (R[4] == INULL) {
-
           R[6] = ITRUE;
           ob = (word *)R[3];
           R[3] = R[6];
           acc = 1;
 
         } else {
-
           R[6] = G(R[1], 2);
           *fp = make_header(5, TPROC);
           fp[1] = G(R[1], 3);
@@ -60235,28 +52028,22 @@ super_dispatch:                                   /* run macro instructions */
           fp += 5;
           ob = (word *)R[6];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1415:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 3);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 2);
           assert(pairp(R[4]), R[4], 169);
           R[5] = G(R[4], 2);
@@ -60266,25 +52053,19 @@ super_dispatch:                                   /* run macro instructions */
           R[5] = R[6];
           ob = (word *)R[5];
           acc = 3;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1416:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 0 + 258;
@@ -60294,15 +52075,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1417:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(3, TCLOS);
@@ -60317,15 +52095,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1418:
       if (acc == 2) {
-
         *fp = make_header(3, TPROC);
         fp[1] = G(R[1], 2);
         fp[2] = R[4];
@@ -60336,42 +52111,33 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1419:
       if (acc == 4) {
-
         if (R[5] == R[6]) {
-
           R[7] = ITRUE;
           ob = (word *)R[3];
           R[3] = R[7];
           acc = 1;
 
         } else {
-
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[7] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[8] = 128 * 6 + 258;
           if (R[7] == R[8]) {
-
             R[9] = IFALSE;
             ob = (word *)R[3];
             R[3] = R[9];
             acc = 1;
 
           } else {
-
             R[9] = G(R[1], 2);
             *fp = make_header(7, TCLOS);
             fp[1] = G(R[1], 3);
@@ -60385,30 +52151,23 @@ super_dispatch:                                   /* run macro instructions */
             R[4] = R[5];
             ob = (word *)R[9];
             acc = 2;
-
           }
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1420:
       if (acc == 1) {
-
         if (R[3] == F(0)) {
-
           R[4] = G(R[1], 6);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 3);
@@ -60429,48 +52188,36 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[7];
           ob = (word *)R[8];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1421:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         if (R[4] == R[3]) {
-
           R[5] = G(R[1], 5);
           {
-
             word ob = R[5];
             if (allocp(ob)) ob = V(ob);
             R[6] = F((hval)ob >> TPOS & 63);
-
           }
 
           R[7] = G(R[1], 2);
           if (R[7] == R[6]) {
-
             R[8] = G(R[1], 6);
             if (immediatep(R[8])) {
-
               R[9] = IFALSE;
 
             } else {
-
               hval h = V(R[8]);
               R[9] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
             }
 
             if (R[9] == IFALSE) {
-
               R[10] = G(R[2], 2);
               R[3] = G(R[1], 7);
               R[6] = G(R[1], 4);
@@ -60480,20 +52227,15 @@ super_dispatch:                                   /* run macro instructions */
               acc = 5;
 
             } else {
-
               if (immediatep(R[5])) {
-
                 R[10] = IFALSE;
 
               } else {
-
                 hval h = V(R[5]);
                 R[10] = rawp(h) ? F(payl_len(h)) : IFALSE;
-
               }
 
               if (R[9] == R[10]) {
-
                 R[11] = G(R[2], 3);
                 R[3] = G(R[1], 7);
                 R[4] = R[8];
@@ -60502,116 +52244,89 @@ super_dispatch:                                   /* run macro instructions */
                 acc = 4;
 
               } else {
-
                 R[11] = G(R[1], 7);
                 R[3] = IFALSE;
                 ob = (word *)R[11];
                 acc = 1;
-
               }
-
             }
 
           } else {
-
             R[8] = G(R[1], 7);
             R[3] = IFALSE;
             ob = (word *)R[8];
             acc = 1;
-
           }
 
         } else {
-
           R[5] = G(R[1], 7);
           R[3] = IFALSE;
           ob = (word *)R[5];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1422:
       if (acc == 5) {
-
         R[8] = F(0);
         R[9] = BOOL(R[6] == R[8]);
         if (R[9] == IFALSE) {
-
           R[10] = 128 * 0 + 258;
           {
-
             hval r = immval(R[6]) - immval(R[10]);
             R[12] = F(r >> FBITS & 1);
             R[11] = F(r);
-
           }
 
           R[13] = prim_ref(R[4], R[11]);
           R[14] = prim_ref(R[5], R[11]);
           if (R[13] == R[14]) {
-
             R[6] = R[11];
             ob = (word *)R[7];
             acc = 5;
 
           } else {
-
             R[15] = IFALSE;
             ob = (word *)R[3];
             R[3] = R[15];
             acc = 1;
-
           }
 
         } else {
-
           ob = (word *)R[3];
           R[3] = R[9];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1423:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         ob = (word *)R[7];
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1424:
       if (acc == 6) {
-
         R[9] = 128 * 0 + 258;
         R[10] = BOOL(R[7] == R[9]);
         if (R[10] == IFALSE) {
-
           {
-
             hval r = immval(R[7]) - immval(R[9]);
             R[12] = F(r >> FBITS & 1);
             R[11] = F(r);
-
           }
 
           R[13] = prim_ref(R[4], R[11]);
@@ -60632,32 +52347,25 @@ super_dispatch:                                   /* run macro instructions */
           acc = 3;
 
         } else {
-
           ob = (word *)R[3];
           R[3] = R[10];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1425:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[1], 7);
           R[3] = IFALSE;
           ob = (word *)R[4];
           acc = 1;
 
         } else {
-
           R[4] = G(R[1], 6);
           R[5] = G(R[1], 7);
           R[6] = G(R[1], 5);
@@ -60673,33 +52381,26 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[11];
           ob = (word *)R[8];
           acc = 6;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1426:
       if (acc == 5) {
-
         R[8] = G(R[1], 2);
         ob = (word *)R[8];
         acc = 6;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1427:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -60711,15 +52412,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1428:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 2);
         *fp = make_header(3, TPROC);
@@ -60739,15 +52437,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1429:
       if (acc == 2) {
-
         R[5] = 128 * 0 + 258;
         R[6] = prim_ref(R[4], R[5]);
         R[7] = G(R[1], 2);
@@ -60757,15 +52452,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1430:
       if (acc == 1) {
-
         R[4] = 128 * 2 + 258;
         R[3] = prim_ref(R[3], R[4]);
         R[6] = G(R[1], 2);
@@ -60773,15 +52465,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1431:
       if (acc == 1) {
-
         R[4] = G(R[1], 5);
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 3);
@@ -60796,15 +52485,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 5;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1432:
       if (acc == 2) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 4);
         fp[2] = R[4];
@@ -60821,15 +52507,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1433:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(6, TCLOS);
         fp[1] = G(R[2], 2);
@@ -60843,17 +52526,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1434:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 2);
           R[6] = G(R[1], 4);
@@ -60871,7 +52550,6 @@ super_dispatch:                                   /* run macro instructions */
           acc = 1;
 
         } else {
-
           R[4] = G(R[2], 4);
           R[5] = G(R[1], 4);
           R[6] = G(R[1], 5);
@@ -60886,34 +52564,27 @@ super_dispatch:                                   /* run macro instructions */
           R[4] = R[8];
           ob = (word *)R[9];
           acc = 2;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1435:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[3] = G(R[1], 2);
         ob = (word *)R[4];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1436:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[6] = cons(R[4], R[5]);
@@ -60927,15 +52598,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1437:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[6] = INULL;
@@ -60948,15 +52616,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1438:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[5] = 128 * 24 + 258;
         R[6] = IFALSE;
@@ -60967,15 +52632,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1439:
       if (acc == 2) {
-
         R[5] = G(R[1], 4);
         R[6] = G(R[1], 2);
         *fp = make_header(4, TPROC);
@@ -60988,15 +52650,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1440:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -61014,15 +52673,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1441:
       if (acc == 1) {
-
         R[4] = G(R[2], 2);
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
@@ -61033,15 +52689,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1442:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[7] = 128 * 16 + 258;
         R[9] = R[6];
@@ -61052,15 +52705,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1443:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = 128 * 10 + 258;
         R[9] = R[5];
@@ -61072,15 +52722,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1444:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         R[7] = 128 * 8 + 258;
         R[9] = R[6];
@@ -61091,15 +52738,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1445:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = 128 * 2 + 258;
         R[9] = R[5];
@@ -61111,15 +52755,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1446:
       if (acc == 4) {
-
         R[7] = G(R[1], 2);
         *fp = make_header(5, TPROC);
         fp[1] = G(R[1], 3);
@@ -61132,15 +52773,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1447:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[8] = R[5];
@@ -61151,15 +52789,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1448:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 3);
@@ -61171,17 +52806,13 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1449:
       if (acc == 1) {
-
         if (R[3] == IFALSE) {
-
           R[4] = G(R[2], 2);
           R[5] = G(R[1], 3);
           *fp = make_header(3, TPROC);
@@ -61196,32 +52827,25 @@ super_dispatch:                                   /* run macro instructions */
           acc = 2;
 
         } else {
-
           R[4] = G(R[1], 3);
           R[3] = F(0);
           ob = (word *)R[4];
           acc = 1;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1450:
       if (acc == 1) {
-
         R[4] = 128 * 14 + 258;
         {
-
           hval x = immval(R[3]);
           uint n = immval(R[4]);
           R[5] = F(x >> n);
           R[6] = F(x << (FBITS - n));
-
         }
 
         R[7] = G(R[1], 2);
@@ -61230,15 +52854,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1451:
       if (acc == 2) {
-
         *fp = make_header(3, TCLOS);
         fp[1] = G(R[1], 2);
         fp[2] = R[3];
@@ -61250,29 +52871,23 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1452:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         ob = (word *)R[5];
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1453:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = F(0);
         R[9] = R[6];
@@ -61282,23 +52897,18 @@ super_dispatch:                                   /* run macro instructions */
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1454:
       if (acc == 4) {
-
         if (R[4] == INULL) {
-
           ob = (word *)R[3];
           R[3] = R[5];
           acc = 1;
 
         } else {
-
           assert(pairp(R[4]), R[4], 105);
           R[7] = G(R[4], 1);
           R[4] = G(R[4], 2);
@@ -61310,19 +52920,15 @@ super_dispatch:                                   /* run macro instructions */
           fp += 4;
           ob = (word *)R[6];
           acc = 4;
-
         }
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1455:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         R[3] = cons(R[4], R[3]);
         R[6] = G(R[1], 3);
@@ -61330,35 +52936,27 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1456:
       if (acc == 3) {
-
         R[6] = G(R[1], 2);
         ob = (word *)R[6];
         acc = 4;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1457:
       if (acc == 2) {
-
         {
-
           word ob = R[4];
           if (allocp(ob)) ob = V(ob);
           R[5] = F((hval)ob >> TPOS & 63);
-
         }
 
         R[6] = 128 * 8 + 258;
@@ -61368,15 +52966,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1458:
       if (acc == 2) {
-
         R[5] = F(0);
         R[6] = R[4] & R[5];
         R[7] = BOOL(R[6] == R[5]);
@@ -61385,29 +52980,23 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1459:
       if (acc == 2) {
-
         ob = (word *)R[3];
         R[3] = R[4];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1460:
       if (acc == 2) {
-
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
         R[8] = R[5];
@@ -61417,15 +53006,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1461:
       if (acc == 3) {
-
         *fp = make_header(4, TPROC);
         fp[1] = G(R[1], 2);
         fp[3] = R[4];
@@ -61437,15 +53023,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1462:
       if (acc == 2) {
-
         R[5] = G(R[1], 3);
         R[6] = G(R[1], 2);
         R[8] = R[5];
@@ -61454,15 +53037,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 3;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1463:
       if (acc == 3) {
-
         *fp = make_header(4, TCLOS);
         fp[1] = G(R[1], 2);
         fp[3] = R[4];
@@ -61474,15 +53054,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1464:
       if (acc == 2) {
-
         R[5] = G(R[1], 2);
         R[6] = G(R[1], 3);
         *fp = make_header(4, TPROC);
@@ -61495,15 +53072,12 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1465:
       if (acc == 1) {
-
         R[4] = G(R[1], 3);
         R[5] = G(R[1], 2);
         R[7] = R[4];
@@ -61513,91 +53087,73 @@ super_dispatch:                                   /* run macro instructions */
         acc = 2;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
     case 1466:
       if (acc == 1) {
-
         R[4] = G(R[1], 2);
         ob = (word *)R[3];
         R[3] = R[4];
         acc = 1;
 
       } else {
-
         error(61, ob, F(acc));
-
       }
 
       break;
 
     default:
       error(258, F(op), ITRUE);
-
   }
 
   goto apply;
 
-invoke_mcp:           /* R4-R6 set, set R3=cont and R4=syscall and call mcp */
+invoke_mcp: /* R4-R6 set, set R3=cont and R4=syscall and call mcp */
   ob = (word *)R[0];
   R[0] = IFALSE;
   R[3] = F(3);
   if (allocp(ob)) {
-
     acc = 4;
     goto apply;
-
   }
 
-  return 1;        /* no mcp to handle error (fail in it?), so nonzero exit */
-
+  return 1; /* no mcp to handle error (fail in it?), so nonzero exit */
 }
 
 /* Initial FASL image decoding */
 
 static word get_nat() {
-
   word result = 0;
   word new, i;
   do {
-
     i = *hp++;
     new = result << 7;
-    if (result != new >> 7) exit(9);                      /* overflow kills */
+    if (result != new >> 7) exit(9); /* overflow kills */
     result = new + (i & 127);
 
   } while (i & 128);
 
   return result;
-
 }
 
 static word *get_field(word *ptrs, int pos) {
-
   if (0 == *hp) {
-
     byte type;
     hp++;
     type = *hp++;
     *fp++ = make_immediate(get_nat(), type);
 
   } else {
-
     word diff = get_nat();
     if (ptrs != NULL) *fp++ = ptrs[pos - diff];
-
   }
 
   return fp;
-
 }
 
 static word *get_obj(word *ptrs, int me) {
-
   uint type, size;
   if (ptrs != NULL) ptrs[me] = (word)fp;
   switch (*hp++) { /* TODO: adding type information here would reduce fasl and
@@ -61605,45 +53161,37 @@ static word *get_obj(word *ptrs, int me) {
     case 1:
       type = *hp++;
       size = get_nat();
-      *fp++ = make_header(size + 1, type);  /* +1 to include header in size */
+      *fp++ = make_header(size + 1, type); /* +1 to include header in size */
       while (size--)
         fp = get_field(ptrs, me);
       break;
     case 2: {
-
-      type = *hp++ & 31;                 /* low 5 bits, the others are pads */
+      type = *hp++ & 31; /* low 5 bits, the others are pads */
       size = get_nat();
       memcpy((word *)mkraw(type, size) + 1, hp, size);
       hp += size;
       break;
-
     }
 
     default:
       exit(42);
-
   }
 
   return fp;
-
 }
 
 /* dry run fasl decode - just compute sizes */
 static void get_obj_metrics(int *rwords, int *rnobjs) {
-
   int size;
   switch (*hp++) {
-
     case 1:
       hp++;
       size = get_nat();
       *rnobjs += 1;
       *rwords += size;
       while (size--) {
-
         if (0 == *hp) hp += 2;
         get_nat();
-
       }
 
       break;
@@ -61656,19 +53204,15 @@ static void get_obj_metrics(int *rwords, int *rnobjs) {
       break;
     default:
       exit(42);
-
   }
-
 }
 
 /* count number of objects and measure heap size */
 static void heap_metrics(int *rwords, int *rnobjs) {
-
   const byte *hp_start = hp;
   while (*hp != 0)
     get_obj_metrics(rwords, rnobjs);
   hp = hp_start;
-
 }
 
 /*
@@ -61722,31 +53266,25 @@ static void read_heap(const char *path) {
 //}
 
 static word *decode_fasl(uint nobjs) {
-
   word *ptrs;
   word *entry;
   uint  pos;
   allocate(nobjs + 1, ptrs);
   for (pos = 0; pos != nobjs; ++pos) {
-
-    if (fp >= memend)                                                /* bug */
+    if (fp >= memend) /* bug */
       exit(1);
     fp = get_obj(ptrs, pos);
-
   }
 
   entry = (word *)ptrs[pos - 1];
   *ptrs = make_header(nobjs + 1, 0) | RAWBIT;
   return entry;
-
 }
 
 static word *load_heap(uint nobjs) {
-
   word *entry = decode_fasl(nobjs);
   if (file_heap != NULL) free(file_heap);
   return entry;
-
 }
 
 /*
@@ -61788,9 +53326,8 @@ static int secondary(int nargs, char **argv) {
 */
 
 void radamsa_init(void) {
-
   int nobjs = 0, nwords = 0;
-  hp = (byte *)&heap;                                       /* builtin heap */
+  hp = (byte *)&heap; /* builtin heap */
   state = IFALSE;
   heap_metrics(&nwords, &nobjs);
   max_heap_mb = (W == 4) ? 4096 : 65535;
@@ -61799,19 +53336,16 @@ void radamsa_init(void) {
   if (!memstart) return;
   memend = memstart + nwords - MEMPAD;
   state = (word)load_heap(nobjs);
-
 }
 
 /* bvec → value library call test with preserved state */
 static word library_call(word val) {
-
   word program_state = state;
   word res;
   state = IFALSE;
   if (program_state == IFALSE) { exit(1); }
   res = vm((word *)program_state, val);
   return res;
-
 }
 
 /*
@@ -61832,32 +53366,25 @@ static size_t list_length(word lispval) {
 */
 
 static size_t copy_list(uint8_t *ptr, word lispval, size_t max) {
-
   size_t n = 0;
   while (pairp((word)lispval) && max-- && lispval != INULL) {
-
     *ptr++ = 255 & immval(G(lispval, 1));  // *ptr++ = car(list)
     n++;
     lispval = G(lispval, 2);  // list   = cdr(list)
-
   }
 
   if (lispval != INULL && max == 0) {
-
     printf("ERROR: lisp return value was not a proper list. Trailing %lu\n",
            (unsigned long)lispval);
-
   }
 
   return n;
-
 }
 
 /* read data from *ptr - *(ptr + len), write output to *target and return amount
  * of data written */
 size_t radamsa(uint8_t *ptr, size_t len, uint8_t *target, size_t max,
                unsigned int seed) {
-
   word *arg, res;
   word  lptr = onum((word)ptr, 0);
   word  llen = onum((word)len, 0);
@@ -61872,13 +53399,9 @@ size_t radamsa(uint8_t *ptr, size_t len, uint8_t *target, size_t max,
   arg[4] = lseed;
   res = library_call((word)arg);
   return copy_list(target, res, max);
-
 }
 
 size_t radamsa_inplace(uint8_t *ptr, size_t len, size_t max,
                        unsigned int seed) {
-
   return radamsa(ptr, len, ptr, max, seed);
-
 }
-

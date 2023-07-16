@@ -64,48 +64,41 @@ struct libdeflate_compressor   *compressor;
 struct libdeflate_decompressor *decompressor;
 #endif
 
-static u8 *in_file,                    /* Minimizer input test case         */
+static u8 *in_file, /* Minimizer input test case         */
     *out_file;
 
-static u8 *in_data;                    /* Input data for trimming           */
+static u8 *in_data; /* Input data for trimming           */
 static u8 *buf2;
 
 static s32 in_len;
 static s32 buf2_len;
 static u32 map_size = MAP_SIZE;
 
-static volatile u8 stop_soon;          /* Ctrl-C pressed?                   */
+static volatile u8 stop_soon; /* Ctrl-C pressed?                   */
 
 /* See if any bytes are set in the bitmap. */
 
 static inline u8 anything_set(afl_forkserver_t *fsrv) {
-
   u32 *ptr = (u32 *)fsrv->trace_bits;
   u32  i = (map_size >> 2);
 
   while (i--) {
-
     if (*(ptr++)) { return 1; }
-
   }
 
   return 0;
-
 }
 
 static void at_exit_handler(void) {
-
   afl_fsrv_killall();
-
 }
 
 /* Write output file. */
 
 static s32 write_to_file(u8 *path, u8 *mem, u32 len) {
-
   s32 ret;
 
-  unlink(path);                                            /* Ignore errors */
+  unlink(path); /* Ignore errors */
 
   ret = open(path, O_RDWR | O_CREAT | O_EXCL, 0600);
 
@@ -116,7 +109,6 @@ static s32 write_to_file(u8 *path, u8 *mem, u32 len) {
   lseek(ret, 0, SEEK_SET);
 
   return ret;
-
 }
 
 /* Execute target application. Returns 0 if the changes are a dud, or
@@ -124,7 +116,6 @@ static s32 write_to_file(u8 *path, u8 *mem, u32 len) {
 
 static u8 run_target(afl_forkserver_t *fsrv, char **argv, u8 *mem, u32 len,
                      u8 first_run) {
-
   afl_fsrv_write_to_testcase(fsrv, mem, len);
 
   fsrv_run_result_t ret =
@@ -133,47 +124,37 @@ static u8 run_target(afl_forkserver_t *fsrv, char **argv, u8 *mem, u32 len,
   if (ret == FSRV_RUN_ERROR) { FATAL("Couldn't run child"); }
 
   if (stop_soon) {
-
     SAYF(cRST cLRD "\n+++ aborted by user +++\n" cRST);
     exit(1);
-
   }
 
   return ret;
-
 }
 
 /* Handle Ctrl-C and the like. */
 
 static void handle_stop_sig(int sig) {
-
   stop_soon = 1;
   afl_fsrv_killall();
-
 }
 
 /* Do basic preparations - persistent fds, filenames, etc. */
 
 static void set_up_environment(afl_forkserver_t *fsrv) {
-
   u8 *x;
 
   fsrv->dev_null_fd = open("/dev/null", O_RDWR);
   if (fsrv->dev_null_fd < 0) { PFATAL("Unable to open /dev/null"); }
 
   if (!out_file) {
-
     u8 *use_dir = ".";
 
     if (access(use_dir, R_OK | W_OK | X_OK)) {
-
       use_dir = get_afl_env("TMPDIR");
       if (!use_dir) { use_dir = "/tmp"; }
-
     }
 
     out_file = alloc_printf("%s/.afl-input-temp-%u", use_dir, getpid());
-
   }
 
   unlink(out_file);
@@ -187,63 +168,44 @@ static void set_up_environment(afl_forkserver_t *fsrv) {
   x = get_afl_env("ASAN_OPTIONS");
 
   if (x) {
-
     if (!strstr(x, "abort_on_error=1")) {
-
       FATAL("Custom ASAN_OPTIONS set without abort_on_error=1 - please fix!");
-
     }
 
     if (!getenv("AFL_DEBUG") && !strstr(x, "symbolize=0")) {
-
       FATAL("Custom ASAN_OPTIONS set without symbolize=0 - please fix!");
-
     }
-
   }
 
   x = get_afl_env("MSAN_OPTIONS");
 
   if (x) {
-
     if (!strstr(x, "exit_code=" STRINGIFY(MSAN_ERROR))) {
-
       FATAL("Custom MSAN_OPTIONS set without exit_code=" STRINGIFY(
           MSAN_ERROR) " - please fix!");
-
     }
 
     if (!getenv("AFL_DEBUG") && !strstr(x, "symbolize=0")) {
-
       FATAL("Custom MSAN_OPTIONS set without symbolize=0 - please fix!");
-
     }
-
   }
 
   set_sanitizer_defaults();
 
   if (get_afl_env("AFL_PRELOAD")) {
-
     if (fsrv->qemu_mode) {
-
       /* afl-qemu-trace takes care of converting AFL_PRELOAD. */
 
     } else {
-
       setenv("LD_PRELOAD", getenv("AFL_PRELOAD"), 1);
       setenv("DYLD_INSERT_LIBRARIES", getenv("AFL_PRELOAD"), 1);
-
     }
-
   }
-
 }
 
 /* Setup signal handlers, duh. */
 
 static void setup_signal_handlers(void) {
-
   struct sigaction sa;
 
   sa.sa_handler = NULL;
@@ -258,13 +220,11 @@ static void setup_signal_handlers(void) {
   sigaction(SIGHUP, &sa, NULL);
   sigaction(SIGINT, &sa, NULL);
   sigaction(SIGTERM, &sa, NULL);
-
 }
 
 /* Display usage hints. */
 
 static void usage(u8 *argv0) {
-
   SAYF(
       "\n%s [ options ] -- /path/to/target_app [ ... ]\n\n"
 
@@ -295,11 +255,9 @@ static void usage(u8 *argv0) {
       , argv0, EXEC_TIMEOUT, MEM_LIMIT);
 
   exit(1);
-
 }
 
 int recv_testcase(int s, void **buf) {
-
   u32    size;
   s32    ret;
   size_t received;
@@ -312,7 +270,6 @@ int recv_testcase(int s, void **buf) {
   // fprintf(stderr, "received size information of %d\n", size);
 
   if ((size & 0xff000000) != 0xff000000) {
-
     *buf = afl_realloc(buf, size);
     if (unlikely(!*buf)) { PFATAL("Alloc"); }
     received = 0;
@@ -322,7 +279,6 @@ int recv_testcase(int s, void **buf) {
       received += ret;
 
   } else {
-
 #ifdef USE_DEFLATE
     u32 clen;
     size -= 0xff000000;
@@ -355,7 +311,6 @@ int recv_testcase(int s, void **buf) {
 #else
     FATAL("Received compressed data but not compiled with compression support");
 #endif
-
   }
 
   // fprintf(stderr, "receiving testcase %p %p max %u\n", buf, *buf, *max_len);
@@ -363,13 +318,11 @@ int recv_testcase(int s, void **buf) {
     FATAL("did not receive testcase data %lu != %u, %d", received, size, ret);
   // fprintf(stderr, "received testcase\n");
   return size;
-
 }
 
 /* Main entry point */
 
 int main(int argc, char **argv_orig, char **envp) {
-
   s32    opt, s, sock, on = 1, port = -1;
   u8     mem_limit_given = 0, timeout_given = 0, unicorn_mode = 0, use_wine = 0;
   char **use_argv;
@@ -391,9 +344,7 @@ int main(int argc, char **argv_orig, char **envp) {
   if ((send_buf = malloc(map_size + 4)) == NULL) PFATAL("malloc");
 
   while ((opt = getopt(argc, argv, "+i:f:m:t:QUWh")) > 0) {
-
     switch (opt) {
-
       case 'i':
 
         if (port > 0) { FATAL("Multiple -i options not supported"); }
@@ -410,7 +361,6 @@ int main(int argc, char **argv_orig, char **envp) {
         break;
 
       case 'm': {
-
         u8 suffix = 'M';
 
         if (mem_limit_given) { FATAL("Multiple -m options not supported"); }
@@ -419,21 +369,16 @@ int main(int argc, char **argv_orig, char **envp) {
         if (!optarg) { FATAL("Wrong usage of -m"); }
 
         if (!strcmp(optarg, "none")) {
-
           fsrv->mem_limit = 0;
           break;
-
         }
 
         if (sscanf(optarg, "%llu%c", &fsrv->mem_limit, &suffix) < 1 ||
             optarg[0] == '-') {
-
           FATAL("Bad syntax used for -m");
-
         }
 
         switch (suffix) {
-
           case 'T':
             fsrv->mem_limit *= 1024 * 1024;
             break;
@@ -448,15 +393,12 @@ int main(int argc, char **argv_orig, char **envp) {
 
           default:
             FATAL("Unsupported suffix or bad syntax for -m");
-
         }
 
         if (fsrv->mem_limit < 5) { FATAL("Dangerously low value of -m"); }
 
         if (sizeof(rlim_t) == 4 && fsrv->mem_limit > 2000) {
-
           FATAL("Value of -m out of range on 32-bit systems");
-
         }
 
       }
@@ -473,9 +415,7 @@ int main(int argc, char **argv_orig, char **envp) {
         fsrv->exec_tmout = atoi(optarg);
 
         if (fsrv->exec_tmout < 10 || optarg[0] == '-') {
-
           FATAL("Dangerously low value of -t");
-
         }
 
         break;
@@ -496,7 +436,7 @@ int main(int argc, char **argv_orig, char **envp) {
         unicorn_mode = 1;
         break;
 
-      case 'W':                                           /* Wine+QEMU mode */
+      case 'W': /* Wine+QEMU mode */
 
         if (use_wine) { FATAL("Multiple -W options not supported"); }
         fsrv->qemu_mode = 1;
@@ -513,9 +453,7 @@ int main(int argc, char **argv_orig, char **envp) {
 
       default:
         usage(argv[0]);
-
     }
-
   }
 
   if (optind == argc || port < 1) { usage(argv[0]); }
@@ -537,32 +475,24 @@ int main(int argc, char **argv_orig, char **envp) {
   detect_file_args(argv + optind, out_file, &fsrv->use_stdin);
 
   if (fsrv->qemu_mode) {
-
     if (use_wine) {
-
       use_argv = get_wine_argv(argv[0], &fsrv->target_path, argc - optind,
                                argv + optind);
 
     } else {
-
       use_argv = get_qemu_argv(argv[0], &fsrv->target_path, argc - optind,
                                argv + optind);
-
     }
 
   } else {
-
     use_argv = argv + optind;
-
   }
 
   if ((sock = socket(AF_INET6, SOCK_STREAM, 0)) < 0) PFATAL("socket() failed");
 
 #ifdef SO_REUSEADDR
   if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) < 0) {
-
     WARNF("setsockopt(SO_REUSEADDR) failed");
-
   }
 
 #endif
@@ -571,12 +501,10 @@ int main(int argc, char **argv_orig, char **envp) {
   int priority = 7;
   if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &priority, sizeof(priority)) <
       0) {
-
     priority = 6;
     if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &priority, sizeof(priority)) <
         0)
       WARNF("could not set priority on socket");
-
   }
 
 #endif
@@ -618,17 +546,14 @@ int main(int argc, char **argv_orig, char **envp) {
 #ifdef SO_PRIORITY
   priority = 7;
   if (setsockopt(s, SOL_SOCKET, SO_PRIORITY, &priority, sizeof(priority)) < 0) {
-
     priority = 6;
     if (setsockopt(s, SOL_SOCKET, SO_PRIORITY, &priority, sizeof(priority)) < 0)
       WARNF("could not set priority on socket");
-
   }
 
 #endif
 
   while ((in_len = recv_testcase(s, (void **)&in_data)) > 0) {
-
     // fprintf(stderr, "received %u\n", in_len);
     (void)run_target(fsrv, use_argv, in_data, in_len, 1);
 
@@ -650,7 +575,6 @@ int main(int argc, char **argv_orig, char **envp) {
 #endif
 
     // fprintf(stderr, "sent result\n");
-
   }
 
   unlink(out_file);
@@ -670,6 +594,4 @@ int main(int argc, char **argv_orig, char **envp) {
   argv_cpy_free(argv);
 
   exit(0);
-
 }
-

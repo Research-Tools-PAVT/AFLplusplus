@@ -31,41 +31,32 @@
 // Tries to cast a python bytearray or bytes to a char ptr
 static inline bool py_bytes(PyObject *py_value, /* out */ char **bytes,
                             /* out */ size_t *size) {
-
   if (!py_value) { return false; }
 
   *bytes = PyByteArray_AsString(py_value);
   if (*bytes) {
-
     // we got a bytearray
     *size = PyByteArray_Size(py_value);
 
   } else {
-
     *bytes = PyBytes_AsString(py_value);
     if (!*bytes) {
-
       // No valid type returned.
       return false;
-
     }
 
     *size = PyBytes_Size(py_value);
-
   }
 
   return true;
-
 }
 
 static void *unsupported(afl_state_t *afl, unsigned int seed) {
-
   (void)afl;
   (void)seed;
 
   FATAL("Python Mutator cannot be called twice yet");
   return NULL;
-
 }
 
   /* sorry for this makro...
@@ -74,7 +65,6 @@ static void *unsupported(afl_state_t *afl, unsigned int seed) {
 
 static size_t fuzz_py(void *py_mutator, u8 *buf, size_t buf_size, u8 **out_buf,
                       u8 *add_buf, size_t add_buf_size, size_t max_size) {
-
   size_t    mutated_size;
   PyObject *py_args, *py_value;
   py_args = PyTuple_New(3);
@@ -83,10 +73,8 @@ static size_t fuzz_py(void *py_mutator, u8 *buf, size_t buf_size, u8 **out_buf,
   /* buf */
   py_value = PyByteArray_FromStringAndSize(buf, buf_size);
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 0, py_value);
@@ -94,10 +82,8 @@ static size_t fuzz_py(void *py_mutator, u8 *buf, size_t buf_size, u8 **out_buf,
   /* add_buf */
   py_value = PyByteArray_FromStringAndSize(add_buf, add_buf_size);
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 1, py_value);
@@ -109,10 +95,8 @@ static size_t fuzz_py(void *py_mutator, u8 *buf, size_t buf_size, u8 **out_buf,
   py_value = PyInt_FromLong(max_size);
   #endif
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 2, py_value);
@@ -122,38 +106,29 @@ static size_t fuzz_py(void *py_mutator, u8 *buf, size_t buf_size, u8 **out_buf,
   Py_DECREF(py_args);
 
   if (py_value != NULL) {
-
     char *bytes;
     if (!py_bytes(py_value, &bytes, &mutated_size)) {
-
       FATAL("Python mutator fuzz() should return a bytearray or bytes");
-
     }
 
     if (mutated_size) {
-
       *out_buf = afl_realloc(BUF_PARAMS(fuzz), mutated_size);
       if (unlikely(!*out_buf)) { PFATAL("alloc"); }
 
       memcpy(*out_buf, bytes, mutated_size);
-
     }
 
     Py_DECREF(py_value);
     return mutated_size;
 
   } else {
-
     PyErr_Print();
     FATAL("python custom fuzz: call failed");
-
   }
-
 }
 
 static const char *custom_describe_py(void  *py_mutator,
                                       size_t max_description_len) {
-
   PyObject *py_args, *py_value;
 
   py_args = PyTuple_New(1);
@@ -163,10 +138,8 @@ static const char *custom_describe_py(void  *py_mutator,
   /* add_buf */
   py_value = PyLong_FromSize_t(max_description_len);
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 0, py_value);
@@ -179,11 +152,9 @@ static const char *custom_describe_py(void  *py_mutator,
   if (py_value != NULL) { return PyBytes_AsString(py_value); }
 
   return NULL;
-
 }
 
 static py_mutator_t *init_py_module(afl_state_t *afl, u8 *module_name) {
-
   (void)afl;
 
   if (!module_name) { return NULL; }
@@ -210,21 +181,16 @@ static py_mutator_t *init_py_module(afl_state_t *afl, u8 *module_name) {
   if (!unused_bytes) { FATAL("allocation failed!"); }
   if (PyObject_GetBuffer(unused_bytes, &py->post_process_buf, PyBUF_SIMPLE) ==
       -1) {
-
     FATAL("buffer initialization failed");
-
   }
 
   Py_DECREF(unused_bytes);
 
   if (py_module != NULL) {
-
     u8 py_notrim = 0;
     py_functions[PY_FUNC_INIT] = PyObject_GetAttrString(py_module, "init");
     if (!py_functions[PY_FUNC_INIT]) {
-
       WARNF("init function not found in python module");
-
     }
 
     py_functions[PY_FUNC_FUZZ] = PyObject_GetAttrString(py_module, "fuzz");
@@ -261,55 +227,43 @@ static py_mutator_t *init_py_module(afl_state_t *afl, u8 *module_name) {
       WARNF("deinit function not found in python module");
 
     if (py_notrim) {
-
       py_functions[PY_FUNC_INIT_TRIM] = NULL;
       py_functions[PY_FUNC_POST_TRIM] = NULL;
       py_functions[PY_FUNC_TRIM] = NULL;
       WARNF(
           "Python module does not implement trim API, standard trimming will "
           "be used.");
-
     }
 
   } else {
-
     PyErr_Print();
     fprintf(stderr, "Failed to load \"%s\"\n", module_name);
     free(py);
     return NULL;
-
   }
 
   return py;
-
 }
 
 void finalize_py_module(void *py_mutator) {
-
   py_mutator_t *py = (py_mutator_t *)py_mutator;
 
   if (py->py_module != NULL) {
-
     deinit_py(py_mutator);
 
     u32 i;
     for (i = 0; i < PY_FUNC_COUNT; ++i) {
-
       Py_XDECREF(py->py_functions[i]);
-
     }
 
     Py_DECREF(py->py_module);
-
   }
 
   Py_Finalize();
-
 }
 
 static void init_py(afl_state_t *afl, py_mutator_t *py_mutator,
                     unsigned int seed) {
-
   (void)afl;
 
   if (py_mutator->py_functions[PY_FUNC_INIT] == NULL) { return; }
@@ -325,10 +279,8 @@ static void init_py(afl_state_t *afl, py_mutator_t *py_mutator,
   #endif
 
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Cannot convert argument in python init.");
-
   }
 
   PyTuple_SetItem(py_args, 0, py_value);
@@ -339,17 +291,13 @@ static void init_py(afl_state_t *afl, py_mutator_t *py_mutator,
   Py_DECREF(py_args);
 
   if (py_value == NULL) {
-
     PyErr_Print();
     fprintf(stderr, "Call failed\n");
     FATAL("Custom py mutator INIT failed.");
-
   }
-
 }
 
 void deinit_py(void *py_mutator) {
-
   PyObject *py_args, *py_value;
 
   py_args = PyTuple_New(0);
@@ -358,28 +306,21 @@ void deinit_py(void *py_mutator) {
   Py_DECREF(py_args);
 
   if (py_value != NULL) {
-
     Py_DECREF(py_value);
 
   } else {
-
     PyErr_Print();
     FATAL("Call failed");
-
   }
-
 }
 
 void splice_optout_py(void *py_mutator) {
-
   // this is never called
   (void)(py_mutator);
-
 }
 
 struct custom_mutator *load_custom_mutator_py(afl_state_t *afl,
                                               char        *module_name) {
-
   struct custom_mutator *mutator;
 
   mutator = ck_alloc(sizeof(struct custom_mutator));
@@ -387,13 +328,10 @@ struct custom_mutator *load_custom_mutator_py(afl_state_t *afl,
   ACTF("Loading Python mutator library from '%s'...", module_name);
 
   if (memchr(module_name, '/', strlen(module_name))) {
-
     mutator->name_short = strdup(strrchr(module_name, '/') + 1);
 
   } else {
-
     mutator->name_short = strdup(module_name);
-
   }
 
   if (strlen(mutator->name_short) > 22) { mutator->name_short[21] = 0; }
@@ -412,80 +350,56 @@ struct custom_mutator *load_custom_mutator_py(afl_state_t *afl,
   if (py_functions[PY_FUNC_FUZZ]) { mutator->afl_custom_fuzz = fuzz_py; }
 
   if (py_functions[PY_FUNC_DESCRIBE]) {
-
     mutator->afl_custom_describe = custom_describe_py;
-
   }
 
   if (py_functions[PY_FUNC_POST_PROCESS]) {
-
     mutator->afl_custom_post_process = post_process_py;
-
   }
 
   if (py_functions[PY_FUNC_INIT_TRIM]) {
-
     mutator->afl_custom_init_trim = init_trim_py;
-
   }
 
   if (py_functions[PY_FUNC_FUZZ_COUNT]) {
-
     mutator->afl_custom_fuzz_count = fuzz_count_py;
-
   }
 
   if (py_functions[PY_FUNC_POST_TRIM]) {
-
     mutator->afl_custom_post_trim = post_trim_py;
-
   }
 
   if (py_functions[PY_FUNC_TRIM]) { mutator->afl_custom_trim = trim_py; }
 
   if (py_functions[PY_FUNC_HAVOC_MUTATION]) {
-
     mutator->afl_custom_havoc_mutation = havoc_mutation_py;
-
   }
 
   if (py_functions[PY_FUNC_HAVOC_MUTATION_PROBABILITY]) {
-
     mutator->afl_custom_havoc_mutation_probability =
         havoc_mutation_probability_py;
-
   }
 
   if (py_functions[PY_FUNC_QUEUE_GET]) {
-
     mutator->afl_custom_queue_get = queue_get_py;
-
   }
 
   if (py_functions[PY_FUNC_FUZZ_SEND]) {
-
     mutator->afl_custom_fuzz_send = fuzz_send_py;
-
   }
 
   if (py_functions[PY_FUNC_SPLICE_OPTOUT]) {
-
     mutator->afl_custom_splice_optout = splice_optout_py;
     afl->custom_splice_optout = 1;
-
   }
 
   if (py_functions[PY_FUNC_QUEUE_NEW_ENTRY]) {
-
     mutator->afl_custom_queue_new_entry = queue_new_entry_py;
-
   }
 
   #ifdef INTROSPECTION
   if (py_functions[PY_FUNC_INTROSPECTION]) {
-
     mutator->afl_custom_introspection = introspection_py;
-
   }
 
   #endif
@@ -500,12 +414,10 @@ struct custom_mutator *load_custom_mutator_py(afl_state_t *afl,
       6;  // like one of the default mutations in havoc
 
   return mutator;
-
 }
 
 size_t post_process_py(void *py_mutator, u8 *buf, size_t buf_size,
                        u8 **out_buf) {
-
   PyObject     *py_args, *py_value;
   py_mutator_t *py = (py_mutator_t *)py_mutator;
 
@@ -516,10 +428,8 @@ size_t post_process_py(void *py_mutator, u8 *buf, size_t buf_size,
   py_args = PyTuple_New(1);
   py_value = PyByteArray_FromStringAndSize(buf, buf_size);
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments in custom post_process");
-
   }
 
   PyTuple_SetItem(py_args, 0, py_value);
@@ -531,51 +441,39 @@ size_t post_process_py(void *py_mutator, u8 *buf, size_t buf_size,
   Py_DECREF(py_args);
 
   if (py_value != NULL) {
-
     if (PyObject_GetBuffer(py_value, &py->post_process_buf, PyBUF_SIMPLE) ==
         -1) {
-
       PyErr_Print();
       FATAL(
           "Python custom mutator: post_process call return value not a "
           "bytes-like object");
-
     }
 
     Py_DECREF(py_value);
 
     if (unlikely(py->post_process_buf.len == 0)) {
-
       *out_buf = NULL;
 
     } else {
-
       *out_buf = (u8 *)py->post_process_buf.buf;
-
     }
 
     return py->post_process_buf.len;
 
   } else {
-
     PyErr_Print();
     FATAL("Python custom mutator: post_process call failed.");
-
   }
-
 }
 
 s32 init_trim_py(void *py_mutator, u8 *buf, size_t buf_size) {
-
   PyObject *py_args, *py_value;
 
   py_args = PyTuple_New(1);
   py_value = PyByteArray_FromStringAndSize(buf, buf_size);
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 0, py_value);
@@ -585,7 +483,6 @@ s32 init_trim_py(void *py_mutator, u8 *buf, size_t buf_size) {
   Py_DECREF(py_args);
 
   if (py_value != NULL) {
-
   #if PY_MAJOR_VERSION >= 3
     u32 retcnt = (u32)PyLong_AsLong(py_value);
   #else
@@ -595,25 +492,19 @@ s32 init_trim_py(void *py_mutator, u8 *buf, size_t buf_size) {
     return retcnt;
 
   } else {
-
     PyErr_Print();
     FATAL("Call failed");
-
   }
-
 }
 
 u32 fuzz_count_py(void *py_mutator, const u8 *buf, size_t buf_size) {
-
   PyObject *py_args, *py_value;
 
   py_args = PyTuple_New(1);
   py_value = PyByteArray_FromStringAndSize(buf, buf_size);
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 0, py_value);
@@ -623,7 +514,6 @@ u32 fuzz_count_py(void *py_mutator, const u8 *buf, size_t buf_size) {
   Py_DECREF(py_args);
 
   if (py_value != NULL) {
-
   #if PY_MAJOR_VERSION >= 3
     u32 retcnt = (u32)PyLong_AsLong(py_value);
   #else
@@ -633,26 +523,20 @@ u32 fuzz_count_py(void *py_mutator, const u8 *buf, size_t buf_size) {
     return retcnt;
 
   } else {
-
     PyErr_Print();
     FATAL("Call failed");
-
   }
-
 }
 
 s32 post_trim_py(void *py_mutator, u8 success) {
-
   PyObject *py_args, *py_value;
 
   py_args = PyTuple_New(1);
 
   py_value = PyBool_FromLong(success);
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 0, py_value);
@@ -662,7 +546,6 @@ s32 post_trim_py(void *py_mutator, u8 success) {
   Py_DECREF(py_args);
 
   if (py_value != NULL) {
-
   #if PY_MAJOR_VERSION >= 3
     u32 retcnt = (u32)PyLong_AsLong(py_value);
   #else
@@ -672,16 +555,12 @@ s32 post_trim_py(void *py_mutator, u8 success) {
     return retcnt;
 
   } else {
-
     PyErr_Print();
     FATAL("Call failed");
-
   }
-
 }
 
 size_t trim_py(void *py_mutator, u8 **out_buf) {
-
   PyObject *py_args, *py_value;
   size_t    trimmed_size;
 
@@ -691,38 +570,29 @@ size_t trim_py(void *py_mutator, u8 **out_buf) {
   Py_DECREF(py_args);
 
   if (py_value != NULL) {
-
     char *bytes;
     if (!py_bytes(py_value, &bytes, &trimmed_size)) {
-
       FATAL("Python mutator fuzz() should return a bytearray");
-
     }
 
     if (trimmed_size) {
-
       *out_buf = afl_realloc(BUF_PARAMS(trim), trimmed_size);
       if (unlikely(!*out_buf)) { PFATAL("alloc"); }
       memcpy(*out_buf, bytes, trimmed_size);
-
     }
 
     Py_DECREF(py_value);
 
   } else {
-
     PyErr_Print();
     FATAL("Call failed");
-
   }
 
   return trimmed_size;
-
 }
 
 size_t havoc_mutation_py(void *py_mutator, u8 *buf, size_t buf_size,
                          u8 **out_buf, size_t max_size) {
-
   size_t    mutated_size;
   PyObject *py_args, *py_value;
   py_args = PyTuple_New(2);
@@ -730,10 +600,8 @@ size_t havoc_mutation_py(void *py_mutator, u8 *buf, size_t buf_size,
   /* buf */
   py_value = PyByteArray_FromStringAndSize(buf, buf_size);
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 0, py_value);
@@ -745,10 +613,8 @@ size_t havoc_mutation_py(void *py_mutator, u8 *buf, size_t buf_size,
   py_value = PyInt_FromLong(max_size);
   #endif
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 1, py_value);
@@ -760,25 +626,19 @@ size_t havoc_mutation_py(void *py_mutator, u8 *buf, size_t buf_size,
   Py_DECREF(py_args);
 
   if (py_value != NULL) {
-
     char *bytes;
     if (!py_bytes(py_value, &bytes, &mutated_size)) {
-
       FATAL("Python mutator fuzz() should return a bytearray");
-
     }
 
     if (mutated_size <= buf_size) {
-
       /* We reuse the input buf here. */
       *out_buf = buf;
 
     } else {
-
       /* A new buf is needed... */
       *out_buf = afl_realloc(BUF_PARAMS(havoc), mutated_size);
       if (unlikely(!*out_buf)) { PFATAL("alloc"); }
-
     }
 
     if (mutated_size) { memcpy(*out_buf, bytes, mutated_size); }
@@ -787,16 +647,12 @@ size_t havoc_mutation_py(void *py_mutator, u8 *buf, size_t buf_size,
     return mutated_size;
 
   } else {
-
     PyErr_Print();
     FATAL("Call failed");
-
   }
-
 }
 
 u8 havoc_mutation_probability_py(void *py_mutator) {
-
   PyObject *py_args, *py_value;
 
   py_args = PyTuple_New(0);
@@ -807,22 +663,17 @@ u8 havoc_mutation_probability_py(void *py_mutator) {
   Py_DECREF(py_args);
 
   if (py_value != NULL) {
-
     long prob = PyLong_AsLong(py_value);
     Py_DECREF(py_value);
     return (u8)prob;
 
   } else {
-
     PyErr_Print();
     FATAL("Call failed");
-
   }
-
 }
 
 const char *introspection_py(void *py_mutator) {
-
   PyObject *py_args, *py_value;
 
   py_args = PyTuple_New(0);
@@ -832,29 +683,22 @@ const char *introspection_py(void *py_mutator) {
   Py_DECREF(py_args);
 
   if (py_value == NULL) {
-
     return NULL;
 
   } else {
-
     char  *ret;
     size_t len;
     if (!py_bytes(py_value, &ret, &len)) {
-
       FATAL(
           "Python mutator introspection call returned illegal type (expected "
           "bytes or bytearray)");
-
     }
 
     return ret;
-
   }
-
 }
 
 u8 queue_get_py(void *py_mutator, const u8 *filename) {
-
   PyObject *py_args, *py_value;
 
   py_args = PyTuple_New(1);
@@ -866,10 +710,8 @@ u8 queue_get_py(void *py_mutator, const u8 *filename) {
   py_value = PyString_FromString(filename);
   #endif
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 0, py_value);
@@ -880,39 +722,30 @@ u8 queue_get_py(void *py_mutator, const u8 *filename) {
   Py_DECREF(py_args);
 
   if (py_value != NULL) {
-
     int ret = PyObject_IsTrue(py_value);
     Py_DECREF(py_value);
 
     if (ret == -1) {
-
       PyErr_Print();
       FATAL("Failed to convert return value");
-
     }
 
     return (u8)ret & 0xFF;
 
   } else {
-
     PyErr_Print();
     FATAL("Call failed");
-
   }
-
 }
 
 void fuzz_send_py(void *py_mutator, const u8 *buf, size_t buf_size) {
-
   PyObject *py_args, *py_value;
 
   py_args = PyTuple_New(1);
   py_value = PyByteArray_FromStringAndSize(buf, buf_size);
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 0, py_value);
@@ -922,12 +755,10 @@ void fuzz_send_py(void *py_mutator, const u8 *buf, size_t buf_size) {
   Py_DECREF(py_args);
 
   if (py_value != NULL) { Py_DECREF(py_value); }
-
 }
 
 u8 queue_new_entry_py(void *py_mutator, const u8 *filename_new_queue,
                       const u8 *filename_orig_queue) {
-
   PyObject *py_args, *py_value;
 
   py_args = PyTuple_New(2);
@@ -939,10 +770,8 @@ u8 queue_new_entry_py(void *py_mutator, const u8 *filename_new_queue,
   py_value = PyString_FromString(filename_new_queue);
   #endif
   if (!py_value) {
-
     Py_DECREF(py_args);
     FATAL("Failed to convert arguments");
-
   }
 
   PyTuple_SetItem(py_args, 0, py_value);
@@ -950,19 +779,15 @@ u8 queue_new_entry_py(void *py_mutator, const u8 *filename_new_queue,
   // Orig queue
   py_value = Py_None;
   if (filename_orig_queue) {
-
   #if PY_MAJOR_VERSION >= 3
     py_value = PyUnicode_FromString(filename_orig_queue);
   #else
     py_value = PyString_FromString(filename_orig_queue);
   #endif
     if (!py_value) {
-
       Py_DECREF(py_args);
       FATAL("Failed to convert arguments");
-
     }
-
   }
 
   PyTuple_SetItem(py_args, 1, py_value);
@@ -974,29 +799,22 @@ u8 queue_new_entry_py(void *py_mutator, const u8 *filename_new_queue,
   Py_DECREF(py_args);
 
   if (py_value != NULL) {
-
     int ret = PyObject_IsTrue(py_value);
     Py_DECREF(py_value);
 
     if (ret == -1) {
-
       PyErr_Print();
       FATAL("Failed to convert return value");
-
     }
 
     return (u8)ret & 0xFF;
 
   } else {
-
     PyErr_Print();
     FATAL("Call failed");
-
   }
-
 }
 
   #undef BUF_PARAMS
 
-#endif                                                        /* USE_PYTHON */
-
+#endif /* USE_PYTHON */

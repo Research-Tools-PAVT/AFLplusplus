@@ -91,7 +91,6 @@ static u32 debug = 0;
 // END STEP 1
 
 typedef struct library_list {
-
   u8 *name;
   u64 addr_start, addr_end;
 
@@ -120,7 +119,6 @@ static void fuzz(void);
 
 /* read the library information */
 void read_library_information(void) {
-
 #if defined(__linux__)
   FILE *f;
   u8    buf[1024], *b, *m, *e, *n;
@@ -130,15 +128,11 @@ void read_library_information(void) {
 
   if (debug) fprintf(stderr, "Library list:\n");
   while (fgets(buf, sizeof(buf), f)) {
-
     if (strstr(buf, " r-x")) {
-
       if (liblist_cnt >= MAX_LIB_COUNT) {
-
         WARNF("too many libraries to old, maximum count of %d reached",
               liblist_cnt);
         return;
-
       }
 
       b = buf;
@@ -151,7 +145,6 @@ void read_library_information(void) {
       else
         n++;
       if (b && m && e && n && *n) {
-
         *m++ = 0;
         *e = 0;
         if (n[strlen(n) - 1] == '\n') n[strlen(n) - 1] = 0;
@@ -166,11 +159,8 @@ void read_library_information(void) {
               liblist[liblist_cnt].addr_start,
               liblist[liblist_cnt].addr_end - 1);
         liblist_cnt++;
-
       }
-
     }
-
   }
 
   if (debug) fprintf(stderr, "\n");
@@ -190,17 +180,14 @@ void read_library_information(void) {
   if (buf == MAP_FAILED) { return; }
 
   if (sysctl(mib, miblen, buf, &len, NULL, 0) == -1) {
-
     munmap(buf, len);
     return;
-
   }
 
   start = buf;
   end = buf + len;
 
   while (start < end) {
-
     struct kinfo_vmentry *region = (struct kinfo_vmentry *)start;
     size_t                size = region->kve_structsize;
 
@@ -208,36 +195,29 @@ void read_library_information(void) {
 
     if ((region->kve_protection & KVME_PROT_READ) &&
         !(region->kve_protection & KVME_PROT_EXEC)) {
-
       liblist[liblist_cnt].name =
           region->kve_path[0] != '\0' ? (u8 *)strdup(region->kve_path) : 0;
       liblist[liblist_cnt].addr_start = region->kve_start;
       liblist[liblist_cnt].addr_end = region->kve_end;
 
       if (debug) {
-
         fprintf(stderr, "%s:%lx (%lx-%lx)\n", liblist[liblist_cnt].name,
                 (unsigned long)(liblist[liblist_cnt].addr_end -
                                 liblist[liblist_cnt].addr_start),
                 (unsigned long)liblist[liblist_cnt].addr_start,
                 (unsigned long)(liblist[liblist_cnt].addr_end - 1));
-
       }
 
       liblist_cnt++;
-
     }
 
     start += size;
-
   }
 
 #endif
-
 }
 
 library_list_t *find_library(char *name) {
-
 #if defined(__linux__)
   u32 i;
 
@@ -261,25 +241,20 @@ library_list_t *find_library(char *name) {
   const struct dyld_image_info *image_infos = all_image_infos->infoArray;
 
   for (size_t i = 0; i < all_image_infos->infoArrayCount; i++) {
-
     const char       *image_name = image_infos[i].imageFilePath;
     mach_vm_address_t image_load_address =
         (mach_vm_address_t)image_infos[i].imageLoadAddress;
     if (strstr(image_name, name)) {
-
       lib.name = name;
       lib.addr_start = (u64)image_load_address;
       lib.addr_end = 0;
       return &lib;
-
     }
-
   }
 
 #endif
 
   return NULL;
-
 }
 
 /* for having an easy breakpoint location after loading the shared library */
@@ -287,9 +262,7 @@ library_list_t *find_library(char *name) {
 #pragma GCC push_options
 #pragma GCC optimize("O0")
 void        breakpoint(void) {
-
   if (debug) fprintf(stderr, "Breakpoint function \"breakpoint\" reached.\n");
-
 }
 
 #pragma GCC pop_options
@@ -297,56 +270,43 @@ void        breakpoint(void) {
 /* Error reporting to forkserver controller */
 
 void send_forkserver_error(int error) {
-
   u32 status;
   if (!error || error > 0xffff) return;
   status = (FS_OPT_ERROR | FS_OPT_SET_ERROR(error));
   if (write(FORKSRV_FD + 1, (char *)&status, 4) != 4) return;
-
 }
 
 /* SHM setup. */
 
 static void __afl_map_shm(void) {
-
   char *id_str = getenv(SHM_ENV_VAR);
   char *ptr;
 
   if ((ptr = getenv("AFL_MAP_SIZE")) != NULL) {
-
     u32 val = atoi(ptr);
     if (val > 0) __afl_map_size = val;
-
   }
 
   if (__afl_map_size > MAP_SIZE) {
-
     if (__afl_map_size > FS_OPT_MAX_MAPSIZE) {
-
       fprintf(stderr,
               "Error: AFL++ tools *require* to set AFL_MAP_SIZE to %u to "
               "be able to run this instrumented program!\n",
               __afl_map_size);
       if (id_str) {
-
         send_forkserver_error(FS_ERROR_MAP_SIZE);
         exit(-1);
-
       }
 
     } else {
-
       fprintf(stderr,
               "Warning: AFL++ tools will need to set AFL_MAP_SIZE to %u to "
               "be able to run this instrumented program!\n",
               __afl_map_size);
-
     }
-
   }
 
   if (id_str) {
-
 #ifdef USEMMAP
     const char    *shm_file_path = id_str;
     int            shm_fd = -1;
@@ -355,11 +315,9 @@ static void __afl_map_shm(void) {
     /* create the shared memory segment as if it was a file */
     shm_fd = shm_open(shm_file_path, O_RDWR, 0600);
     if (shm_fd == -1) {
-
       fprintf(stderr, "shm_open() failed\n");
       send_forkserver_error(FS_ERROR_SHM_OPEN);
       exit(1);
-
     }
 
     /* map the shared memory segment to the address space of the process */
@@ -367,14 +325,12 @@ static void __afl_map_shm(void) {
         mmap(0, __afl_map_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
     if (shm_base == MAP_FAILED) {
-
       close(shm_fd);
       shm_fd = -1;
 
       fprintf(stderr, "mmap() failed\n");
       send_forkserver_error(FS_ERROR_MMAP);
       exit(2);
-
     }
 
     __afl_area_ptr = shm_base;
@@ -386,23 +342,18 @@ static void __afl_map_shm(void) {
 #endif
 
     if (__afl_area_ptr == (void *)-1) {
-
       send_forkserver_error(FS_ERROR_SHMAT);
       exit(1);
-
     }
 
     /* Write something into the bitmap so that the parent doesn't give up */
 
     __afl_area_ptr[0] = 1;
-
   }
-
 }
 
 /* Fork server logic. */
 inline static void __afl_start_forkserver(void) {
-
   u8  tmp[4] = {0, 0, 0, 0};
   u32 status = 0;
 
@@ -414,11 +365,9 @@ inline static void __afl_start_forkserver(void) {
   /* Phone home and tell the parent that we're OK. */
   if (write(FORKSRV_FD + 1, tmp, 4) != 4) do_exit = 1;
   // fprintf(stderr, "write0 %d\n", do_exit);
-
 }
 
 inline static u32 __afl_next_testcase(u8 *buf, u32 max_len) {
-
   s32 status;
 
   /* Wait for parent by reading from the pipe. Abort if read fails. */
@@ -427,7 +376,6 @@ inline static u32 __afl_next_testcase(u8 *buf, u32 max_len) {
 
   /* we have a testcase - read it if we read from stdin */
   if (use_stdin) {
-
     if ((status = read(0, buf, max_len)) <= 0) exit(-1);
 
   } else
@@ -442,15 +390,12 @@ inline static u32 __afl_next_testcase(u8 *buf, u32 max_len) {
   __afl_area_ptr[0] = 1;  // put something in the map
 
   return status;
-
 }
 
 inline static void __afl_end_testcase(int status) {
-
   if (write(FORKSRV_FD + 1, &status, 4) != 4) do_exit = 1;
   // fprintf(stderr, "write2 %d\n", do_exit);
   if (do_exit) exit(0);
-
 }
 
 #ifdef __aarch64__
@@ -466,7 +411,6 @@ inline static void __afl_end_testcase(int status) {
 #endif
 
 void setup_trap_instrumentation(void) {
-
   library_list_t *lib_base = NULL;
   size_t          lib_size = 0;
   u8             *lib_addr;
@@ -496,12 +440,10 @@ void setup_trap_instrumentation(void) {
 #endif
 
   while ((nread = getline(&line, &len, patches)) != -1) {
-
     char *end = line + len;
 
     char *col = strchr(line, ':');
     if (col) {
-
       // It's a library:size pair
       *col++ = 0;
 
@@ -527,7 +469,6 @@ void setup_trap_instrumentation(void) {
         // Create shadow memory.
 #ifdef __aarch64__
       for (int i = 0; i < 8; i++) {
-
 #else
       for (int i = 0; i < 4; i++) {
 
@@ -540,12 +481,10 @@ void setup_trap_instrumentation(void) {
           fprintf(stderr, "Shadow: %s %d = %p-%p for %p\n", line, i, shadow,
                   shadow + lib_size - 1, lib_addr);
         if (shadow == MAP_FAILED) FATAL("Failed to mmap shadow memory");
-
       }
 
       // Done, continue with next line.
       continue;
-
     }
 
     // It's an offset, parse it and do the patching.
@@ -608,7 +547,6 @@ void setup_trap_instrumentation(void) {
 #endif
 
     bitmap_index++;
-
   }
 
   free(line);
@@ -624,13 +562,11 @@ void setup_trap_instrumentation(void) {
   if (debug) fprintf(stderr, "Patched %u locations.\n", bitmap_index);
   __afl_map_size = bitmap_index;
   if (__afl_map_size % 8) __afl_map_size = (((__afl_map_size + 7) >> 3) << 3);
-
 }
 
 /* the signal handler for the traps / debugging interrupts
    No debug output here because this would cost speed      */
 static void sigtrap_handler(int signum, siginfo_t *si, void *context) {
-
   uint64_t addr;
   // Must re-execute the instruction, so decrement PC by one instruction.
   ucontext_t *ctx = (ucontext_t *)context;
@@ -685,12 +621,10 @@ static void sigtrap_handler(int signum, siginfo_t *si, void *context) {
   *faultaddr = orig_byte;
 
   __afl_area_ptr[index] = 128;
-
 }
 
 /* the MAIN function */
 int main(int argc, char *argv[]) {
-
 #if defined(__linux__)
   (void)personality(ADDR_NO_RANDOMIZE);  // disable ASLR
 #elif defined(__FreeBSD__) && __FreeBSD_version >= 1200000
@@ -704,10 +638,8 @@ int main(int argc, char *argv[]) {
   /* by default we use stdin, but also a filename can be passed, in this
      case the input is argv[1] and we have to disable stdin */
   if (argc > 1) {
-
     use_stdin = 0;
     inputfile = (u8 *)argv[1];
-
   }
 
   // STEP 2: load the library you want to fuzz and lookup the functions,
@@ -730,24 +662,20 @@ int main(int argc, char *argv[]) {
   __afl_start_forkserver();
 
   while (1) {
-
     // instead of fork() we could also use the snapshot lkm or do our own mini
     // snapshot feature like in https://github.com/marcinguy/fuzzer
     // -> snapshot.c
     if ((pid = fork()) == -1) PFATAL("fork failed");
 
     if (pid) {
-
       u32 status;
       if (waitpid(pid, (int *)&status, 0) < 0) exit(1);
       /* report the test case is done and wait for the next */
       __afl_end_testcase(status);
 
     } else {
-
       pid = getpid();
       while ((len = __afl_next_testcase(buf, sizeof(buf))) > 0) {
-
         // in this function the fuzz magic happens, this is STEP 3
         fuzz();
 
@@ -755,15 +683,11 @@ int main(int argc, char *argv[]) {
         // was loaded via dlopen and therefore cannot have deconstructors
         // registered.
         _exit(0);
-
       }
-
     }
-
   }
 
   return 0;
-
 }
 
 #ifndef _DEBUG
@@ -783,6 +707,4 @@ inline
   //(*o_LibFree)(foo);
 
   // END STEP 3
-
 }
-

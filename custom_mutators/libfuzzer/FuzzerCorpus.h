@@ -26,31 +26,30 @@
 namespace fuzzer {
 
 struct InputInfo {
-  Unit U;  // The actual input data.
+  Unit                      U;  // The actual input data.
   std::chrono::microseconds TimeOfUnit;
-  uint8_t Sha1[kSHA1NumBytes];  // Checksum.
+  uint8_t                   Sha1[kSHA1NumBytes];  // Checksum.
   // Number of features that this input has and no smaller input has.
   size_t NumFeatures = 0;
-  size_t Tmp = 0; // Used by ValidateFeatureSet.
+  size_t Tmp = 0;  // Used by ValidateFeatureSet.
   // Stats.
-  size_t NumExecutedMutations = 0;
-  size_t NumSuccessfullMutations = 0;
-  bool NeverReduce = false;
-  bool MayDeleteFile = false;
-  bool Reduced = false;
-  bool HasFocusFunction = false;
+  size_t           NumExecutedMutations = 0;
+  size_t           NumSuccessfullMutations = 0;
+  bool             NeverReduce = false;
+  bool             MayDeleteFile = false;
+  bool             Reduced = false;
+  bool             HasFocusFunction = false;
   Vector<uint32_t> UniqFeatureSet;
-  Vector<uint8_t> DataFlowTraceForFocusFunction;
+  Vector<uint8_t>  DataFlowTraceForFocusFunction;
   // Power schedule.
-  bool NeedsEnergyUpdate = false;
-  double Energy = 0.0;
-  size_t SumIncidence = 0;
+  bool                                  NeedsEnergyUpdate = false;
+  double                                Energy = 0.0;
+  size_t                                SumIncidence = 0;
   Vector<std::pair<uint32_t, uint16_t>> FeatureFreqs;
 
   // Delete feature Idx and its frequency from FeatureFreqs.
   bool DeleteFeatureFreq(uint32_t Idx) {
-    if (FeatureFreqs.empty())
-      return false;
+    if (FeatureFreqs.empty()) return false;
 
     // Binary search over local feature frequencies sorted by index.
     auto Lower = std::lower_bound(FeatureFreqs.begin(), FeatureFreqs.end(),
@@ -145,22 +144,22 @@ struct InputInfo {
 };
 
 struct EntropicOptions {
-  bool Enabled;
+  bool   Enabled;
   size_t NumberOfRarestFeatures;
   size_t FeatureFrequencyThreshold;
-  bool ScalePerExecTime;
+  bool   ScalePerExecTime;
 };
 
 class InputCorpus {
   static const uint32_t kFeatureSetSize = 1 << 21;
-  static const uint8_t kMaxMutationFactor = 20;
-  static const size_t kSparseEnergyUpdates = 100;
+  static const uint8_t  kMaxMutationFactor = 20;
+  static const size_t   kSparseEnergyUpdates = 100;
 
   size_t NumExecutedMutations = 0;
 
   EntropicOptions Entropic;
 
-public:
+ public:
   InputCorpus(const std::string &OutputCorpus, EntropicOptions Entropic)
       : Entropic(Entropic), OutputCorpus(OutputCorpus) {
     memset(InputSizesPerFeature, 0, sizeof(InputSizesPerFeature));
@@ -170,7 +169,9 @@ public:
     for (auto II : Inputs)
       delete II;
   }
-  size_t size() const { return Inputs.size(); }
+  size_t size() const {
+    return Inputs.size();
+  }
   size_t SizeInBytes() const {
     size_t Res = 0;
     for (auto II : Inputs)
@@ -186,10 +187,12 @@ public:
   size_t MaxInputSize() const {
     size_t Res = 0;
     for (auto II : Inputs)
-        Res = std::max(Res, II->U.size());
+      Res = std::max(Res, II->U.size());
     return Res;
   }
-  void IncrementNumExecutedMutations() { NumExecutedMutations++; }
+  void IncrementNumExecutedMutations() {
+    NumExecutedMutations++;
+  }
 
   size_t NumInputsThatTouchFocusFunction() {
     return std::count_if(Inputs.begin(), Inputs.end(), [](const InputInfo *II) {
@@ -203,12 +206,16 @@ public:
     });
   }
 
-  bool empty() const { return Inputs.empty(); }
-  const Unit &operator[] (size_t Idx) const { return Inputs[Idx]->U; }
+  bool empty() const {
+    return Inputs.empty();
+  }
+  const Unit &operator[](size_t Idx) const {
+    return Inputs[Idx]->U;
+  }
   InputInfo *AddToCorpus(const Unit &U, size_t NumFeatures, bool MayDeleteFile,
                          bool HasFocusFunction, bool NeverReduce,
                          std::chrono::microseconds TimeOfUnit,
-                         const Vector<uint32_t> &FeatureSet,
+                         const Vector<uint32_t>   &FeatureSet,
                          const DataFlowTrace &DFT, const InputInfo *BaseII) {
     assert(!U.empty());
     if (FeatureDebug)
@@ -231,8 +238,7 @@ public:
     auto Sha1Str = Sha1ToString(II.Sha1);
     Hashes.insert(Sha1Str);
     if (HasFocusFunction)
-      if (auto V = DFT.Get(Sha1Str))
-        II.DataFlowTraceForFocusFunction = *V;
+      if (auto V = DFT.Get(Sha1Str)) II.DataFlowTraceForFocusFunction = *V;
     // This is a gross heuristic.
     // Ideally, when we add an element to a corpus we need to know its DFT.
     // But if we don't, we'll use the DFT of its base input.
@@ -248,8 +254,7 @@ public:
   void PrintUnit(const Unit &U) {
     if (!FeatureDebug) return;
     for (uint8_t C : U) {
-      if (C != 'F' && C != 'U' && C != 'Z')
-        C = '.';
+      if (C != 'F' && C != 'U' && C != 'Z') C = '.';
       Printf("%c", C);
     }
   }
@@ -258,7 +263,7 @@ public:
   void PrintFeatureSet(const Vector<uint32_t> &FeatureSet) {
     if (!FeatureDebug) return;
     Printf("{");
-    for (uint32_t Feature: FeatureSet)
+    for (uint32_t Feature : FeatureSet)
       Printf("%u,", Feature);
     Printf("}");
   }
@@ -292,8 +297,12 @@ public:
     DistributionNeedsUpdate = true;
   }
 
-  bool HasUnit(const Unit &U) { return Hashes.count(Hash(U)); }
-  bool HasUnit(const std::string &H) { return Hashes.count(H); }
+  bool HasUnit(const Unit &U) {
+    return Hashes.count(Hash(U));
+  }
+  bool HasUnit(const std::string &H) {
+    return Hashes.count(H);
+  }
   InputInfo &ChooseUnitToMutate(Random &Rand) {
     InputInfo &II = *Inputs[ChooseUnitIdxToMutate(Rand)];
     assert(!II.U.empty());
@@ -301,9 +310,7 @@ public:
   }
 
   InputInfo &ChooseUnitToCrossOverWith(Random &Rand, bool UniformDist) {
-    if (!UniformDist) {
-      return ChooseUnitToMutate(Rand);
-    }
+    if (!UniformDist) { return ChooseUnitToMutate(Rand); }
     InputInfo &II = *Inputs[Rand(Inputs.size())];
     assert(!II.U.empty());
     return II;
@@ -322,19 +329,19 @@ public:
       const auto &II = *Inputs[i];
       Printf("  [% 3zd %s] sz: % 5zd runs: % 5zd succ: % 5zd focus: %d\n", i,
              Sha1ToString(II.Sha1).c_str(), II.U.size(),
-             II.NumExecutedMutations, II.NumSuccessfullMutations, II.HasFocusFunction);
+             II.NumExecutedMutations, II.NumSuccessfullMutations,
+             II.HasFocusFunction);
     }
   }
 
   void PrintFeatureSet() {
     for (size_t i = 0; i < kFeatureSetSize; i++) {
-      if(size_t Sz = GetFeature(i))
+      if (size_t Sz = GetFeature(i))
         Printf("[%zd: id %zd sz%zd] ", i, SmallestElementPerFeature[i], Sz);
     }
     Printf("\n\t");
     for (size_t i = 0; i < Inputs.size(); i++)
-      if (size_t N = Inputs[i]->NumFeatures)
-        Printf(" %zd=>%zd ", i, N);
+      if (size_t N = Inputs[i]->NumFeatures) Printf(" %zd=>%zd ", i, N);
     Printf("\n");
   }
 
@@ -350,8 +357,7 @@ public:
     II.Energy = 0.0;
     II.NeedsEnergyUpdate = false;
     DistributionNeedsUpdate = true;
-    if (FeatureDebug)
-      Printf("EVICTED %zd\n", Idx);
+    if (FeatureDebug) Printf("EVICTED %zd\n", Idx);
   }
 
   void AddRareFeature(uint32_t Idx) {
@@ -360,11 +366,10 @@ public:
     // Remove all other features.
     while (RareFeatures.size() > Entropic.NumberOfRarestFeatures &&
            FreqOfMostAbundantRareFeature > Entropic.FeatureFrequencyThreshold) {
-
       // Find most and second most abbundant feature.
       uint32_t MostAbundantRareFeatureIndices[2] = {RareFeatures[0],
                                                     RareFeatures[0]};
-      size_t Delete = 0;
+      size_t   Delete = 0;
       for (size_t i = 0; i < RareFeatures.size(); i++) {
         uint32_t Idx2 = RareFeatures[i];
         if (GlobalFeatureFreqs[Idx2] >=
@@ -412,20 +417,17 @@ public:
     uint32_t OldSize = GetFeature(Idx);
     if (OldSize == 0 || (Shrink && OldSize > NewSize)) {
       if (OldSize > 0) {
-        size_t OldIdx = SmallestElementPerFeature[Idx];
+        size_t     OldIdx = SmallestElementPerFeature[Idx];
         InputInfo &II = *Inputs[OldIdx];
         assert(II.NumFeatures > 0);
         II.NumFeatures--;
-        if (II.NumFeatures == 0)
-          DeleteInput(OldIdx);
+        if (II.NumFeatures == 0) DeleteInput(OldIdx);
       } else {
         NumAddedFeatures++;
-        if (Entropic.Enabled)
-          AddRareFeature((uint32_t)Idx);
+        if (Entropic.Enabled) AddRareFeature((uint32_t)Idx);
       }
       NumUpdatedFeatures++;
-      if (FeatureDebug)
-        Printf("ADD FEATURE %zd sz %d\n", Idx, NewSize);
+      if (FeatureDebug) Printf("ADD FEATURE %zd sz %d\n", Idx, NewSize);
       SmallestElementPerFeature[Idx] = Inputs.size();
       InputSizesPerFeature[Idx] = NewSize;
       return true;
@@ -438,8 +440,7 @@ public:
     uint32_t Idx32 = Idx % kFeatureSetSize;
 
     // Saturated increment.
-    if (GlobalFeatureFreqs[Idx32] == 0xFFFF)
-      return;
+    if (GlobalFeatureFreqs[Idx32] == 0xFFFF) return;
     uint16_t Freq = GlobalFeatureFreqs[Idx32]++;
 
     // Skip if abundant.
@@ -449,30 +450,31 @@ public:
       return;
 
     // Update global frequencies.
-    if (Freq == FreqOfMostAbundantRareFeature)
-      FreqOfMostAbundantRareFeature++;
+    if (Freq == FreqOfMostAbundantRareFeature) FreqOfMostAbundantRareFeature++;
 
     // Update local frequencies.
-    if (II)
-      II->UpdateFeatureFrequency(Idx32);
+    if (II) II->UpdateFeatureFrequency(Idx32);
   }
 
-  size_t NumFeatures() const { return NumAddedFeatures; }
-  size_t NumFeatureUpdates() const { return NumUpdatedFeatures; }
+  size_t NumFeatures() const {
+    return NumAddedFeatures;
+  }
+  size_t NumFeatureUpdates() const {
+    return NumUpdatedFeatures;
+  }
 
-private:
-
+ private:
   static const bool FeatureDebug = false;
 
-  size_t GetFeature(size_t Idx) const { return InputSizesPerFeature[Idx]; }
+  size_t GetFeature(size_t Idx) const {
+    return InputSizesPerFeature[Idx];
+  }
 
   void ValidateFeatureSet() {
-    if (FeatureDebug)
-      PrintFeatureSet();
+    if (FeatureDebug) PrintFeatureSet();
     for (size_t Idx = 0; Idx < kFeatureSetSize; Idx++)
-      if (GetFeature(Idx))
-        Inputs[SmallestElementPerFeature[Idx]]->Tmp++;
-    for (auto II: Inputs) {
+      if (GetFeature(Idx)) Inputs[SmallestElementPerFeature[Idx]]->Tmp++;
+    for (auto II : Inputs) {
       if (II->Tmp != II->NumFeatures)
         Printf("ZZZ %zd %zd\n", II->Tmp, II->NumFeatures);
       assert(II->Tmp == II->NumFeatures);
@@ -518,7 +520,6 @@ private:
       }
 
       for (size_t i = 0; i < N; i++) {
-
         if (Inputs[i]->NumFeatures == 0) {
           // If the seed doesn't represent any features, assign zero energy.
           Weights[i] = 0.;
@@ -532,8 +533,7 @@ private:
         }
 
         // If energy for all seeds is zero, fall back to vanilla schedule.
-        if (Weights[i] > 0.0)
-          VanillaSchedule = false;
+        if (Weights[i] > 0.0) VanillaSchedule = false;
       }
     }
 
@@ -561,16 +561,16 @@ private:
   Vector<double> Weights;
 
   std::unordered_set<std::string> Hashes;
-  Vector<InputInfo*> Inputs;
+  Vector<InputInfo *>             Inputs;
 
-  size_t NumAddedFeatures = 0;
-  size_t NumUpdatedFeatures = 0;
+  size_t   NumAddedFeatures = 0;
+  size_t   NumUpdatedFeatures = 0;
   uint32_t InputSizesPerFeature[kFeatureSetSize];
   uint32_t SmallestElementPerFeature[kFeatureSetSize];
 
-  bool DistributionNeedsUpdate = true;
-  uint16_t FreqOfMostAbundantRareFeature = 0;
-  uint16_t GlobalFeatureFreqs[kFeatureSetSize] = {};
+  bool             DistributionNeedsUpdate = true;
+  uint16_t         FreqOfMostAbundantRareFeature = 0;
+  uint16_t         GlobalFeatureFreqs[kFeatureSetSize] = {};
   Vector<uint32_t> RareFeatures;
 
   std::string OutputCorpus;

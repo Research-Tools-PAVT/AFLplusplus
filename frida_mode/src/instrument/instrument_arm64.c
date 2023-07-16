@@ -26,7 +26,6 @@ __attribute__((aligned(0x1000))) static guint8 area_ptr_dummy[MAP_SIZE];
 
   #pragma pack(push, 1)
 typedef struct {
-
   // cur_location = (block_address >> 4) ^ (block_address << 8);
   // shared_mem[cur_location ^ prev_location]++;
   // prev_location = cur_location >> 1;
@@ -49,62 +48,61 @@ typedef struct {
   // b       0x7fb6f0dee4
   // ldp     x16, x17, [sp], #144
 
-  uint32_t b_imm8;                                                /* br #68 */
-  uint32_t restoration_prolog;                 /* ldp x16, x17, [sp], #0x90 */
+  uint32_t b_imm8;             /* br #68 */
+  uint32_t restoration_prolog; /* ldp x16, x17, [sp], #0x90 */
 
-  uint32_t stp_x0_x1;                           /* stp x0, x1, [sp, #-0xa0] */
+  uint32_t stp_x0_x1; /* stp x0, x1, [sp, #-0xa0] */
 
-  uint32_t adrp_x0_prev_loc1;                           /* adrp x0, #0xXXXX */
-  uint32_t ldr_x1_ptr_x0;                                   /* ldr x1, [x0] */
+  uint32_t adrp_x0_prev_loc1; /* adrp x0, #0xXXXX */
+  uint32_t ldr_x1_ptr_x0;     /* ldr x1, [x0] */
 
-  uint32_t mov_x0_curr_loc;                             /* movz x0, #0xXXXX */
-  uint32_t eor_x0_x1_x0;                                  /* eor x0, x1, x0 */
-  uint32_t adrp_x1_area_ptr;                            /* adrp x1, #0xXXXX */
-  uint32_t add_x0_x1_x0;                                  /* add x0, x1, x0 */
+  uint32_t mov_x0_curr_loc;  /* movz x0, #0xXXXX */
+  uint32_t eor_x0_x1_x0;     /* eor x0, x1, x0 */
+  uint32_t adrp_x1_area_ptr; /* adrp x1, #0xXXXX */
+  uint32_t add_x0_x1_x0;     /* add x0, x1, x0 */
 
-  uint32_t ldrb_w1_x0;                                     /* ldrb w1, [x0] */
-  uint32_t add_w1_w1_1;                                   /* add w1, w1, #1 */
-  uint32_t add_w1_w1_w1_lsr_8;                    /* add x1, x1, x1, lsr #8 */
+  uint32_t ldrb_w1_x0;         /* ldrb w1, [x0] */
+  uint32_t add_w1_w1_1;        /* add w1, w1, #1 */
+  uint32_t add_w1_w1_w1_lsr_8; /* add x1, x1, x1, lsr #8 */
 
-  uint32_t strb_w1_ptr_x0;                                 /* strb w1, [x0] */
+  uint32_t strb_w1_ptr_x0; /* strb w1, [x0] */
 
-  uint32_t adrp_x0_prev_loc2;                           /* adrp x0, #0xXXXX */
-  uint32_t mov_x1_curr_loc_shr_1;                       /* movz x1, #0xXXXX */
-  uint32_t str_x1_ptr_x0;                                   /* str x1, [x0] */
+  uint32_t adrp_x0_prev_loc2;     /* adrp x0, #0xXXXX */
+  uint32_t mov_x1_curr_loc_shr_1; /* movz x1, #0xXXXX */
+  uint32_t str_x1_ptr_x0;         /* str x1, [x0] */
 
-  uint32_t ldp_x0_x1;                           /* ldp x0, x1, [sp, #-0xa0] */
+  uint32_t ldp_x0_x1; /* ldp x0, x1, [sp, #-0xa0] */
 
 } afl_log_code_asm_t;
 
 typedef struct {
+  uint32_t b_imm8; /* br #XX (end) */
 
-  uint32_t b_imm8;                                          /* br #XX (end) */
+  uint32_t restoration_prolog; /* ldp x16, x17, [sp], #0x90 */
 
-  uint32_t restoration_prolog;                 /* ldp x16, x17, [sp], #0x90 */
+  uint32_t stp_x0_x1; /* stp x0, x1, [sp, #-0xa0] */
 
-  uint32_t stp_x0_x1;                           /* stp x0, x1, [sp, #-0xa0] */
+  uint32_t ldr_x0_p_prev_loc_1; /* ldr x0, #0xXXXX */
+  uint32_t ldr_x1_ptr_x0;       /* ldr x1, [x0] */
 
-  uint32_t ldr_x0_p_prev_loc_1;                          /* ldr x0, #0xXXXX */
-  uint32_t ldr_x1_ptr_x0;                                   /* ldr x1, [x0] */
+  uint32_t ldr_x0_p_area_offset; /* ldr x0, #0xXXXX */
+  uint32_t eor_x0_x1_x0;         /* eor x0, x1, x0 */
+  uint32_t ldr_x1_p_area_ptr;    /* ldr x1, #0xXXXX */
+  uint32_t add_x0_x1_x0;         /* add x0, x1, x0 */
 
-  uint32_t ldr_x0_p_area_offset;                         /* ldr x0, #0xXXXX */
-  uint32_t eor_x0_x1_x0;                                  /* eor x0, x1, x0 */
-  uint32_t ldr_x1_p_area_ptr;                            /* ldr x1, #0xXXXX */
-  uint32_t add_x0_x1_x0;                                  /* add x0, x1, x0 */
+  uint32_t ldrb_w1_x0;         /* ldrb w1, [x0] */
+  uint32_t add_w1_w1_1;        /* add w1, w1, #1 */
+  uint32_t add_w1_w1_w1_lsr_8; /* add x1, x1, x1, lsr #8 */
 
-  uint32_t ldrb_w1_x0;                                     /* ldrb w1, [x0] */
-  uint32_t add_w1_w1_1;                                   /* add w1, w1, #1 */
-  uint32_t add_w1_w1_w1_lsr_8;                    /* add x1, x1, x1, lsr #8 */
+  uint32_t strb_w1_ptr_x0; /* strb w1, [x0] */
 
-  uint32_t strb_w1_ptr_x0;                                 /* strb w1, [x0] */
+  uint32_t ldr_x0_p_prev_loc_2;      /* ldr x0, #0xXXXX */
+  uint32_t ldr_x1_p_area_offset_ror; /* ldr x1, #0xXXXX */
+  uint32_t str_x1_ptr_x0;            /* str x1, [x0] */
 
-  uint32_t ldr_x0_p_prev_loc_2;                          /* ldr x0, #0xXXXX */
-  uint32_t ldr_x1_p_area_offset_ror;                     /* ldr x1, #0xXXXX */
-  uint32_t str_x1_ptr_x0;                                   /* str x1, [x0] */
+  uint32_t ldp_x0_x1; /* ldp x0, x1, [sp, #-0xa0] */
 
-  uint32_t ldp_x0_x1;                           /* ldp x0, x1, [sp, #-0xa0] */
-
-  uint32_t b_end;                                          /* skip the data */
+  uint32_t b_end; /* skip the data */
 
   uint64_t area_ptr;
   uint64_t prev_loc_ptr;
@@ -118,14 +116,12 @@ typedef struct {
   #pragma pack(pop)
 
 typedef union {
-
   afl_log_code_asm_t code;
   uint8_t            bytes[0];
 
 } afl_log_code;
 
 typedef union {
-
   afl_log_code_asm_long_t code;
   uint8_t                 bytes[0];
 
@@ -168,31 +164,31 @@ static const afl_log_code_asm_t template =
 static const afl_log_code_asm_long_t template_long =
     {.b_imm8 = 0x1400001a,
 
-     .restoration_prolog = 0xa8c947f0,         /* ldp x16, x17, [sp], #0x90 */
+     .restoration_prolog = 0xa8c947f0, /* ldp x16, x17, [sp], #0x90 */
 
-     .stp_x0_x1 = 0xa93607e0,                   /* stp x0, x1, [sp, #-0xa0] */
+     .stp_x0_x1 = 0xa93607e0, /* stp x0, x1, [sp, #-0xa0] */
 
-     .ldr_x0_p_prev_loc_1 = 0x58000220,                  /* ldr x0, #0xXXXX */
-     .ldr_x1_ptr_x0 = 0xf9400001,                           /* ldr x1, [x0] */
+     .ldr_x0_p_prev_loc_1 = 0x58000220, /* ldr x0, #0xXXXX */
+     .ldr_x1_ptr_x0 = 0xf9400001,       /* ldr x1, [x0] */
 
-     .ldr_x0_p_area_offset = 0x58000220,                 /* ldr x0, #0xXXXX */
-     .eor_x0_x1_x0 = 0xca000020,                          /* eor x0, x1, x0 */
-     .ldr_x1_p_area_ptr = 0x58000161,                    /* ldr x1, #0xXXXX */
-     .add_x0_x1_x0 = 0x8b000020,                          /* add x0, x1, x0 */
+     .ldr_x0_p_area_offset = 0x58000220, /* ldr x0, #0xXXXX */
+     .eor_x0_x1_x0 = 0xca000020,         /* eor x0, x1, x0 */
+     .ldr_x1_p_area_ptr = 0x58000161,    /* ldr x1, #0xXXXX */
+     .add_x0_x1_x0 = 0x8b000020,         /* add x0, x1, x0 */
 
-     .ldrb_w1_x0 = 0x39400001,                             /* ldrb w1, [x0] */
-     .add_w1_w1_1 = 0x11000421,                           /* add w1, w1, #1 */
-     .add_w1_w1_w1_lsr_8 = 0x8b412021,            /* add x1, x1, x1, lsr #8 */
+     .ldrb_w1_x0 = 0x39400001,         /* ldrb w1, [x0] */
+     .add_w1_w1_1 = 0x11000421,        /* add w1, w1, #1 */
+     .add_w1_w1_w1_lsr_8 = 0x8b412021, /* add x1, x1, x1, lsr #8 */
 
-     .strb_w1_ptr_x0 = 0x39000001,                         /* strb w1, [x0] */
+     .strb_w1_ptr_x0 = 0x39000001, /* strb w1, [x0] */
 
-     .ldr_x0_p_prev_loc_2 = 0x580000e0,                  /* ldr x0, #0xXXXX */
-     .ldr_x1_p_area_offset_ror = 0x58000141,             /* ldr x1, #0xXXXX */
-     .str_x1_ptr_x0 = 0xf9000001,                           /* str x1, [x0] */
+     .ldr_x0_p_prev_loc_2 = 0x580000e0,      /* ldr x0, #0xXXXX */
+     .ldr_x1_p_area_offset_ror = 0x58000141, /* ldr x1, #0xXXXX */
+     .str_x1_ptr_x0 = 0xf9000001,            /* str x1, [x0] */
 
-     .ldp_x0_x1 = 0xa97607e0,                   /* ldp x0, x1, [sp, #-0xa0] */
+     .ldp_x0_x1 = 0xa97607e0, /* ldp x0, x1, [sp, #-0xa0] */
 
-     .b_end = 0x14000009,                                  /* skip the data */
+     .b_end = 0x14000009, /* skip the data */
 
      .area_ptr = 0x0,
      .prev_loc_ptr = 0x0,
@@ -206,13 +202,10 @@ static const afl_log_code_asm_long_t template_long =
 ;
 
 gboolean instrument_is_coverage_optimize_supported(void) {
-
   return true;
-
 }
 
 static gboolean instrument_is_deterministic(const cs_insn *from_insn) {
-
   cs_arm64 *arm64;
   arm64_cc  cc;
 
@@ -222,7 +215,6 @@ static gboolean instrument_is_deterministic(const cs_insn *from_insn) {
   cc = arm64->cc;
 
   switch (from_insn->id) {
-
     case ARM64_INS_B:
     case ARM64_INS_BL:
       if (cc == ARM64_CC_INVALID) { return TRUE; }
@@ -235,15 +227,12 @@ static gboolean instrument_is_deterministic(const cs_insn *from_insn) {
       break;
     default:
       return FALSE;
-
   }
 
   return FALSE;
-
 }
 
 cs_insn *instrument_disassemble(gconstpointer address) {
-
   csh      capstone;
   cs_insn *insn = NULL;
 
@@ -255,14 +244,12 @@ cs_insn *instrument_disassemble(gconstpointer address) {
   cs_close(&capstone);
 
   return insn;
-
 }
 
 static void instrument_coverage_switch(GumStalkerObserver *self,
                                        gpointer            from_address,
                                        gpointer start_address, void *from_insn,
                                        gpointer *target) {
-
   UNUSED_PARAMETER(self);
   UNUSED_PARAMETER(from_address);
   UNUSED_PARAMETER(start_address);
@@ -274,9 +261,7 @@ static void instrument_coverage_switch(GumStalkerObserver *self,
   if (!g_hash_table_contains(coverage_blocks, GSIZE_TO_POINTER(*target)) &&
       !g_hash_table_contains(coverage_blocks,
                              GSIZE_TO_POINTER((guint8 *)*target + 4))) {
-
     return;
-
   }
 
   insn = instrument_disassemble(from_insn);
@@ -324,11 +309,9 @@ static void instrument_coverage_switch(GumStalkerObserver *self,
   fixup_offset = GUM_RESTORATION_PROLOG_SIZE +
                  G_STRUCT_OFFSET(afl_log_code_asm_t, restoration_prolog);
   *target = (guint8 *)*target + fixup_offset;
-
 }
 
 static void instrument_coverage_suppress_init(void) {
-
   static gboolean initialized = false;
   if (initialized) { return; }
   initialized = true;
@@ -339,36 +322,26 @@ static void instrument_coverage_suppress_init(void) {
 
   coverage_blocks = g_hash_table_new(g_direct_hash, g_direct_equal);
   if (coverage_blocks == NULL) {
-
     FATAL("Failed to g_hash_table_new, errno: %d", errno);
-
   }
-
 }
 
 static gboolean instrument_coverage_in_range(gssize offset) {
-
   return (offset >= G_MININT33 && offset <= G_MAXINT33);
-
 }
 
 static bool instrument_patch_ardp(guint32 *patch, GumAddress insn,
                                   GumAddress target) {
-
   if (!PAGE_ALIGNED(target)) {
-
     FWARNF("Target not page aligned");
     return false;
-
   }
 
   gssize distance = target - (GUM_ADDRESS(insn) & PAGE_MASK);
   if (!instrument_coverage_in_range(distance)) {
-
     FVERBOSE("Patch out of range 0x%016lX->0x%016lX = 0x%016lX", insn, target,
              distance);
     return false;
-
   }
 
   guint32 imm_low = ((distance >> 12) & 0x3) << 29;
@@ -376,12 +349,10 @@ static bool instrument_patch_ardp(guint32 *patch, GumAddress insn,
   *patch |= imm_low;
   *patch |= imm_high;
   return true;
-
 }
 
 bool instrument_write_inline(GumArm64Writer *cw, GumAddress code_addr,
                              guint64 area_offset, gsize area_offset_ror) {
-
   afl_log_code code = {0};
   code.code = template;
 
@@ -397,9 +368,7 @@ bool instrument_write_inline(GumArm64Writer *cw, GumAddress code_addr,
           &code.code.adrp_x0_prev_loc1,
           code_addr + offsetof(afl_log_code, code.adrp_x0_prev_loc1),
           GUM_ADDRESS(instrument_previous_pc_addr))) {
-
     return false;
-
   }
 
   code.code.mov_x0_curr_loc |= area_offset << 5;
@@ -408,41 +377,32 @@ bool instrument_write_inline(GumArm64Writer *cw, GumAddress code_addr,
           &code.code.adrp_x1_area_ptr,
           code_addr + offsetof(afl_log_code, code.adrp_x1_area_ptr),
           GUM_ADDRESS(__afl_area_ptr))) {
-
     return false;
-
   }
 
   if (!instrument_patch_ardp(
           &code.code.adrp_x0_prev_loc2,
           code_addr + offsetof(afl_log_code, code.adrp_x0_prev_loc2),
           GUM_ADDRESS(instrument_previous_pc_addr))) {
-
     return false;
-
   }
 
   code.code.mov_x1_curr_loc_shr_1 |= (area_offset_ror << 5);
 
   if (instrument_suppress) {
-
     gum_arm64_writer_put_bytes(cw, code.bytes, sizeof(afl_log_code));
 
   } else {
-
     size_t offset = offsetof(afl_log_code, code.stp_x0_x1);
     gum_arm64_writer_put_bytes(cw, &code.bytes[offset],
                                sizeof(afl_log_code) - offset);
-
   }
 
   return true;
-
 }
 
 bool instrument_write_inline_long(GumArm64Writer *cw, GumAddress code_addr,
                                   guint64 area_offset, gsize area_offset_ror) {
-
   afl_log_code_long code = {0};
   code.code = template_long;
 
@@ -452,24 +412,19 @@ bool instrument_write_inline_long(GumArm64Writer *cw, GumAddress code_addr,
   code.code.area_offset_ror = GUM_ADDRESS(area_offset_ror);
 
   if (instrument_suppress) {
-
     gum_arm64_writer_put_bytes(cw, code.bytes, sizeof(afl_log_code_long));
 
   } else {
-
     size_t offset = offsetof(afl_log_code_long, code.stp_x0_x1);
     gum_arm64_writer_put_bytes(cw, &code.bytes[offset],
                                sizeof(afl_log_code_long) - offset);
-
   }
 
   return true;
-
 }
 
 void instrument_coverage_optimize(const cs_insn    *instr,
                                   GumStalkerOutput *output) {
-
   afl_log_code    code = {0};
   GumArm64Writer *cw = output->writer.arm64;
   gpointer        block_start;
@@ -479,7 +434,6 @@ void instrument_coverage_optimize(const cs_insn    *instr,
   GumAddress code_addr = 0;
 
   if (instrument_previous_pc_addr == NULL) {
-
     GumAddressSpec spec = {.near_address = cw->code,
                            .max_distance = 1ULL << 30};
     guint          page_size = gum_query_page_size();
@@ -489,7 +443,6 @@ void instrument_coverage_optimize(const cs_insn    *instr,
     *instrument_previous_pc_addr = instrument_hash_zero;
     FVERBOSE("instrument_previous_pc_addr: %p", instrument_previous_pc_addr);
     FVERBOSE("code_addr: %p", cw->code);
-
   }
 
   // gum_arm64_writer_put_brk_imm(cw, 0x0);
@@ -517,13 +470,9 @@ void instrument_coverage_optimize(const cs_insn    *instr,
       GSIZE_TO_POINTER(GUM_ADDRESS(cw->code) - GUM_RESTORATION_PROLOG_SIZE);
 
   if (instrument_suppress) {
-
     if (!g_hash_table_add(coverage_blocks, block_start)) {
-
       FATAL("Failed - g_hash_table_add");
-
     }
-
   }
 
   map_size_pow2 = util_log2(__afl_map_size);
@@ -532,80 +481,58 @@ void instrument_coverage_optimize(const cs_insn    *instr,
   code.code = template;
 
   if (!instrument_write_inline(cw, code_addr, area_offset, area_offset_ror)) {
-
     if (!instrument_write_inline_long(cw, code_addr, area_offset,
                                       area_offset_ror)) {
-
       FATAL("Failed to write inline instrumentation");
-
     }
-
   }
-
 }
 
 void instrument_coverage_optimize_insn(const cs_insn    *instr,
                                        GumStalkerOutput *output) {
-
   UNUSED_PARAMETER(instr);
   UNUSED_PARAMETER(output);
-
 }
 
 void instrument_coverage_optimize_init(void) {
-
   char *shm_env = getenv(SHM_ENV_VAR);
   FVERBOSE("SHM_ENV_VAR: %s", shm_env);
 
   if (shm_env == NULL) {
-
     FWARNF("SHM_ENV_VAR not set, using dummy for debugging purposes");
 
     __afl_area_ptr = area_ptr_dummy;
     memset(area_ptr_dummy, '\0', sizeof(area_ptr_dummy));
-
   }
 
   FVERBOSE("__afl_area_ptr: %p", __afl_area_ptr);
-
 }
 
 void instrument_flush(GumStalkerOutput *output) {
-
   gum_arm64_writer_flush(output->writer.arm64);
-
 }
 
 gpointer instrument_cur(GumStalkerOutput *output) {
-
   return gum_arm64_writer_cur(output->writer.arm64);
-
 }
 
 void instrument_cache_config(void) {
-
 }
 
 void instrument_cache_init(void) {
-
 }
 
 void instrument_cache_insert(gpointer real_address, gpointer code_address) {
-
   UNUSED_PARAMETER(real_address);
   UNUSED_PARAMETER(code_address);
-
 }
 
 void instrument_cache(const cs_insn *instr, GumStalkerOutput *output) {
-
   UNUSED_PARAMETER(instr);
   UNUSED_PARAMETER(output);
-
 }
 
 void instrument_write_regs(GumCpuContext *cpu_context, gpointer user_data) {
-
   int fd = (int)(size_t)user_data;
   instrument_regs_format(
       fd, "x0 : 0x%016x, x1 : 0x%016x, x2 : 0x%016x, x3 : 0x%016x\n",
@@ -639,8 +566,6 @@ void instrument_write_regs(GumCpuContext *cpu_context, gpointer user_data) {
       fd, "x28: 0x%016x, fp : 0x%016x, lr : 0x%016x, sp : 0x%016x\n",
       cpu_context->x[28], cpu_context->fp, cpu_context->lr, cpu_context->sp);
   instrument_regs_format(fd, "pc : 0x%016x\n\n", cpu_context->pc);
-
 }
 
 #endif
-

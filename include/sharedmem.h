@@ -45,7 +45,7 @@ typedef struct sharedmem {
   s32 cmplog_shm_id;
 #endif
 
-  u8 *map;         /* shared memory region */
+  u8 *map; /* shared memory region */
 
   size_t map_size; /* actual allocated size */
 
@@ -54,6 +54,20 @@ typedef struct sharedmem {
   struct cmp_map *cmp_map;
 
 } sharedmem_t;
+
+#ifdef FUZZMAX
+typedef struct format_extra {
+  u32   *map;
+  s32    shm_id; /* ID of the SHM region              */
+  size_t map_size;
+  int    shmemfuzz_mode;
+} format_extra_t;
+
+u32 *afl_shm_fm_init(format_extra_t *, size_t,
+                     unsigned char non_instrumented_mode);
+void afl_shm_fm_deinit(format_extra_t *);
+
+#endif
 
 u8  *afl_shm_init(sharedmem_t *, size_t, unsigned char non_instrumented_mode);
 void afl_shm_deinit(sharedmem_t *);

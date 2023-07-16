@@ -8,4 +8,3 @@ void intercept_unhook(void *address);
 void intercept_unhook_self(void);
 
 #endif
-

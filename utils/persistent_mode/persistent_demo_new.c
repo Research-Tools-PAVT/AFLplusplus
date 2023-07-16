@@ -54,9 +54,8 @@ __AFL_FUZZ_INIT();
 #pragma GCC            optimize("O0")
 
 int main(int argc, char **argv) {
-
-  ssize_t        len;                        /* how much input did we read? */
-  unsigned char *buf;                        /* test case buffer pointer    */
+  ssize_t        len; /* how much input did we read? */
+  unsigned char *buf; /* test case buffer pointer    */
 
   /* The number passed to __AFL_LOOP() controls the maximum number of
      iterations before the loop exits and the program is allowed to
@@ -78,39 +77,26 @@ int main(int argc, char **argv) {
     if (strcmp((char *)buf, "thisisateststring") == 0) printf("teststring\n");
 
     if (buf[0] == 'f') {
-
       printf("one\n");
       if (buf[1] == 'o') {
-
         printf("two\n");
         if (buf[2] == 'o') {
-
           printf("three\n");
           if (buf[3] == '!') {
-
             printf("four\n");
             if (buf[4] == '!') {
-
               printf("five\n");
               if (buf[5] == '!') {
-
                 printf("six\n");
                 abort();
-
               }
-
             }
-
           }
-
         }
-
       }
-
     }
 
     /*** END PLACEHOLDER CODE ***/
-
   }
 
   /* Once the loop is exited, terminate normally - AFL will restart the process
@@ -118,6 +104,4 @@ int main(int argc, char **argv) {
      leftover file descriptors, etc. */
 
   return 0;
-
 }
-

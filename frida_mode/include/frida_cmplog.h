@@ -12,4 +12,3 @@ void cmplog_instrument(const cs_insn *instr, GumStalkerIterator *iterator);
 gboolean cmplog_is_readable(guint64 addr, size_t size);
 
 #endif
-

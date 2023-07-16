@@ -9,7 +9,6 @@
 
 #if defined(__aarch64__)
 typedef struct {
-
   GumCpuContext ctx;
   uint64_t      rflags;
 
@@ -19,14 +18,11 @@ static persistent_ctx_t saved_regs = {0};
 static gpointer         saved_lr = NULL;
 
 gboolean persistent_is_supported(void) {
-
   return true;
-
 }
 
 static void instrument_persitent_save_regs(GumArm64Writer   *cw,
                                            persistent_ctx_t *regs) {
-
   GumAddress    regs_address = GUM_ADDRESS(regs);
   const guint32 mrs_x1_nzcv = 0xd53b4201;
 
@@ -106,11 +102,9 @@ static void instrument_persitent_save_regs(GumArm64Writer   *cw,
 
   /* Q */
   for (int i = 0; i < 16; i++) {
-
     gum_arm64_writer_put_stp_reg_reg_reg_offset(
         cw, ARM64_REG_Q0 + (i * 2), ARM64_REG_Q0 + (i * 2) + 1, ARM64_REG_X0,
         offsetof(GumCpuContext, v[i]), GUM_INDEX_SIGNED_OFFSET);
-
   }
 
   /* x0 & x1 */
@@ -128,12 +122,10 @@ static void instrument_persitent_save_regs(GumArm64Writer   *cw,
   gum_arm64_writer_put_ldp_reg_reg_reg_offset(
       cw, ARM64_REG_X0, ARM64_REG_X1, ARM64_REG_SP, 16 + GUM_RED_ZONE_SIZE,
       GUM_INDEX_POST_ADJUST);
-
 }
 
 static void instrument_persitent_restore_regs(GumArm64Writer   *cw,
                                               persistent_ctx_t *regs) {
-
   GumAddress    regs_address = GUM_ADDRESS(regs);
   const guint32 msr_nzcv_x1 = 0xd51b4201;
 
@@ -198,11 +190,9 @@ static void instrument_persitent_restore_regs(GumArm64Writer   *cw,
 
   /* Q */
   for (int i = 0; i < 16; i++) {
-
     gum_arm64_writer_put_ldp_reg_reg_reg_offset(
         cw, ARM64_REG_Q0 + (i * 2), ARM64_REG_Q0 + (i * 2) + 1, ARM64_REG_X0,
         offsetof(GumCpuContext, v[i]), GUM_INDEX_SIGNED_OFFSET);
-
   }
 
   /* x2 & x3 */
@@ -213,45 +203,35 @@ static void instrument_persitent_restore_regs(GumArm64Writer   *cw,
   gum_arm64_writer_put_ldp_reg_reg_reg_offset(
       cw, ARM64_REG_X0, ARM64_REG_X1, ARM64_REG_X0,
       offsetof(GumCpuContext, x[0]), GUM_INDEX_SIGNED_OFFSET);
-
 }
 
 static void instrument_exit(GumArm64Writer *cw) {
-
   gum_arm64_writer_put_mov_reg_reg(cw, ARM64_REG_X0, ARM64_REG_XZR);
   gum_arm64_writer_put_call_address_with_arguments(
       cw, GUM_ADDRESS(_exit), 1, GUM_ARG_REGISTER, ARM64_REG_X0);
-
 }
 
 static int instrument_afl_persistent_loop_func(void) {
-
   int ret = __afl_persistent_loop(persistent_count);
   if (instrument_previous_pc_addr == NULL) {
-
     FATAL("instrument_previous_pc_addr uninitialized");
-
   }
 
   *instrument_previous_pc_addr = instrument_hash_zero;
   return ret;
-
 }
 
 static void instrument_afl_persistent_loop(GumArm64Writer *cw) {
-
   gum_arm64_writer_put_sub_reg_reg_imm(cw, ARM64_REG_SP, ARM64_REG_SP,
                                        GUM_RED_ZONE_SIZE);
   gum_arm64_writer_put_call_address_with_arguments(
       cw, GUM_ADDRESS(instrument_afl_persistent_loop_func), 0);
   gum_arm64_writer_put_add_reg_reg_imm(cw, ARM64_REG_SP, ARM64_REG_SP,
                                        GUM_RED_ZONE_SIZE);
-
 }
 
 static void persistent_prologue_hook(GumArm64Writer   *cw,
                                      persistent_ctx_t *regs) {
-
   if (persistent_hook == NULL) return;
 
   gum_arm64_writer_put_sub_reg_reg_imm(cw, ARM64_REG_SP, ARM64_REG_SP,
@@ -274,11 +254,9 @@ static void persistent_prologue_hook(GumArm64Writer   *cw,
 
   gum_arm64_writer_put_add_reg_reg_imm(cw, ARM64_REG_SP, ARM64_REG_SP,
                                        GUM_RED_ZONE_SIZE);
-
 }
 
 static void instrument_persitent_save_lr(GumArm64Writer *cw) {
-
   gum_arm64_writer_put_stp_reg_reg_reg_offset(
       cw, ARM64_REG_X0, ARM64_REG_X1, ARM64_REG_SP, -(16 + GUM_RED_ZONE_SIZE),
       GUM_INDEX_PRE_ADJUST);
@@ -291,11 +269,9 @@ static void instrument_persitent_save_lr(GumArm64Writer *cw) {
   gum_arm64_writer_put_ldp_reg_reg_reg_offset(
       cw, ARM64_REG_X0, ARM64_REG_X1, ARM64_REG_SP, 16 + GUM_RED_ZONE_SIZE,
       GUM_INDEX_POST_ADJUST);
-
 }
 
 void persistent_prologue_arch(GumStalkerOutput *output) {
-
   /*
    *  SAVE REGS
    *  SAVE RET
@@ -358,11 +334,9 @@ void persistent_prologue_arch(GumStalkerOutput *output) {
   instrument_persitent_save_lr(cw);
 
   if (persistent_debug) { gum_arm64_writer_put_brk_imm(cw, 0); }
-
 }
 
 void persistent_epilogue_arch(GumStalkerOutput *output) {
-
   GumArm64Writer *cw = output->writer.arm64;
 
   if (persistent_debug) { gum_arm64_writer_put_brk_imm(cw, 0); }
@@ -373,8 +347,6 @@ void persistent_epilogue_arch(GumStalkerOutput *output) {
   gum_arm64_writer_put_ldr_reg_reg_offset(cw, ARM64_REG_X0, ARM64_REG_X0, 0);
 
   gum_arm64_writer_put_br_reg(cw, ARM64_REG_X0);
-
 }
 
 #endif
-

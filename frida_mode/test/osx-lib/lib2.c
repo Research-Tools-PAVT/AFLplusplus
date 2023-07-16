@@ -3,9 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-
 void __attribute__((noinline)) crashme(const uint8_t *Data, size_t Size) {
-
   if (Size < 1) return;
 
   char *buf = malloc(10);
@@ -13,7 +11,6 @@ void __attribute__((noinline)) crashme(const uint8_t *Data, size_t Size) {
   if (buf == NULL) return;
 
   switch (Data[0]) {
-
     /* Underflow */
     case 'U':
       printf("Underflow\n");
@@ -53,9 +50,5 @@ void __attribute__((noinline)) crashme(const uint8_t *Data, size_t Size) {
     default:
       printf("Nop - No Error\n");
       break;
-
   }
-
-
 }
-

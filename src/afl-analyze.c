@@ -55,24 +55,24 @@
 #include <sys/types.h>
 #include <sys/resource.h>
 
-static u8 *in_file;                    /* Analyzer input test case          */
+static u8 *in_file; /* Analyzer input test case          */
 
-static u8 *in_data;                    /* Input data for analysis           */
+static u8 *in_data; /* Input data for analysis           */
 
-static u32 in_len,                     /* Input data length                 */
-    total_execs,                       /* Total number of execs             */
-    exec_hangs,                        /* Total number of hangs             */
-    exec_tmout = EXEC_TIMEOUT;         /* Exec timeout (ms)                 */
+static u32 in_len,             /* Input data length                 */
+    total_execs,               /* Total number of execs             */
+    exec_hangs,                /* Total number of hangs             */
+    exec_tmout = EXEC_TIMEOUT; /* Exec timeout (ms)                 */
 
-static u64 orig_cksum;                 /* Original checksum                 */
+static u64 orig_cksum; /* Original checksum                 */
 
-static u64 mem_limit = MEM_LIMIT;      /* Memory limit (MB)                 */
+static u64 mem_limit = MEM_LIMIT; /* Memory limit (MB)                 */
 
-static bool edges_only,                  /* Ignore hit counts?              */
-    use_hex_offsets,                   /* Show hex offsets?                 */
-    use_stdin = true;                     /* Use stdin for program input?   */
+static bool edges_only, /* Ignore hit counts?              */
+    use_hex_offsets,    /* Show hex offsets?                 */
+    use_stdin = true;   /* Use stdin for program input?   */
 
-static volatile u8 stop_soon;          /* Ctrl-C pressed?                   */
+static volatile u8 stop_soon; /* Ctrl-C pressed?                   */
 
 static u8 *target_path;
 static u8  frida_mode;
@@ -80,18 +80,18 @@ static u8  qemu_mode;
 static u8  cs_mode;
 static u32 map_size = MAP_SIZE;
 
-static afl_forkserver_t fsrv = {0};   /* The forkserver                     */
+static afl_forkserver_t fsrv = {0}; /* The forkserver                     */
 
 /* Constants used for describing byte behavior. */
 
-#define RESP_NONE 0x00                 /* Changing byte is a no-op.         */
-#define RESP_MINOR 0x01                /* Some changes have no effect.      */
-#define RESP_VARIABLE 0x02             /* Changes produce variable paths.   */
-#define RESP_FIXED 0x03                /* Changes produce fixed patterns.   */
+#define RESP_NONE 0x00     /* Changing byte is a no-op.         */
+#define RESP_MINOR 0x01    /* Some changes have no effect.      */
+#define RESP_VARIABLE 0x02 /* Changes produce variable paths.   */
+#define RESP_FIXED 0x03    /* Changes produce fixed patterns.   */
 
-#define RESP_LEN 0x04                  /* Potential length field            */
-#define RESP_CKSUM 0x05                /* Potential checksum                */
-#define RESP_SUSPECT 0x06              /* Potential "suspect" blob          */
+#define RESP_LEN 0x04     /* Potential length field            */
+#define RESP_CKSUM 0x05   /* Potential checksum                */
+#define RESP_SUSPECT 0x06 /* Potential "suspect" blob          */
 
 /* Classify tuple counts. This is a slow & naive version, but good enough here.
  */
@@ -111,71 +111,51 @@ static u8 count_class_lookup[256] = {
 };
 
 static void kill_child() {
-
   if (fsrv.child_pid > 0) {
-
     kill(fsrv.child_pid, fsrv.child_kill_signal);
     fsrv.child_pid = -1;
-
   }
-
 }
 
 static void classify_counts(u8 *mem, u32 mem_size) {
-
   u32 i = mem_size;
 
   if (edges_only) {
-
     while (i--) {
-
       if (*mem) { *mem = 1; }
       mem++;
-
     }
 
   } else {
-
     while (i--) {
-
       *mem = count_class_lookup[*mem];
       mem++;
-
     }
-
   }
-
 }
 
 /* See if any bytes are set in the bitmap. */
 
 static inline u8 anything_set(void) {
-
   u32 *ptr = (u32 *)fsrv.trace_bits;
   u32  i = (map_size >> 2);
 
   while (i--) {
-
     if (*(ptr++)) { return 1; }
-
   }
 
   return 0;
-
 }
 
 /* Get rid of temp files (atexit handler). */
 
 static void at_exit_handler(void) {
-
-  unlink(fsrv.out_file);                                   /* Ignore errors */
-
+  unlink(fsrv.out_file); /* Ignore errors */
 }
 
 /* Read initial file. */
 
 static void read_initial_file(void) {
-
   struct stat st;
   s32         fd = open(in_file, O_RDONLY);
 
@@ -184,9 +164,7 @@ static void read_initial_file(void) {
   if (fstat(fd, &st) || !st.st_size) { FATAL("Zero-sized input file."); }
 
   if (st.st_size >= TMIN_MAX_FILE) {
-
     FATAL("Input file is too large (%ld MB max)", TMIN_MAX_FILE / 1024 / 1024);
-
   }
 
   in_len = st.st_size;
@@ -197,65 +175,52 @@ static void read_initial_file(void) {
   close(fd);
 
   OKF("Read %u byte%s from '%s'.", in_len, in_len == 1 ? "" : "s", in_file);
-
 }
 
 /* Execute target application. Returns exec checksum, or 0 if program
    times out. */
 
 static u64 analyze_run_target(u8 *mem, u32 len, u8 first_run) {
-
   afl_fsrv_write_to_testcase(&fsrv, mem, len);
   fsrv_run_result_t ret = afl_fsrv_run_target(&fsrv, exec_tmout, &stop_soon);
 
   if (ret == FSRV_RUN_ERROR) {
-
     FATAL("Error in forkserver");
 
   } else if (ret == FSRV_RUN_NOINST) {
-
     FATAL("Target not instrumented");
 
   } else if (ret == FSRV_RUN_NOBITS) {
-
     FATAL("Failed to run target");
-
   }
 
   classify_counts(fsrv.trace_bits, fsrv.map_size);
   total_execs++;
 
   if (stop_soon) {
-
     SAYF(cRST cLRD "\n+++ Analysis aborted by user +++\n" cRST);
     exit(1);
-
   }
 
   /* Always discard inputs that time out. */
 
   if (fsrv.last_run_timed_out) {
-
     exec_hangs++;
     return 0;
-
   }
 
   u64 cksum = hash64(fsrv.trace_bits, fsrv.map_size, HASH_CONST);
 
   if (ret == FSRV_RUN_CRASH) {
-
     /* We don't actually care if the target is crashing or not,
        except that when it does, the checksum should be different. */
 
     cksum ^= 0xffffffff;
-
   }
 
   if (first_run) { orig_cksum = cksum; }
 
   return cksum;
-
 }
 
 #ifdef USE_COLOR
@@ -263,9 +228,7 @@ static u64 analyze_run_target(u8 *mem, u32 len, u8 first_run) {
 /* Helper function to display a human-readable character. */
 
 static void show_char(u8 val) {
-
   switch (val) {
-
     case 0 ... 32:
     case 127 ... 255:
       SAYF("#%02x", val);
@@ -273,15 +236,12 @@ static void show_char(u8 val) {
 
     default:
       SAYF(" %c ", val);
-
   }
-
 }
 
 /* Show the legend */
 
 static void show_legend(void) {
-
   SAYF("    " cLGR bgGRA " 01 " cRST " - no-op block              " cBLK bgLGN
        " 01 " cRST
        " - suspected length field\n"
@@ -292,84 +252,66 @@ static void show_legend(void) {
        " 01 " cRST
        " - suspected checksummed block\n"
        "    " cBLK bgMGN " 01 " cRST " - \"magic value\" section\n\n");
-
 }
 
-#endif                                                         /* USE_COLOR */
+#endif /* USE_COLOR */
 
 /* Interpret and report a pattern in the input file. */
 
 static void dump_hex(u32 len, u8 *b_data) {
-
   u32 i;
 
   for (i = 0; i < len; i++) {
-
 #ifdef USE_COLOR
     u32 rlen = 1, off;
 #else
     u32 rlen = 1;
-#endif                                                        /* ^USE_COLOR */
+#endif /* ^USE_COLOR */
 
     u8 rtype = b_data[i] & 0x0f;
 
     /* Look ahead to determine the length of run. */
 
     while (i + rlen < len && (b_data[i] >> 7) == (b_data[i + rlen] >> 7)) {
-
       if (rtype < (b_data[i + rlen] & 0x0f)) {
-
         rtype = b_data[i + rlen] & 0x0f;
-
       }
 
       rlen++;
-
     }
 
     /* Try to do some further classification based on length & value. */
 
     if (rtype == RESP_FIXED) {
-
       switch (rlen) {
-
         case 2: {
-
           u16 val = *(u16 *)(in_data + i);
 
           /* Small integers may be length fields. */
 
           if (val && (val <= in_len || SWAP16(val) <= in_len)) {
-
             rtype = RESP_LEN;
             break;
-
           }
 
           /* Uniform integers may be checksums. */
 
           if (val && abs(in_data[i] - in_data[i + 1]) > 32) {
-
             rtype = RESP_CKSUM;
             break;
-
           }
 
           break;
-
         }
 
         case 4: {
-
           u32 val = *(u32 *)(in_data + i);
 
           /* Small integers may be length fields. */
 
           if (val && (val <= in_len || SWAP32(val) <= in_len)) {
-
             rtype = RESP_LEN;
             break;
-
           }
 
           /* Uniform integers may be checksums. */
@@ -377,14 +319,11 @@ static void dump_hex(u32 len, u8 *b_data) {
           if (val && (in_data[i] >> 7 != in_data[i + 1] >> 7 ||
                       in_data[i] >> 7 != in_data[i + 2] >> 7 ||
                       in_data[i] >> 7 != in_data[i + 3] >> 7)) {
-
             rtype = RESP_CKSUM;
             break;
-
           }
 
           break;
-
         }
 
         case 1:
@@ -394,9 +333,7 @@ static void dump_hex(u32 len, u8 *b_data) {
 
         default:
           rtype = RESP_SUSPECT;
-
       }
-
     }
 
     /* Print out the entire run. */
@@ -404,27 +341,20 @@ static void dump_hex(u32 len, u8 *b_data) {
 #ifdef USE_COLOR
 
     for (off = 0; off < rlen; off++) {
-
       /* Every 16 digits, display offset. */
 
       if (!((i + off) % 16)) {
-
         if (off) { SAYF(cRST cLCY ">"); }
 
         if (use_hex_offsets) {
-
           SAYF(cRST cGRA "%s[%06x] " cRST, (i + off) ? "\n" : "", i + off);
 
         } else {
-
           SAYF(cRST cGRA "%s[%06u] " cRST, (i + off) ? "\n" : "", i + off);
-
         }
-
       }
 
       switch (rtype) {
-
         case RESP_NONE:
           SAYF(cLGR bgGRA);
           break;
@@ -446,21 +376,16 @@ static void dump_hex(u32 len, u8 *b_data) {
         case RESP_SUSPECT:
           SAYF(cBLK bgLRD);
           break;
-
       }
 
       show_char(in_data[i + off]);
 
       if (off != rlen - 1 && (i + off + 1) % 16) {
-
         SAYF(" ");
 
       } else {
-
         SAYF(cRST " ");
-
       }
-
     }
 
 #else
@@ -471,7 +396,6 @@ static void dump_hex(u32 len, u8 *b_data) {
       SAYF("    Offset %u, length %u: ", i, rlen);
 
     switch (rtype) {
-
       case RESP_NONE:
         SAYF("no-op block\n");
         break;
@@ -493,41 +417,36 @@ static void dump_hex(u32 len, u8 *b_data) {
       case RESP_SUSPECT:
         SAYF("suspected checksummed block\n");
         break;
-
     }
 
-#endif                                                        /* ^USE_COLOR */
+#endif /* ^USE_COLOR */
 
     i += rlen - 1;
-
   }
 
 #ifdef USE_COLOR
   SAYF(cRST "\n");
-#endif                                                         /* USE_COLOR */
-
+#endif /* USE_COLOR */
 }
 
 /* Actually analyze! */
 
 static void analyze() {
-
   u32 i;
   u32 boring_len = 0, prev_xff = 0, prev_x01 = 0, prev_s10 = 0, prev_a10 = 0;
 
   u8 *b_data = ck_alloc(in_len + 1);
   u8  seq_byte = 0;
 
-  b_data[in_len] = 0xff;                         /* Intentional terminator. */
+  b_data[in_len] = 0xff; /* Intentional terminator. */
 
   ACTF("Analyzing input file (this may take a while)...\n");
 
 #ifdef USE_COLOR
   show_legend();
-#endif                                                         /* USE_COLOR */
+#endif /* USE_COLOR */
 
   for (i = 0; i < in_len; i++) {
-
     u64 xor_ff, xor_01, sub_10, add_10;
     u8  xff_orig, x01_orig, s10_orig, a10_orig;
 
@@ -556,32 +475,25 @@ static void analyze() {
     a10_orig = (add_10 == orig_cksum);
 
     if (xff_orig && x01_orig && s10_orig && a10_orig) {
-
       b_data[i] = RESP_NONE;
       boring_len++;
 
     } else if (xff_orig || x01_orig || s10_orig || a10_orig) {
-
       b_data[i] = RESP_MINOR;
       boring_len++;
 
     } else if (xor_ff == xor_01 && xor_ff == sub_10 && xor_ff == add_10) {
-
       b_data[i] = RESP_FIXED;
 
     } else {
-
       b_data[i] = RESP_VARIABLE;
-
     }
 
     /* When all checksums change, flip most significant bit of b_data. */
 
     if (prev_xff != xor_ff && prev_x01 != xor_01 && prev_s10 != sub_10 &&
         prev_a10 != add_10) {
-
       seq_byte ^= 0x80;
-
     }
 
     b_data[i] |= seq_byte;
@@ -590,7 +502,6 @@ static void analyze() {
     prev_x01 = xor_01;
     prev_s10 = sub_10;
     prev_a10 = add_10;
-
   }
 
   dump_hex(in_len, b_data);
@@ -601,31 +512,25 @@ static void analyze() {
       100.0 - ((double)boring_len * 100) / in_len);
 
   if (exec_hangs) {
-
     WARNF(cLRD "Encountered %u timeouts - results may be skewed." cRST,
           exec_hangs);
-
   }
 
   ck_free(b_data);
-
 }
 
 /* Handle Ctrl-C and the like. */
 
 static void handle_stop_sig(int sig) {
-
   (void)sig;
   stop_soon = 1;
 
   afl_fsrv_killall();
-
 }
 
 /* Do basic preparations - persistent fds, filenames, etc. */
 
 static void set_up_environment(char **argv) {
-
   u8   *x;
   char *afl_preload;
   char *frida_afl_preload = NULL;
@@ -634,19 +539,15 @@ static void set_up_environment(char **argv) {
   if (fsrv.dev_null_fd < 0) { PFATAL("Unable to open /dev/null"); }
 
   if (!fsrv.out_file) {
-
     u8 *use_dir = ".";
 
     if (access(use_dir, R_OK | W_OK | X_OK)) {
-
       use_dir = get_afl_env("TMPDIR");
       if (!use_dir) { use_dir = "/tmp"; }
-
     }
 
     fsrv.out_file =
         alloc_printf("%s/.afl-analyze-temp-%u", use_dir, (u32)getpid());
-
   }
 
   unlink(fsrv.out_file);
@@ -659,36 +560,26 @@ static void set_up_environment(char **argv) {
   x = get_afl_env("MSAN_OPTIONS");
 
   if (x) {
-
     if (!strstr(x, "exit_code=" STRINGIFY(MSAN_ERROR))) {
-
       FATAL("Custom MSAN_OPTIONS set without exit_code=" STRINGIFY(
           MSAN_ERROR) " - please fix!");
-
     }
-
   }
 
   set_sanitizer_defaults();
 
   if (get_afl_env("AFL_PRELOAD")) {
-
     if (qemu_mode) {
-
       /* afl-qemu-trace takes care of converting AFL_PRELOAD. */
 
     } else if (frida_mode) {
-
       afl_preload = getenv("AFL_PRELOAD");
       u8 *frida_binary = find_afl_binary(argv[0], "afl-frida-trace.so");
       if (afl_preload) {
-
         frida_afl_preload = alloc_printf("%s:%s", afl_preload, frida_binary);
 
       } else {
-
         frida_afl_preload = alloc_printf("%s", frida_binary);
-
       }
 
       ck_free(frida_binary);
@@ -697,31 +588,25 @@ static void set_up_environment(char **argv) {
       setenv("DYLD_INSERT_LIBRARIES", frida_afl_preload, 1);
 
     } else {
-
       /* CoreSight mode uses the default behavior. */
 
       setenv("LD_PRELOAD", getenv("AFL_PRELOAD"), 1);
       setenv("DYLD_INSERT_LIBRARIES", getenv("AFL_PRELOAD"), 1);
-
     }
 
   } else if (frida_mode) {
-
     u8 *frida_binary = find_afl_binary(argv[0], "afl-frida-trace.so");
     setenv("LD_PRELOAD", frida_binary, 1);
     setenv("DYLD_INSERT_LIBRARIES", frida_binary, 1);
     ck_free(frida_binary);
-
   }
 
   if (frida_afl_preload) { ck_free(frida_afl_preload); }
-
 }
 
 /* Setup signal handlers, duh. */
 
 static void setup_signal_handlers(void) {
-
   struct sigaction sa;
 
   sa.sa_handler = NULL;
@@ -740,13 +625,11 @@ static void setup_signal_handlers(void) {
   sigaction(SIGHUP, &sa, NULL);
   sigaction(SIGINT, &sa, NULL);
   sigaction(SIGTERM, &sa, NULL);
-
 }
 
 /* Display usage hints. */
 
 static void usage(u8 *argv0) {
-
   SAYF(
       "\n%s [ options ] -- /path/to/target_app [ ... ]\n\n"
 
@@ -797,13 +680,11 @@ static void usage(u8 *argv0) {
       , argv0, EXEC_TIMEOUT, MEM_LIMIT, doc_path);
 
   exit(1);
-
 }
 
 /* Main entry point */
 
 int main(int argc, char **argv_orig, char **envp) {
-
   s32    opt;
   u8     mem_limit_given = 0, timeout_given = 0, unicorn_mode = 0, use_wine = 0;
   char **use_argv;
@@ -816,9 +697,7 @@ int main(int argc, char **argv_orig, char **envp) {
   afl_fsrv_init(&fsrv);
 
   while ((opt = getopt(argc, argv, "+i:f:m:t:eAOQUWXYh")) > 0) {
-
     switch (opt) {
-
       case 'i':
 
         if (in_file) { FATAL("Multiple -i options not supported"); }
@@ -839,7 +718,6 @@ int main(int argc, char **argv_orig, char **envp) {
         break;
 
       case 'm': {
-
         u8 suffix = 'M';
 
         if (mem_limit_given) { FATAL("Multiple -m options not supported"); }
@@ -848,22 +726,17 @@ int main(int argc, char **argv_orig, char **envp) {
         if (!optarg) { FATAL("Wrong usage of -m"); }
 
         if (!strcmp(optarg, "none")) {
-
           mem_limit = 0;
           fsrv.mem_limit = 0;
           break;
-
         }
 
         if (sscanf(optarg, "%llu%c", &mem_limit, &suffix) < 1 ||
             optarg[0] == '-') {
-
           FATAL("Bad syntax used for -m");
-
         }
 
         switch (suffix) {
-
           case 'T':
             mem_limit *= 1024 * 1024;
             break;
@@ -878,15 +751,12 @@ int main(int argc, char **argv_orig, char **envp) {
 
           default:
             FATAL("Unsupported suffix or bad syntax for -m");
-
         }
 
         if (mem_limit < 5) { FATAL("Dangerously low value of -m"); }
 
         if (sizeof(rlim_t) == 4 && mem_limit > 2000) {
-
           FATAL("Value of -m out of range on 32-bit systems");
-
         }
 
         fsrv.mem_limit = mem_limit;
@@ -905,16 +775,14 @@ int main(int argc, char **argv_orig, char **envp) {
         exec_tmout = atoi(optarg);
 
         if (exec_tmout < 10 || optarg[0] == '-') {
-
           FATAL("Dangerously low value of -t");
-
         }
 
         fsrv.exec_tmout = exec_tmout;
 
         break;
 
-      case 'A':                                           /* CoreSight mode */
+      case 'A': /* CoreSight mode */
 
 #if !defined(__aarch64__) || !defined(__linux__)
         FATAL("-A option is not supported on this platform");
@@ -926,7 +794,7 @@ int main(int argc, char **argv_orig, char **envp) {
         fsrv.cs_mode = cs_mode;
         break;
 
-      case 'O':                                               /* FRIDA mode */
+      case 'O': /* FRIDA mode */
 
         if (frida_mode) { FATAL("Multiple -O options not supported"); }
 
@@ -955,7 +823,7 @@ int main(int argc, char **argv_orig, char **envp) {
         fsrv.mem_limit = mem_limit;
         break;
 
-      case 'W':                                           /* Wine+QEMU mode */
+      case 'W': /* Wine+QEMU mode */
 
         if (use_wine) { FATAL("Multiple -W options not supported"); }
         qemu_mode = 1;
@@ -969,7 +837,7 @@ int main(int argc, char **argv_orig, char **envp) {
 
       case 'Y':  // fallthough
 #ifdef __linux__
-      case 'X':                                                 /* NYX mode */
+      case 'X': /* NYX mode */
 
         if (fsrv.nyx_mode) { FATAL("Multiple -X options not supported"); }
 
@@ -991,9 +859,7 @@ int main(int argc, char **argv_orig, char **envp) {
 
       default:
         usage(argv[0]);
-
     }
-
   }
 
   if (optind == argc || !in_file) { usage(argv[0]); }
@@ -1017,13 +883,10 @@ int main(int argc, char **argv_orig, char **envp) {
 
 #ifdef __linux__
   if (!fsrv.nyx_mode) {
-
     fsrv.target_path = find_binary(argv[optind]);
 
   } else {
-
     fsrv.target_path = ck_strdup(argv[optind]);
-
   }
 
 #else
@@ -1035,35 +898,27 @@ int main(int argc, char **argv_orig, char **envp) {
   signal(SIGALRM, kill_child);
 
   if (qemu_mode) {
-
     if (use_wine) {
-
       use_argv =
           get_wine_argv(argv[0], &target_path, argc - optind, argv + optind);
 
     } else {
-
       use_argv =
           get_qemu_argv(argv[0], &target_path, argc - optind, argv + optind);
-
     }
 
   } else if (cs_mode) {
-
     use_argv = get_cs_argv(argv[0], &target_path, argc - optind, argv + optind);
 
 #ifdef __linux__
 
   } else if (fsrv.nyx_mode) {
-
     fsrv.nyx_id = 0;
 
     u8 *libnyx_binary = find_afl_binary(argv[0], "libnyx.so");
     fsrv.nyx_handlers = afl_load_libnyx_plugin(libnyx_binary);
     if (fsrv.nyx_handlers == NULL) {
-
       FATAL("failed to initialize libnyx.so...");
-
     }
 
     fsrv.nyx_use_tmp_workdir = true;
@@ -1073,24 +928,18 @@ int main(int argc, char **argv_orig, char **envp) {
 #endif
 
   } else {
-
     use_argv = argv + optind;
-
   }
 
   SAYF("\n");
 
   if (getenv("AFL_FORKSRV_INIT_TMOUT")) {
-
     s32 forksrv_init_tmout = atoi(getenv("AFL_FORKSRV_INIT_TMOUT"));
     if (forksrv_init_tmout < 1) {
-
       FATAL("Bad value specified for AFL_FORKSRV_INIT_TMOUT");
-
     }
 
     fsrv.init_tmout = (u32)forksrv_init_tmout;
-
   }
 
   configure_afl_kill_signals(
@@ -1110,15 +959,11 @@ int main(int argc, char **argv_orig, char **envp) {
   analyze_run_target(in_data, in_len, 1);
 
   if (fsrv.last_run_timed_out) {
-
     FATAL("Target binary times out (adjusting -t may help).");
-
   }
 
   if (get_afl_env("AFL_SKIP_BIN_CHECK") == NULL && !anything_set()) {
-
     FATAL("No instrumentation detected.");
-
   }
 
   analyze();
@@ -1131,6 +976,4 @@ int main(int argc, char **argv_orig, char **envp) {
   if (in_data) { ck_free(in_data); }
 
   exit(0);
-
 }
-

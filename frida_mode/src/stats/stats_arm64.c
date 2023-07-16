@@ -12,7 +12,6 @@
 #if defined(__aarch64__)
 
 typedef struct {
-
   guint64 num_blocks;
   guint64 num_instructions;
 
@@ -43,34 +42,26 @@ typedef struct {
 static stats_data_arch_t *stats_data_arch = NULL;
 
 void starts_arch_init(void) {
-
   stats_data_arch = shm_create(sizeof(stats_data_arch_t));
-
 }
 
 static void stats_write_arch_stat(char *label, guint64 value, guint64 total) {
-
   stats_print("%-30s ", label);
   stats_print("%10" G_GINT64_MODIFIER "u ", value);
   if (total == 0) {
-
     stats_print("(--.--%%), ");
 
   } else {
-
     stats_print("(%5.2f%%) ", ((float)value * 100) / total);
-
   }
 
   stats_print("\n");
-
 }
 
 static void stats_write_arch_stat_delta(char *label, guint64 prev_value,
                                         guint64 curr_value, guint elapsed,
                                         guint64 prev_total,
                                         guint64 curr_total) {
-
   guint64 delta = curr_value - prev_value;
   guint64 delta_total = curr_total - prev_total;
   guint64 per_sec = delta / elapsed;
@@ -79,33 +70,25 @@ static void stats_write_arch_stat_delta(char *label, guint64 prev_value,
 
   stats_print("%10" G_GINT64_MODIFIER "u ", curr_value);
   if (curr_total == 0) {
-
     stats_print("(--.--%%), ");
 
   } else {
-
     stats_print("(%5.2f%%) ", ((float)curr_value * 100) / curr_total);
-
   }
 
   stats_print("%10" G_GINT64_MODIFIER "u ", delta);
   if (delta_total == 0) {
-
     stats_print("(--.--%%), ");
 
   } else {
-
     stats_print("(%5.2f%%) ", ((float)delta * 100) / delta_total);
-
   }
 
   stats_print("[%10" G_GINT64_MODIFIER "u/s]", per_sec);
   stats_print("\n");
-
 }
 
 void stats_write_arch(stats_data_t *data) {
-
   guint elapsed =
       (data->curr.stats_time - data->prev.stats_time) / MICRO_TO_SEC;
   stats_print("%-30s %10s %19s\n", "Transitions", "cumulative", "delta");
@@ -163,11 +146,9 @@ void stats_write_arch(stats_data_t *data) {
               stats_data_arch->num_blocks);
 
   if (stats_data_arch->num_blocks != 0) {
-
     stats_print(
         "%-30s %10" G_GINT64_MODIFIER "u\n", "Avg Instructions / Block ",
         stats_data_arch->num_instructions / stats_data_arch->num_blocks);
-
   }
 
   stats_print("\n");
@@ -201,17 +182,14 @@ void stats_write_arch(stats_data_t *data) {
 
   stats_print("\n");
   stats_print("\n");
-
 }
 
 void stats_collect_arch(const cs_insn *instr, gboolean begin) {
-
   if (stats_data_arch == NULL) { return; }
   if (begin) { stats_data_arch->num_blocks++; }
   stats_data_arch->num_instructions++;
 
   switch (instr->id) {
-
     case ARM64_INS_ADR:
       stats_data_arch->num_adr++;
       stats_data_arch->num_reloc++;
@@ -224,7 +202,6 @@ void stats_collect_arch(const cs_insn *instr, gboolean begin) {
 
     case ARM64_INS_B:
       switch (instr->detail->arm64.cc) {
-
         case ARM64_CC_INVALID:
         case ARM64_CC_AL:
         case ARM64_CC_NV:
@@ -233,7 +210,6 @@ void stats_collect_arch(const cs_insn *instr, gboolean begin) {
         default:
           stats_data_arch->num_bcc++;
           break;
-
       }
 
       stats_data_arch->num_eob++;
@@ -297,10 +273,7 @@ void stats_collect_arch(const cs_insn *instr, gboolean begin) {
 
     default:
       break;
-
   }
-
 }
 
 #endif
-

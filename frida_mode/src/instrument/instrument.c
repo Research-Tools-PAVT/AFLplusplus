@@ -47,14 +47,12 @@ __thread guint64  instrument_previous_pc;
 __thread guint64 *instrument_previous_pc_addr = NULL;
 
 typedef struct {
-
   GumAddress address;
   GumAddress end;
 
 } block_ctx_t;
 
 static void trace_debug(char *format, ...) {
-
   va_list ap;
   char    buffer[4096] = {0};
   int     ret;
@@ -69,20 +67,16 @@ static void trace_debug(char *format, ...) {
   len = strnlen(buffer, sizeof(buffer));
 
   IGNORED_RETURN(write(STDOUT_FILENO, buffer, len));
-
 }
 
 guint64 instrument_get_offset_hash(GumAddress current_rip) {
-
   guint64 area_offset = hash64((unsigned char *)&current_rip,
                                sizeof(GumAddress), instrument_hash_seed);
   gsize   map_size_pow2 = util_log2(__afl_map_size);
   return area_offset &= ((1 << map_size_pow2) - 1);
-
 }
 
 __attribute__((hot)) static void instrument_increment_map(GumAddress edge) {
-
   uint8_t *cursor;
   uint64_t value;
 
@@ -90,22 +84,17 @@ __attribute__((hot)) static void instrument_increment_map(GumAddress edge) {
   value = *cursor;
 
   if (value == 0xff) {
-
     value = 1;
 
   } else {
-
     value++;
-
   }
 
   *cursor = value;
-
 }
 
 __attribute__((hot)) static void on_basic_block(GumCpuContext *context,
                                                 gpointer       user_data) {
-
   UNUSED_PARAMETER(context);
 
   block_ctx_t *ctx = (block_ctx_t *)user_data;
@@ -114,10 +103,8 @@ __attribute__((hot)) static void on_basic_block(GumCpuContext *context,
   guint64      current_pc = instrument_get_offset_hash(current_rip);
   guint64      edge;
   if (instrument_previous_pc_addr == NULL) {
-
     instrument_previous_pc_addr = &instrument_previous_pc;
     *instrument_previous_pc_addr = instrument_hash_zero;
-
   }
 
   edge = current_pc ^ *instrument_previous_pc_addr;
@@ -125,25 +112,19 @@ __attribute__((hot)) static void on_basic_block(GumCpuContext *context,
   instrument_increment_map(edge);
 
   if (unlikely(instrument_tracing)) {
-
     if (!instrument_unique || edges_notified[edge] == 0) {
-
       trace_debug("TRACE: edge: %10" G_GINT64_MODIFIER
                   "d, current_rip: 0x%016" G_GINT64_MODIFIER
                   "x, previous_rip: 0x%016" G_GINT64_MODIFIER "x\n",
                   edge, current_rip, previous_rip);
-
     }
 
     if (instrument_unique) { edges_notified[edge] = 1; }
-
   }
 
   if (unlikely(instrument_coverage_unstable_filename != NULL)) {
-
     instrument_coverage_unstable(edge, previous_rip, previous_end, current_rip,
                                  current_end);
-
   }
 
   previous_rip = current_rip;
@@ -151,13 +132,11 @@ __attribute__((hot)) static void on_basic_block(GumCpuContext *context,
 
   gsize map_size_pow2 = util_log2(__afl_map_size);
   *instrument_previous_pc_addr = util_rotate(current_pc, 1, map_size_pow2);
-
 }
 
 static void instrument_basic_block(GumStalkerIterator *iterator,
                                    GumStalkerOutput   *output,
                                    gpointer            user_data) {
-
   UNUSED_PARAMETER(user_data);
 
   const cs_insn *instr;
@@ -166,7 +145,6 @@ static void instrument_basic_block(GumStalkerIterator *iterator,
   block_ctx_t   *ctx = NULL;
 
   while (gum_stalker_iterator_next(iterator, &instr)) {
-
     if (unlikely(begin)) { instrument_debug_start(instr->address, output); }
 
     if (instr->address == persistent_start) { persistent_prologue(output); }
@@ -202,19 +180,15 @@ static void instrument_basic_block(GumStalkerIterator *iterator,
     stats_collect(instr, begin);
 
     if (unlikely(begin)) {
-
       instrument_debug_start(instr->address, output);
       instrument_coverage_start(instr->address);
 
 #if defined(__arm__)
       if (output->encoding == GUM_INSTRUCTION_SPECIAL) {
-
         prefetch_write(GSIZE_TO_POINTER(instr->address + 1));
 
       } else {
-
         prefetch_write(GSIZE_TO_POINTER(instr->address));
-
       }
 
 #else
@@ -222,53 +196,38 @@ static void instrument_basic_block(GumStalkerIterator *iterator,
 #endif
 
       if (likely(!excluded)) {
-
         if (likely(instrument_optimize)) {
-
           instrument_coverage_optimize(instr, output);
 
         } else {
-
           ctx = gum_malloc0(sizeof(block_ctx_t));
           ctx->address = GUM_ADDRESS(instr->address);
           gum_stalker_iterator_put_callout(iterator, on_basic_block, ctx, NULL);
-
         }
 
         if (unlikely(instrument_regs_filename != NULL)) {
-
           gum_stalker_iterator_put_callout(iterator, instrument_write_regs,
                                            (void *)(size_t)regs_fd, NULL);
-
         }
-
       }
-
     }
 
     if (instrument_coverage_insn) {
-
       instrument_coverage_optimize_insn(instr, output);
-
     }
 
     if (likely(!excluded)) {
-
       asan_instrument(instr, iterator);
       cmplog_instrument(instr, iterator);
-
     }
 
     instrument_cache(instr, output);
 
     if (js_stalker_callback(instr, begin, excluded, output)) {
-
       gum_stalker_iterator_keep(iterator);
-
     }
 
     begin = FALSE;
-
   }
 
   if (ctx != NULL) { ctx->end = (instr->address + instr->size); }
@@ -276,11 +235,9 @@ static void instrument_basic_block(GumStalkerIterator *iterator,
   instrument_flush(output);
   instrument_debug_end(output);
   instrument_coverage_end(instr->address + instr->size);
-
 }
 
 void instrument_config(void) {
-
   instrument_optimize = (getenv("AFL_FRIDA_INST_NO_OPTIMIZE") == NULL);
   instrument_tracing = (getenv("AFL_FRIDA_INST_TRACE") != NULL);
   instrument_unique = (getenv("AFL_FRIDA_INST_TRACE_UNIQUE") != NULL);
@@ -297,11 +254,9 @@ void instrument_config(void) {
   asan_config();
   cmplog_config();
   instrument_cache_config();
-
 }
 
 void instrument_init(void) {
-
   if (__afl_map_size == MAP_SIZE) __afl_map_size = FRIDA_DEFAULT_MAP_SIZE;
 
   if (!instrument_is_coverage_optimize_supported()) instrument_optimize = false;
@@ -326,24 +281,18 @@ void instrument_init(void) {
        instrument_suppress ? 'X' : ' ');
 
   if (instrument_tracing && instrument_optimize) {
-
     WARNF("AFL_FRIDA_INST_TRACE implies AFL_FRIDA_INST_NO_OPTIMIZE");
     instrument_optimize = FALSE;
-
   }
 
   if (instrument_coverage_unstable_filename && instrument_optimize) {
-
     WARNF("AFL_FRIDA_INST_COVERAGE_FILE implies AFL_FRIDA_INST_NO_OPTIMIZE");
     instrument_optimize = FALSE;
-
   }
 
   if (instrument_unique && instrument_optimize) {
-
     WARNF("AFL_FRIDA_INST_TRACE_UNIQUE implies AFL_FRIDA_INST_NO_OPTIMIZE");
     instrument_optimize = FALSE;
-
   }
 
   if (instrument_unique) { instrument_tracing = TRUE; }
@@ -354,7 +303,6 @@ void instrument_init(void) {
   if (instrument_unique) { edges_notified = shm_create(__afl_map_size); }
 
   if (instrument_use_fixed_seed) {
-
     /*
      * This configuration option may be useful for diagnostics or
      * debugging.
@@ -362,7 +310,6 @@ void instrument_init(void) {
     instrument_hash_seed = instrument_fixed_seed;
 
   } else {
-
     /*
      * By using a different seed value for the hash, we can make different
      * instances have edge collisions in different places when carrying out
@@ -377,7 +324,6 @@ void instrument_init(void) {
 #endif
     instrument_hash_seed =
         g_get_monotonic_time() ^ (((guint64)getpid()) << 32) ^ tid;
-
   }
 
   FOKF(cBLU "Instrumentation" cRST " - " cGRN "seed:" cYEL
@@ -389,7 +335,6 @@ void instrument_init(void) {
        instrument_regs_filename == NULL ? " " : instrument_regs_filename);
 
   if (instrument_regs_filename != NULL) {
-
     char *path =
         g_canonicalize_filename(instrument_regs_filename, g_get_current_dir());
 
@@ -401,7 +346,6 @@ void instrument_init(void) {
     if (regs_fd < 0) { FFATAL("Failed to open regs file '%s'", path); }
 
     g_free(path);
-
   }
 
   asan_init();
@@ -410,28 +354,20 @@ void instrument_init(void) {
   instrument_coverage_optimize_init();
   instrument_debug_init();
   instrument_cache_init();
-
 }
 
 GumStalkerTransformer *instrument_get_transformer(void) {
-
   if (transformer == NULL) { FATAL("Instrumentation not initialized"); }
   return transformer;
-
 }
 
 void instrument_on_fork() {
-
   if (instrument_previous_pc_addr != NULL) {
-
     *instrument_previous_pc_addr = instrument_hash_zero;
-
   }
-
 }
 
 void instrument_regs_format(int fd, char *format, ...) {
-
   va_list ap;
   char    buffer[4096] = {0};
   int     ret;
@@ -446,6 +382,4 @@ void instrument_regs_format(int fd, char *format, ...) {
   len = strnlen(buffer, sizeof(buffer));
 
   IGNORED_RETURN(write(fd, buffer, len));
-
 }
-

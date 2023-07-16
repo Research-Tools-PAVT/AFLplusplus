@@ -42,7 +42,6 @@
 #define CMP_TYPE_RTN 2
 
 struct cmp_header {
-
   unsigned hits : 24;
   unsigned id : 24;
   unsigned shape : 5;
@@ -54,7 +53,6 @@ struct cmp_header {
 } __attribute__((packed));
 
 struct cmp_operands {
-
   u64 v0;
   u64 v1;
   u64 v0_128;
@@ -63,7 +61,6 @@ struct cmp_operands {
 } __attribute__((packed));
 
 struct cmpfn_operands {
-
   u8 v0[31];
   u8 v0_len;
   u8 v1[31];
@@ -74,10 +71,8 @@ struct cmpfn_operands {
 typedef struct cmp_operands cmp_map_list[CMP_MAP_H];
 
 struct cmp_map {
-
   struct cmp_header   headers[CMP_MAP_W];
   struct cmp_operands log[CMP_MAP_W][CMP_MAP_H];
-
 };
 
 /* Execs the child */
@@ -86,4 +81,3 @@ struct afl_forkserver;
 void cmplog_exec_child(struct afl_forkserver *fsrv, char **argv);
 
 #endif
-

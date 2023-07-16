@@ -13,26 +13,21 @@
 /* Dynamic Array for adding to the input repr
  * */
 void initArray(Array *a, size_t initialSize) {
-
   a->start = (terminal *)calloc(1, sizeof(terminal) * initialSize);
   a->used = 0;
   a->size = initialSize;
   a->inputlen = 0;
-
 }
 
 void insertArray(Array *a, int state, char *symbol, size_t symbol_len,
                  int trigger_idx) {
-
   // a->used is the number of used entries, because a->array[a->used++] updates
   // a->used only *after* the array has been accessed. Therefore a->used can go
   // up to a->size
   terminal *term_ptr;
   if (a->used == a->size) {
-
     a->size = a->size * sizeof(terminal);
     a->start = (terminal *)realloc(a->start, a->size * sizeof(terminal));
-
   }
 
   // Add the element
@@ -45,22 +40,17 @@ void insertArray(Array *a, int state, char *symbol, size_t symbol_len,
   // Increment the pointer
   a->used += 1;
   a->inputlen += symbol_len;
-
 }
 
 void freeArray(Array *a) {
-
   terminal *ptr;
   for (int x = 0; x < a->used; x++) {
-
     ptr = &a->start[x];
     free(ptr);
-
   }
 
   a->start = NULL;
   a->used = a->size = 0;
-
 }
 
 /* Dynamic array for adding indices of states/recursive features
@@ -68,58 +58,45 @@ void freeArray(Array *a) {
  * https://stackoverflow.com/questions/3536153/c-dynamically-growing-array
  */
 void initArrayIdx(IdxMap *a, size_t initialSize) {
-
   a->array = (int *)malloc(initialSize * sizeof(int));
   a->used = 0;
   a->size = initialSize;
-
 }
 
 void insertArrayIdx(IdxMap *a, int idx) {
-
   // a->used is the number of used entries, because a->array[a->used++] updates
   // a->used only *after* the array has been accessed. Therefore a->used can go
   // up to a->size
   if (a->used == a->size) {
-
     a->size *= 2;
     a->array = (int *)realloc(a->array, a->size * sizeof(int));
-
   }
 
   a->array[a->used++] = idx;
-
 }
 
 void freeArrayIdx(IdxMap *a) {
-
   free(a->array);
   a->array = NULL;
   a->used = a->size = 0;
-
 }
 
 /* Dynamic array for adding potential splice points
  */
 void initArraySplice(SpliceCandArray *a, size_t initialSize) {
-
   a->start = (SpliceCand *)malloc(initialSize * sizeof(SpliceCand));
   a->used = 0;
   a->size = initialSize;
-
 }
 
 void insertArraySplice(SpliceCandArray *a, Candidate *candidate, int idx) {
-
   // a->used is the number of used entries, because a->array[a->used++] updates
   // a->used only *after* the array has been accessed. Therefore a->used can go
   // up to a->size
   SpliceCand *candptr;
   if (a->used == a->size) {
-
     a->size = a->size * sizeof(SpliceCand);
     a->start = (SpliceCand *)realloc(a->start, a->size * sizeof(SpliceCand));
-
   }
 
   // Add the element
@@ -127,54 +104,42 @@ void insertArraySplice(SpliceCandArray *a, Candidate *candidate, int idx) {
   candptr->splice_cand = candidate;
   candptr->idx = idx;
   a->used += 1;
-
 }
 
 void freeArraySplice(IdxMap *a) {
-
   free(a->array);
   a->array = NULL;
   a->used = a->size = 0;
-
 }
 
 int fact(int n) {
-
   int i, f = 1;
   for (i = 1; i <= n; i++) {
-
     f *= i;
-
   }
 
   return f;
-
 }
 
 /* Uses the walk to create the input in-memory */
 u8 *unparse_walk(Array *input) {
-
   terminal *term_ptr;
   int       offset = 0;
-  u8 *      unparsed = (u8 *)malloc(input->inputlen + 1);
+  u8       *unparsed = (u8 *)malloc(input->inputlen + 1);
   term_ptr = &input->start[offset];
   strcpy(unparsed, term_ptr->symbol);
   offset += 1;
   while (offset < input->used) {
-
     term_ptr = &input->start[offset];
     strcat(unparsed, term_ptr->symbol);
     offset += 1;
-
   }
 
   return unparsed;
-
 }
 
 /*Dump the input representation into a file*/
 void write_input(Array *input, u8 *fn) {
-
   FILE *fp;
   // If file already exists, then skip creating the file
   if (access(fn, F_OK) != -1) { return; }
@@ -182,10 +147,8 @@ void write_input(Array *input, u8 *fn) {
   fp = fopen(fn, "wbx+");
   // If the input has already been flushed, then skip silently
   if (fp == NULL) {
-
     fprintf(stderr, "\n File '%s' could not be open, exiting\n", fn);
     exit(1);
-
   }
 
   // Write the length parameters
@@ -198,16 +161,14 @@ void write_input(Array *input, u8 *fn) {
   // printf("\nUsed:%zu Size:%zu Inputlen:%zu", input->used, input->size,
   // input->inputlen);
   fclose(fp);
-
 }
 
 Array *parse_input(state *pda, FILE *fp) {
-
   terminal *term;
-  state *   state_ptr;
-  trigger * trigger;
+  state    *state_ptr;
+  trigger  *trigger;
   int       trigger_idx;
-  Array *   input = (Array *)calloc(1, sizeof(Array));
+  Array    *input = (Array *)calloc(1, sizeof(Array));
 
   // Read the length parameters
   fread(&input->used, sizeof(size_t), 1, fp);
@@ -216,10 +177,8 @@ Array *parse_input(state *pda, FILE *fp) {
 
   terminal *start_ptr = (terminal *)calloc(input->size, sizeof(terminal));
   if (!start_ptr) {
-
     fprintf(stderr, "alloc failed!\n");
     return NULL;
-
   }
 
   // Read the dynamic array to memory
@@ -228,7 +187,6 @@ Array *parse_input(state *pda, FILE *fp) {
   // changed
   int idx = 0;
   while (idx < input->used) {
-
     terminal *term = &start_ptr[idx];
     // Find the state
     state_ptr = pda + term->state;
@@ -237,7 +195,6 @@ Array *parse_input(state *pda, FILE *fp) {
     trigger = (state_ptr->ptr) + trigger_idx;
     term->symbol = trigger->term;
     idx += 1;
-
   }
 
   input->start = start_ptr;
@@ -245,24 +202,18 @@ Array *parse_input(state *pda, FILE *fp) {
   // input->inputlen);
 
   return input;
-
 }
 
 // Read the input representation into memory
 Array *read_input(state *pda, u8 *fn) {
-
   FILE *fp;
   fp = fopen(fn, "rb");
   if (fp == NULL) {
-
     fprintf(stderr, "\n File '%s' does not exist, exiting\n", fn);
     exit(1);
-
   }
 
   Array *res = parse_input(pda, fp);
   fclose(fp);
   return res;
-
 }
-

@@ -252,7 +252,7 @@ static char *afl_environment_variables[] = {
     "AFL_PIZZA_MODE",
 #ifdef FUZZMAX
     "AFL_NO_SATFUZZ_CULLQUEUE",
-    "AFL_FORMAT_SHM"
+    "AFL_FORMAT_SHM",
 #endif
     NULL
 

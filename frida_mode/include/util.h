@@ -27,7 +27,6 @@ gsize    util_log2(gsize val);
 
 #define FOKF(x...)                         \
   do {                                     \
-                                           \
     if (!util_output_enabled()) { break; } \
                                            \
     SAYF(cLGN "[F] " cRST x);              \
@@ -37,21 +36,18 @@ gsize    util_log2(gsize val);
 
 #define FWARNF(x...) \
   do {               \
-                     \
     WARNF(x);        \
                      \
   } while (0)
 
 #define FFATAL(x...) \
   do {               \
-                     \
     FATAL(x);        \
                      \
   } while (0)
 
 #define FVERBOSE(x...)                      \
   do {                                      \
-                                            \
     if (!util_verbose_enabled()) { break; } \
                                             \
     SAYF(cGRA "[F] " x);                    \
@@ -60,4 +56,3 @@ gsize    util_log2(gsize val);
   } while (0)
 
 #endif
-

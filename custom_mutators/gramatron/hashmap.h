@@ -10,10 +10,10 @@
 #ifndef __HASHMAP_H__
 #define __HASHMAP_H__
 
-#define MAP_MISSING -3                                   /* No such element */
-#define MAP_FULL -2                                      /* Hashmap is full */
-#define MAP_OMEM -1                                        /* Out of Memory */
-#define MAP_OK 0                                                      /* OK */
+#define MAP_MISSING -3 /* No such element */
+#define MAP_FULL -2    /* Hashmap is full */
+#define MAP_OMEM -1    /* Out of Memory */
+#define MAP_OK 0       /* OK */
 
 /*
  * any_t is a pointer.  This allows you to put arbitrary structures in
@@ -80,4 +80,3 @@ extern void hashmap_free(map_t in);
 extern int hashmap_length(map_t in);
 
 #endif
-

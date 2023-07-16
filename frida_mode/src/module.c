@@ -11,17 +11,14 @@ static guint    page_size = 0;
 static gboolean handle_dlclose = FALSE;
 
 void module_config(void) {
-
 #if defined(__linux__)
   handle_dlclose = (getenv("AFL_FRIDA_NO_MODULE") == NULL);
 #else
   FWARNF("AFL_FRIDA_MODULE not supported");
 #endif
-
 }
 
 typedef struct {
-
   GumMemoryRange    range;
   GumPageProtection protection;
   GumFileMapping    file;
@@ -29,7 +26,6 @@ typedef struct {
 } gum_range_t;
 
 gboolean found_range(const GumRangeDetails *details, gpointer user_data) {
-
   gum_range_t range = {0};
   GArray     *ranges = (GArray *)user_data;
 
@@ -39,12 +35,10 @@ gboolean found_range(const GumRangeDetails *details, gpointer user_data) {
 
   g_array_append_val(ranges, range);
   return FALSE;
-
 }
 
 #if defined(__linux__) && !defined(__ANDROID__)
 static int on_dlclose(void *handle) {
-
   GArray          *ranges = NULL;
   struct link_map *lm = NULL;
   gum_range_t     *range = NULL;
@@ -53,9 +47,7 @@ static int on_dlclose(void *handle) {
   gpointer         mem;
 
   if (dlinfo(handle, RTLD_DI_LINKMAP, &lm) < 0) {
-
     FFATAL("Failed to dlinfo: %s", dlerror());
-
   }
 
   FVERBOSE("on_dlclose: %s", lm->l_name);
@@ -66,14 +58,11 @@ static int on_dlclose(void *handle) {
 
   int ret = dlclose(handle);
   if (ret != 0) {
-
     FWARNF("dlclose returned: %d (%s)", ret, dlerror());
     return ret;
-
   }
 
   for (guint i = 0; i < ranges->len; i++) {
-
     range = &g_array_index(ranges, gum_range_t, i);
     base = range->range.base_address;
     limit = base + range->range.size;
@@ -83,18 +72,15 @@ static int on_dlclose(void *handle) {
     mem = gum_memory_allocate(GSIZE_TO_POINTER(base), range->range.size,
                               page_size, GUM_PAGE_NO_ACCESS);
     if (mem == NULL) { FATAL("Failed to allocate %p (%d)", mem, errno); }
-
   }
 
   g_array_free(ranges, TRUE);
   return 0;
-
 }
 
 #endif
 
 void module_init(void) {
-
   FOKF(cBLU "Module" cRST " - " cYEL " [%c]", handle_dlclose ? 'X' : ' ');
 
 #if defined(__linux__) && !defined(__ANDROID__)
@@ -103,6 +89,4 @@ void module_init(void) {
   page_size = gum_query_page_size();
   intercept_hook(dlclose, on_dlclose, NULL);
 #endif
-
 }
-

@@ -12,9 +12,7 @@ guint    stalker_adjacent_blocks = 0;
 static GumStalker *stalker = NULL;
 
 struct _GumAflStalkerObserver {
-
   GObject parent;
-
 };
 
 #define GUM_TYPE_AFL_STALKER_OBSERVER (gum_afl_stalker_observer_get_type())
@@ -36,27 +34,20 @@ static GumAflStalkerObserver *observer = NULL;
 
 static void gum_afl_stalker_observer_iface_init(gpointer g_iface,
                                                 gpointer iface_data) {
-
   UNUSED_PARAMETER(g_iface);
   UNUSED_PARAMETER(iface_data);
-
 }
 
 static void gum_afl_stalker_observer_class_init(
     GumAflStalkerObserverClass *klass) {
-
   UNUSED_PARAMETER(klass);
-
 }
 
 static void gum_afl_stalker_observer_init(GumAflStalkerObserver *self) {
-
   UNUSED_PARAMETER(self);
-
 }
 
 void stalker_config(void) {
-
   if (!gum_stalker_is_supported()) { FFATAL("Failed to initialize embedded"); }
 
   backpatch_enable = (getenv("AFL_FRIDA_INST_NO_BACKPATCH") == NULL);
@@ -67,12 +58,10 @@ void stalker_config(void) {
       util_read_num("AFL_FRIDA_STALKER_ADJACENT_BLOCKS", 32);
 
   observer = g_object_new(GUM_TYPE_AFL_STALKER_OBSERVER, NULL);
-
 }
 
 static gboolean stalker_exclude_self(const GumRangeDetails *details,
                                      gpointer               user_data) {
-
   UNUSED_PARAMETER(user_data);
   gchar      *name;
   gboolean    found;
@@ -88,11 +77,9 @@ static gboolean stalker_exclude_self(const GumRangeDetails *details,
   gum_stalker_exclude(stalker, details->range);
 
   return FALSE;
-
 }
 
 void stalker_init(void) {
-
   FOKF(cBLU "Stalker" cRST " - " cGRN "backpatch:" cYEL " [%c]",
        backpatch_enable ? 'X' : ' ');
   FOKF(cBLU "Stalker" cRST " - " cGRN "ic_entries:" cYEL " [%u]",
@@ -102,33 +89,24 @@ void stalker_init(void) {
 
 #if !(defined(__x86_64__) || defined(__i386__) || defined(__aarch64__))
   if (getenv("AFL_FRIDA_STALKER_IC_ENTRIES") != NULL) {
-
     FFATAL("AFL_FRIDA_STALKER_IC_ENTRIES not supported");
-
   }
 
   if (getenv("AFL_FRIDA_STALKER_ADJACENT_BLOCKS") != NULL) {
-
     FFATAL("AFL_FRIDA_STALKER_ADJACENT_BLOCKS not supported");
-
   }
 
 #endif
 
   if (instrument_coverage_filename != NULL) {
-
     if (getenv("AFL_FRIDA_STALKER_ADJACENT_BLOCKS") != NULL) {
-
       FFATAL(
           "AFL_FRIDA_STALKER_ADJACENT_BLOCKS and AFL_FRIDA_INST_COVERAGE_FILE "
           "are incompatible");
 
     } else {
-
       stalker_adjacent_blocks = 0;
-
     }
-
   }
 
   gum_stalker_activate_experimental_unwind_support();
@@ -149,35 +127,25 @@ void stalker_init(void) {
 
   /* *NEVER* stalk the stalker, only bad things will ever come of this! */
   gum_process_enumerate_ranges(GUM_PAGE_EXECUTE, stalker_exclude_self, NULL);
-
 }
 
 GumStalker *stalker_get(void) {
-
   if (stalker == NULL) { FFATAL("Stalker uninitialized"); }
   return stalker;
-
 }
 
 void stalker_start(void) {
-
   GumStalkerTransformer *transformer = instrument_get_transformer();
   gum_stalker_follow_me(stalker, transformer, NULL);
 
   gum_stalker_set_observer(stalker, GUM_STALKER_OBSERVER(observer));
-
 }
 
 void stalker_trust(void) {
-
   if (backpatch_enable) { gum_stalker_set_trust_threshold(stalker, 0); }
-
 }
 
 GumStalkerObserver *stalker_get_observer(void) {
-
   if (observer == NULL) { FFATAL("Stalker not yet initialized"); }
   return GUM_STALKER_OBSERVER(observer);
-
 }
-

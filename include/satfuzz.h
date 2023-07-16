@@ -2,7 +2,6 @@
  * Declear CONSTANTS for SATFUZZ implementation.
  */
 
-
 #define GAP 10
 #define BASE_OFFSET 50
 #define COUNTER_WRITES 1000

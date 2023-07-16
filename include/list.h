@@ -38,7 +38,6 @@
 #define LIST_PREALLOC_SIZE (64)
 
 typedef struct list_element {
-
   PREALLOCABLE;
 
   struct list_element *prev;
@@ -48,36 +47,28 @@ typedef struct list_element {
 } element_t;
 
 typedef struct list {
-
   element_t element_prealloc_buf[LIST_PREALLOC_SIZE];
   s32       element_prealloc_count;
 
 } list_t;
 
 static inline element_t *get_head(list_t *list) {
-
   /* The first element is the head */
   return list->element_prealloc_buf;
-
 }
 
 static inline void list_free_el(list_t *list, element_t *el) {
-
   PRE_FREE(el, list->element_prealloc_count);
-
 }
 
 static inline void list_append(list_t *list, void *el) {
-
   element_t *head = get_head(list);
   if (!head->next) {
-
     /* initialize */
 
     memset(list, 0, sizeof(list_t));
     PRE_ALLOC_FORCE(head, list->element_prealloc_count);
     head->next = head->prev = head;
-
   }
 
   element_t *el_box = NULL;
@@ -90,7 +81,6 @@ static inline void list_append(list_t *list, void *el) {
   el_box->prev = head->prev;
   head->prev->next = el_box;
   head->prev = el_box;
-
 }
 
 /* Simple foreach.
@@ -101,19 +91,16 @@ static inline void list_append(list_t *list, void *el) {
 
 #define LIST_FOREACH(list, type, block)                            \
   do {                                                             \
-                                                                   \
     list_t    *li = (list);                                        \
     element_t *head = get_head((li));                              \
     element_t *el_box = (head)->next;                              \
     if (!el_box) FATAL("foreach over uninitialized list");         \
     while (el_box != head) {                                       \
-                                                                   \
       __attribute__((unused)) type *el = (type *)((el_box)->data); \
       /* get next so el_box can be unlinked */                     \
       element_t *next = el_box->next;                              \
       {block};                                                     \
       el_box = next;                                               \
-                                                                   \
     }                                                              \
                                                                    \
   } while (0);
@@ -122,7 +109,6 @@ static inline void list_append(list_t *list, void *el) {
 
 #define LIST_REMOVE_CURRENT_EL_IN_FOREACH() \
   do {                                      \
-                                            \
     el_box->prev->next = next;              \
     el_box->next->prev = el_box->prev;      \
     list_free_el(li, el_box);               \
@@ -133,12 +119,9 @@ static inline void list_append(list_t *list, void *el) {
 
 #define LIST_FOREACH_CLEAR(list, type, block) \
   do {                                        \
-                                              \
     LIST_FOREACH((list), type, {              \
-                                              \
       {block};                                \
       LIST_REMOVE_CURRENT_EL_IN_FOREACH();    \
-                                              \
     });                                       \
                                               \
   } while (0);
@@ -146,38 +129,27 @@ static inline void list_append(list_t *list, void *el) {
 /* remove an item from the list */
 
 static inline void list_remove(list_t *list, void *remove_me) {
-
   LIST_FOREACH(list, void, {
-
     if (el == remove_me) {
-
       el_box->prev->next = el_box->next;
       el_box->next->prev = el_box->prev;
       el_box->data = NULL;
       list_free_el(list, el_box);
       return;
-
     }
-
   });
 
   FATAL("List item to be removed not in list");
-
 }
 
 /* Returns true if el is in list */
 
 static inline bool list_contains(list_t *list, void *contains_me) {
-
   LIST_FOREACH(list, void, {
-
     if (el == contains_me) return true;
-
   });
 
   return false;
-
 }
 
 #endif
-

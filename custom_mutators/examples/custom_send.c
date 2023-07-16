@@ -19,45 +19,33 @@
 #include "afl-fuzz.h"
 
 typedef struct my_mutator {
-
   afl_state_t *afl;
 
 } my_mutator_t;
 
 my_mutator_t *afl_custom_init(afl_state_t *afl, unsigned int seed) {
-
   my_mutator_t *data = calloc(1, sizeof(my_mutator_t));
   if (!data) {
-
     perror("afl_custom_init alloc");
     return NULL;
-
   }
 
   data->afl = afl;
 
   return data;
-
 }
 
 void afl_custom_fuzz_send(my_mutator_t *data, uint8_t *buf, size_t buf_size) {
-
   int fd = open("/tmp/foo", O_CREAT | O_NOFOLLOW | O_TRUNC | O_RDWR, 0644);
 
   if (fd >= 0) {
-
     (void)write(fd, buf, buf_size);
     close(fd);
-
   }
 
   return;
-
 }
 
 void afl_custom_deinit(my_mutator_t *data) {
-
   free(data);
-
 }
-

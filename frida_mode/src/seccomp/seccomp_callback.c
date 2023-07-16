@@ -11,17 +11,14 @@
 static void seccomp_callback_filter(struct seccomp_notif      *req,
                                     struct seccomp_notif_resp *resp,
                                     GumReturnAddressArray     *frames) {
-
   GumDebugSymbolDetails details = {0};
   if (req->data.nr == SYS_OPENAT) {
-
   #if UINTPTR_MAX == 0xffffffffffffffffu
     seccomp_print("SYS_OPENAT: (%s)\n", (char *)req->data.args[1]);
   #endif
   #if UINTPTR_MAX == 0xffffffff
     seccomp_print("SYS_OPENAT: (%s)\n", (char *)(__u32)req->data.args[1]);
   #endif
-
   }
 
   seccomp_print(
@@ -37,18 +34,13 @@ static void seccomp_callback_filter(struct seccomp_notif      *req,
   if (syms == NULL) { FFATAL("Failed to get symbols"); }
 
   for (guint i = 0; i < frames->len; i++) {
-
     if (gum_symbol_details_from_address(frames->items[i], &details)) {
-
       seccomp_print("\t%3d. %s!%s\n", i, details.module_name,
                     details.symbol_name);
 
     } else {
-
       seccomp_print("\t%3d. %s\n", i, syms[i]);
-
     }
-
   }
 
   free(syms);
@@ -59,14 +51,12 @@ static void seccomp_callback_filter(struct seccomp_notif      *req,
 
   syms = framep;
   while (syms) {
-
     framep = *syms;
     syms = framep;
 
     if (!syms) break;
 
     seccomp_print("\%3d. %s\n", i++, (char *)framep);
-
   }
 
   #endif
@@ -75,11 +65,9 @@ static void seccomp_callback_filter(struct seccomp_notif      *req,
   resp->val = 0;
   resp->id = req->id;
   resp->flags = SECCOMP_USER_NOTIF_FLAG_CONTINUE;
-
 }
 
 static void seccomp_callback_child(int signal_parent, void *ctx) {
-
   int sock_fd = *((int *)ctx);
   int fd = seccomp_socket_recv(sock_fd);
 
@@ -88,11 +76,9 @@ static void seccomp_callback_child(int signal_parent, void *ctx) {
   seccomp_event_signal(signal_parent);
   seccomp_filter_child_install();
   seccomp_filter_run(fd, seccomp_callback_filter);
-
 }
 
 void seccomp_callback_parent(void) {
-
   int   sock[2] = {-1, -1};
   pid_t child = -1;
   int   child_fd = -1;
@@ -114,11 +100,9 @@ void seccomp_callback_parent(void) {
   if (close(fd) < 0) { FFATAL("grandparent - close (4)"); }
 
   seccomp_child_wait(SECCOMP_PARENT_EVENT_FD);
-
 }
 
 void seccomp_callback_initialize(void) {
-
   char *path = NULL;
   int   fd;
 
@@ -130,16 +114,12 @@ void seccomp_callback_initialize(void) {
             S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
   if (dup2(fd, SECCOMP_OUTPUT_FILE_FD) < 0) {
-
     FFATAL("Failed to duplicate seccomp output file");
-
   }
 
   if (close(fd) < 0) { FFATAL("Failed to close seccomp output file fd"); }
 
   g_free(path);
-
 }
 
 #endif
-

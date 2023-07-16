@@ -88,18 +88,14 @@ __attribute__((weak)) int     LLVMFuzzerRunDriver(
 // https://github.com/google/sanitizers/wiki/AddressSanitizerManualPoisoning
 __attribute__((weak)) void __asan_poison_memory_region(
     void const volatile *addr, size_t size) {
-
   (void)addr;
   (void)size;
-
 }
 
 __attribute__((weak)) void __asan_unpoison_memory_region(
     void const volatile *addr, size_t size) {
-
   (void)addr;
   (void)size;
-
 }
 
 __attribute__((weak)) void *__asan_region_is_poisoned(void *beg, size_t size);
@@ -123,23 +119,16 @@ static FILE *output_file;
 // Experimental feature to use afl_driver without AFL's deferred mode.
 // Needs to run before __afl_auto_init.
 __attribute__((constructor(0))) static void __decide_deferred_forkserver(void) {
-
   if (getenv("AFL_DRIVER_DONT_DEFER")) {
-
     if (unsetenv("__AFL_DEFER_FORKSRV")) {
-
       perror("Failed to unset __AFL_DEFER_FORKSRV");
       abort();
-
     }
-
   }
-
 }
 
 // If the user asks us to duplicate stderr, then do it.
 static void maybe_duplicate_stderr() {
-
   char *stderr_duplicate_filename =
       getenv("AFL_DRIVER_STDERR_DUPLICATE_FILENAME");
 
@@ -149,38 +138,30 @@ static void maybe_duplicate_stderr() {
       freopen(stderr_duplicate_filename, "a+", stderr);
 
   if (!stderr_duplicate_stream) {
-
     fprintf(
         stderr,
         "Failed to duplicate stderr to AFL_DRIVER_STDERR_DUPLICATE_FILENAME");
     abort();
-
   }
 
   output_file = stderr_duplicate_stream;
-
 }
 
 // Most of these I/O functions were inspired by/copied from libFuzzer's code.
 static void discard_output(int fd) {
-
   FILE *temp = fopen("/dev/null", "w");
   if (!temp) abort();
   dup2(fileno(temp), fd);
   fclose(temp);
-
 }
 
 static void close_stdout() {
-
   discard_output(STDOUT_FILENO);
-
 }
 
 // Prevent the targeted code from writing to "stderr" but allow sanitizers and
 // this driver to do so.
 static void dup_and_close_stderr() {
-
   int output_fileno = fileno(output_file);
   int output_fd = dup(output_fileno);
   if (output_fd <= 0) abort();
@@ -189,42 +170,35 @@ static void dup_and_close_stderr() {
   if (!__sanitizer_set_report_fd) return;
   __sanitizer_set_report_fd((void *)(long int)output_fd);
   discard_output(output_fileno);
-
 }
 
 // Close stdout and/or stderr if user asks for it.
 static void maybe_close_fd_mask() {
-
   char *fd_mask_str = getenv("AFL_DRIVER_CLOSE_FD_MASK");
   if (!fd_mask_str) return;
   int fd_mask = atoi(fd_mask_str);
   if (fd_mask & 2) dup_and_close_stderr();
   if (fd_mask & 1) close_stdout();
-
 }
 
 // Define LLVMFuzzerMutate to avoid link failures for targets that use it
 // with libFuzzer's LLVMFuzzerCustomMutator.
 __attribute__((weak)) size_t LLVMFuzzerMutate(uint8_t *Data, size_t Size,
                                               size_t MaxSize) {
-
   // assert(false && "LLVMFuzzerMutate should not be called from afl_driver");
   return 0;
-
 }
 
 // Execute any files provided as parameters.
 static int ExecuteFilesOnyByOne(int argc, char **argv,
                                 int (*callback)(const uint8_t *data,
                                                 size_t         size)) {
-
   unsigned char *buf = (unsigned char *)malloc(MAX_FILE);
 
   __asan_poison_memory_region(buf, MAX_FILE);
   ssize_t prev_length = 0;
 
   for (int i = 1; i < argc; i++) {
-
     int fd = 0;
 
     if (strcmp(argv[i], "-") != 0) { fd = open(argv[i], O_RDONLY); }
@@ -238,15 +212,11 @@ static int ExecuteFilesOnyByOne(int argc, char **argv,
 #endif  // HAIKU
 
     if (length > 0) {
-
       if (length < prev_length) {
-
         __asan_poison_memory_region(buf + length, prev_length - length);
 
       } else {
-
         __asan_unpoison_memory_region(buf + prev_length, length - prev_length);
-
       }
 
       prev_length = length;
@@ -254,20 +224,16 @@ static int ExecuteFilesOnyByOne(int argc, char **argv,
       printf("Reading %zu bytes from %s\n", length, argv[i]);
       callback(buf, length);
       printf("Execution successful.\n");
-
     }
 
     if (fd > 0) { close(fd); }
-
   }
 
   free(buf);
   return 0;
-
 }
 
 __attribute__((weak)) int main(int argc, char **argv) {
-
   // Enable if LLVMFuzzerTestOneInput() has the weak attribute
   /*
     if (!LLVMFuzzerTestOneInput) {
@@ -298,24 +264,20 @@ __attribute__((weak)) int main(int argc, char **argv) {
         argv[0], argv[0]);
 
   return LLVMFuzzerRunDriver(&argc, &argv, LLVMFuzzerTestOneInput);
-
 }
 
 __attribute__((weak)) int LLVMFuzzerRunDriver(
     int *argcp, char ***argvp,
     int (*callback)(const uint8_t *data, size_t size)) {
-
   int    argc = *argcp;
   char **argv = *argvp;
 
   if (getenv("AFL_GDB")) {
-
     char cmd[64];
     snprintf(cmd, sizeof(cmd), "cat /proc/%d/maps", getpid());
     system(cmd);
     fprintf(stderr, "DEBUG: aflpp_driver pid is %d\n", getpid());
     sleep(1);
-
   }
 
   bool in_afl = !(!getenv(SHM_FUZZ_ENV_VAR) || !getenv(SHM_ENV_VAR) ||
@@ -328,11 +290,9 @@ __attribute__((weak)) int LLVMFuzzerRunDriver(
   maybe_duplicate_stderr();
   maybe_close_fd_mask();
   if (LLVMFuzzerInitialize) {
-
     fprintf(stderr, "Running LLVMFuzzerInitialize ...\n");
     LLVMFuzzerInitialize(&argc, &argv);
     fprintf(stderr, "continue...\n");
-
   }
 
   // Do any other expensive one-time initialization here.
@@ -345,28 +305,22 @@ __attribute__((weak)) int LLVMFuzzerRunDriver(
   int N = INT_MAX;
 
   if (!in_afl && argc == 2 && !strcmp(argv[1], "-")) {
-
     __afl_manual_init();
     return ExecuteFilesOnyByOne(argc, argv, callback);
 
   } else if (argc == 2 && argv[1][0] == '-' && argv[1][1]) {
-
     N = atoi(argv[1] + 1);
 
   } else if (argc == 2 && argv[1][0] != '-' && (N = atoi(argv[1])) > 0) {
-
     printf("WARNING: using the deprecated call style `%s %d`\n", argv[0], N);
 
   } else if (!in_afl && argc > 1 && argv[1][0] != '-') {
-
     if (argc == 2) { __afl_manual_init(); }
 
     return ExecuteFilesOnyByOne(argc, argv, callback);
 
   } else {
-
     N = INT_MAX;
-
   }
 
   assert(N > 0);
@@ -382,55 +336,38 @@ __attribute__((weak)) int LLVMFuzzerRunDriver(
 
   // for speed only insert asan functions if the target is linked with asan
   if (__asan_region_is_poisoned) {
-
     while (__afl_persistent_loop(N)) {
-
       size_t length = *__afl_fuzz_len;
 
       if (likely(length)) {
-
         if (length < prev_length) {
-
           __asan_poison_memory_region(__afl_fuzz_ptr + length,
                                       prev_length - length);
 
         } else if (length > prev_length) {
-
           __asan_unpoison_memory_region(__afl_fuzz_ptr + prev_length,
                                         length - prev_length);
-
         }
 
         prev_length = length;
 
         if (unlikely(callback(__afl_fuzz_ptr, length) == -1)) {
-
           memset(__afl_area_ptr, 0, __afl_map_size);
           __afl_area_ptr[0] = 1;
-
         }
-
       }
-
     }
 
   } else {
-
     while (__afl_persistent_loop(N)) {
-
       callback(__afl_fuzz_ptr, *__afl_fuzz_len);
-
     }
-
   }
 
   return 0;
-
 }
 
 #ifdef __cplusplus
-
 }
 
 #endif
-

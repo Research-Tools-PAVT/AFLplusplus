@@ -10,24 +10,19 @@
 #include <sys/stat.h>
 
 size_t filesize(char *filename) {
-
   struct stat st;
   stat(filename, &st);
   return st.st_size;
-
 }
 
 #define BUFSIZE 1024 * 1024
 
 void fail(char *why) {
-
   printf("fail: %s\n", why);
   exit(1);
-
 }
 
 void write_output(char *data, size_t len, int num) {
-
   char path[32];
   int  fd;
   int  wrote;
@@ -40,16 +35,14 @@ void write_output(char *data, size_t len, int num) {
   if (wrote != len) { fail("failed to write all of output at once"); }
   close(fd);
   printf("Wrote %zu bytes to %s\n", len, path);
-
 }
 
 int main(int nargs, char **argv) {
-
-  char * spath = argv[1];
+  char  *spath = argv[1];
   int    fd = open(spath, O_RDONLY, 0);
   size_t len;
-  char * input;
-  char * output;
+  char  *input;
+  char  *output;
   int    seed = 0;
   if (fd < 0) { fail("cannot open input file"); }
   len = filesize(spath);
@@ -58,24 +51,18 @@ int main(int nargs, char **argv) {
   if (!input || !output) { fail("failed to allocate buffers\n"); }
   radamsa_init();
   if (len != read(fd, input, len)) {
-
     fail("failed to read the entire sample at once");
-
   }
 
   while (seed++ < 100) {
-
     size_t n;
     n = radamsa((uint8_t *)input, len, (uint8_t *)output, BUFSIZE, seed);
     write_output(output, n, seed);
     printf("Fuzzed %zu -> %zu bytes\n", len, n);
-
   }
 
   printf("library test passed\n");
   free(output);
   free(input);
   return 0;
-
 }
-

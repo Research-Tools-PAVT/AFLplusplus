@@ -12,4 +12,3 @@ void asan_instrument(const cs_insn *instr, GumStalkerIterator *iterator);
 void asan_exclude_module_by_symbol(gchar *symbol_name);
 
 #endif
-

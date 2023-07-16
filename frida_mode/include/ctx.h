@@ -15,4 +15,3 @@ gsize ctx_read_reg(GumArmCpuContext *ctx, arm_reg reg);
 #endif
 
 #endif
-

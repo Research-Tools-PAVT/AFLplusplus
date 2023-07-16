@@ -2361,6 +2361,10 @@ stop_fuzzing:
 
   afl_fsrv_deinit(&afl->fsrv);
 
+  #ifdef FUZZMAX
+  afl_shm_fm_deinit(afl->shm_fm_extra);
+  #endif
+
   /* remove tmpfile */
   if (afl->tmp_dir != NULL && !afl->in_place_resume && afl->fsrv.out_file) {
     (void)unlink(afl->fsrv.out_file);

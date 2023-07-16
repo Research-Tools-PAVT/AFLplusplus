@@ -11,7 +11,6 @@ char *output_stdout = NULL;
 char *output_stderr = NULL;
 
 static void output_redirect(int fd, char *filename) {
-
   char *path = NULL;
 
   if (filename == NULL) { return; }
@@ -28,24 +27,18 @@ static void output_redirect(int fd, char *filename) {
   if (output_fd < 0) { FFATAL("Failed to open fd(%d) error %d", fd, errno); }
 
   if (dup2(output_fd, fd) < 0) {
-
     FFATAL("Failed to set fd(%d) error %d", fd, errno);
-
   }
 
   close(output_fd);
-
 }
 
 void output_config(void) {
-
   output_stdout = getenv("AFL_FRIDA_OUTPUT_STDOUT");
   output_stderr = getenv("AFL_FRIDA_OUTPUT_STDERR");
-
 }
 
 void output_init(void) {
-
   FOKF(cBLU "Output" cRST " - " cGRN "stdout:" cYEL " [%s]",
        output_stdout == NULL ? " " : output_stdout);
   FOKF(cBLU "Output" cRST " - " cGRN "stderr:" cYEL " [%s]",
@@ -53,6 +46,4 @@ void output_init(void) {
 
   output_redirect(STDOUT_FILENO, output_stdout);
   output_redirect(STDERR_FILENO, output_stderr);
-
 }
-

@@ -31,7 +31,6 @@ implied warranty.
  * @desc hold all the information about an area in the process's  VM
  */
 typedef struct procmaps_struct {
-
   void         *addr_start;  //< start address of the area
   void         *addr_end;    //< end address
   unsigned long length;      //< size of the range
@@ -57,7 +56,6 @@ typedef struct procmaps_struct {
  * @desc holds iterating information
  */
 typedef struct procmaps_iterator {
-
   procmaps_struct *head;
   procmaps_struct *current;
 
@@ -107,25 +105,19 @@ void pmparser_print(procmaps_struct *map, int order);
 // procmaps_struct *g_current=NULL;
 
 procmaps_iterator *pmparser_parse(int pid) {
-
   char maps_path[500];
   if (pid >= 0) {
-
     sprintf(maps_path, "/proc/%d/maps", pid);
 
   } else {
-
     sprintf(maps_path, "/proc/self/maps");
-
   }
 
   FILE *file = fopen(maps_path, "r");
   if (!file) {
-
     fprintf(stderr, "pmparser : cannot open the memory maps, %s\n",
             strerror(errno));
     return NULL;
-
   }
 
   procmaps_iterator *maps_it = malloc(sizeof(procmaps_iterator));
@@ -138,7 +130,6 @@ procmaps_iterator *pmparser_parse(int pid) {
   char addr1[20], addr2[20], perm[8], offset[20], dev[10], inode[30],
       pathname[PATH_MAX];
   while (!feof(file)) {
-
     fgets(buf, PROCMAPS_LINE_MAX_LENGTH, file);
     // allocate a node
     tmp = (procmaps_struct *)malloc(sizeof(procmaps_struct));
@@ -170,18 +161,15 @@ procmaps_iterator *pmparser_parse(int pid) {
     tmp->next = NULL;
     // attach the node
     if (ind == 0) {
-
       list_maps = tmp;
       list_maps->next = NULL;
       current_node = list_maps;
-
     }
 
     current_node->next = tmp;
     current_node = tmp;
     ind++;
     // printf("%s",buf);
-
   }
 
   // close file
@@ -191,11 +179,9 @@ procmaps_iterator *pmparser_parse(int pid) {
   maps_it->head = list_maps;
   maps_it->current = list_maps;
   return maps_it;
-
 }
 
 procmaps_struct *pmparser_next(procmaps_iterator *p_procmaps_it) {
-
   if (p_procmaps_it->current == NULL) return NULL;
   procmaps_struct *p_current = p_procmaps_it->current;
   p_procmaps_it->current = p_procmaps_it->current->next;
@@ -211,38 +197,30 @@ procmaps_struct *pmparser_next(procmaps_iterator *p_procmaps_it) {
 
   return g_current;
   */
-
 }
 
 void pmparser_free(procmaps_iterator *p_procmaps_it) {
-
   procmaps_struct *maps_list = p_procmaps_it->head;
   if (maps_list == NULL) return;
   procmaps_struct *act = maps_list;
   procmaps_struct *nxt = act->next;
   while (act != NULL) {
-
     free(act);
     act = nxt;
     if (nxt != NULL) nxt = nxt->next;
-
   }
-
 }
 
 void _pmparser_split_line(char *buf, char *addr1, char *addr2, char *perm,
                           char *offset, char *device, char *inode,
                           char *pathname) {
-
   //
   int orig = 0;
   int i = 0;
   // addr1
   while (buf[i] != '-') {
-
     addr1[i - orig] = buf[i];
     i++;
-
   }
 
   addr1[i] = '\0';
@@ -250,10 +228,8 @@ void _pmparser_split_line(char *buf, char *addr1, char *addr2, char *perm,
   // addr2
   orig = i;
   while (buf[i] != '\t' && buf[i] != ' ') {
-
     addr2[i - orig] = buf[i];
     i++;
-
   }
 
   addr2[i - orig] = '\0';
@@ -263,10 +239,8 @@ void _pmparser_split_line(char *buf, char *addr1, char *addr2, char *perm,
     i++;
   orig = i;
   while (buf[i] != '\t' && buf[i] != ' ') {
-
     perm[i - orig] = buf[i];
     i++;
-
   }
 
   perm[i - orig] = '\0';
@@ -275,10 +249,8 @@ void _pmparser_split_line(char *buf, char *addr1, char *addr2, char *perm,
     i++;
   orig = i;
   while (buf[i] != '\t' && buf[i] != ' ') {
-
     offset[i - orig] = buf[i];
     i++;
-
   }
 
   offset[i - orig] = '\0';
@@ -287,10 +259,8 @@ void _pmparser_split_line(char *buf, char *addr1, char *addr2, char *perm,
     i++;
   orig = i;
   while (buf[i] != '\t' && buf[i] != ' ') {
-
     device[i - orig] = buf[i];
     i++;
-
   }
 
   device[i - orig] = '\0';
@@ -299,10 +269,8 @@ void _pmparser_split_line(char *buf, char *addr1, char *addr2, char *perm,
     i++;
   orig = i;
   while (buf[i] != '\t' && buf[i] != ' ') {
-
     inode[i - orig] = buf[i];
     i++;
-
   }
 
   inode[i - orig] = '\0';
@@ -312,15 +280,11 @@ void _pmparser_split_line(char *buf, char *addr1, char *addr2, char *perm,
     i++;
   orig = i;
   while (buf[i] != '\t' && buf[i] != ' ' && buf[i] != '\n') {
-
     pathname[i - orig] = buf[i];
     i++;
-
   }
 
   pathname[i - orig] = '\0';
-
 }
 
 #endif
-

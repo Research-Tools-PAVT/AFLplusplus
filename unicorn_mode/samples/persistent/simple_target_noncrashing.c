@@ -1,10 +1,10 @@
 /*
  * Sample target file to test afl-unicorn fuzzing capabilities.
  * This is a very trivial example that will crash pretty easily
- * in several different exciting ways. 
+ * in several different exciting ways.
  *
- * Input is assumed to come from a buffer located at DATA_ADDRESS 
- * (0x00300000), so make sure that your Unicorn emulation of this 
+ * Input is assumed to come from a buffer located at DATA_ADDRESS
+ * (0x00300000), so make sure that your Unicorn emulation of this
  * puts user data there.
  *
  * Written by Nathan Voss <njvoss99@gmail.com>
@@ -12,17 +12,15 @@
  */
 #include <string.h>
 
-int main(int argc, char** argv) {
-  if(argc < 2){
-     return -1;
-  }
+int main(int argc, char **argv) {
+  if (argc < 2) { return -1; }
 
   char *data_buf = argv[1];
 
   if (strlen(data_buf) >= 21 && data_buf[20] != 0) {
     printf("Not crashing");
-  } else if (strlen(data_buf) > 1
-             && data_buf[0] > 0x10 && data_buf[0] < 0x20 && data_buf[1] > data_buf[2]) {
+  } else if (strlen(data_buf) > 1 && data_buf[0] > 0x10 && data_buf[0] < 0x20 &&
+             data_buf[1] > data_buf[2]) {
     printf("Also not crashing with databuf[0] == %c", data_buf[0])
   }
 #if 0

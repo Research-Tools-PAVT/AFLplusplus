@@ -19,7 +19,6 @@
 #include <fcntl.h>
 
 void testinstr(char *buf, int len) {
-
   if (len < 1) return;
   buf[len] = 0;
 
@@ -30,6 +29,4 @@ void testinstr(char *buf, int len) {
     printf("Pretty sure that is a one!\n");
   else
     printf("Neither one or zero? How quaint!\n");
-
 }
-

@@ -9,20 +9,17 @@
 
 #define LOG(x)                              \
   do {                                      \
-                                            \
     char buf[] = x;                         \
     write(STDOUT_FILENO, buf, sizeof(buf)); \
                                             \
   } while (false);
 
 void test(char data) {
-
   char *buf = malloc(10);
 
   if (buf == NULL) return;
 
   switch (data) {
-
     /* Underflow */
     case 'U':
       LOG("Underflow\n");
@@ -62,29 +59,22 @@ void test(char data) {
     default:
       LOG("Nop - No Error\n");
       break;
-
   }
-
 }
 
 int main(int argc, char **argv) {
-
   UNUSED_PARAMETER(argc);
   UNUSED_PARAMETER(argv);
 
   char input = '\0';
 
   if (read(STDIN_FILENO, &input, 1) < 0) {
-
     LOG("Failed to read stdin\n");
     return 1;
-
   }
 
   test(input);
 
   LOG("DONE\n");
   return 0;
-
 }
-

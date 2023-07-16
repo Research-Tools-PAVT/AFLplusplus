@@ -7,7 +7,6 @@
   #include "util.h"
 
 typedef struct {
-
   int  id;
   char name[PATH_MAX];
 
@@ -322,17 +321,12 @@ static syscall_entry_t seccomp_syscall_table[] = {
 };
 
 char *seccomp_syscall_lookup(int id) {
-
   if (id < 0) { FFATAL("Invalid id: %d", id); }
   if ((uint32_t)id >= sizeof(seccomp_syscall_table) / sizeof(syscall_entry_t)) {
-
     FFATAL("Invalid id: %d", id);
-
   }
 
   return seccomp_syscall_table[id].name;
-
 }
 
 #endif
-

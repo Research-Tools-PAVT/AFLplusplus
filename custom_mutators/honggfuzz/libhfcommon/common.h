@@ -1,3 +1,3 @@
 #ifndef LOG_E
-  #define LOG_E LOG_F
+#define LOG_E LOG_F
 #endif

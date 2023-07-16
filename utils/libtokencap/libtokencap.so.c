@@ -81,11 +81,7 @@ void *(*__libc_memmem)(const void *haystack, size_t haystack_len,
 
 #define MAX_MAPPINGS 1024
 
-static struct mapping {
-
-  void *st, *en;
-
-} __tokencap_ro[MAX_MAPPINGS];
+static struct mapping { void *st, *en; } __tokencap_ro[MAX_MAPPINGS];
 
 static u32   __tokencap_ro_cnt;
 static u8    __tokencap_ro_loaded;
@@ -97,7 +93,6 @@ static pid_t __tokencap_pid = -1;
    regions are far more likely to contain user input instead. */
 
 static void __tokencap_load_mappings(void) {
-
 #if defined __linux__
 
   u8    buf[MAX_LINE];
@@ -108,7 +103,6 @@ static void __tokencap_load_mappings(void) {
   if (!f) return;
 
   while (fgets(buf, MAX_LINE, f)) {
-
     u8    rf, wf;
     void *st, *en;
 
@@ -119,7 +113,6 @@ static void __tokencap_load_mappings(void) {
     __tokencap_ro[__tokencap_ro_cnt].en = (void *)en;
 
     if (++__tokencap_ro_cnt == MAX_MAPPINGS) break;
-
   }
 
   fclose(f);
@@ -135,34 +128,27 @@ static void __tokencap_load_mappings(void) {
   __tokencap_ro_loaded = 1;
 
   while (1) {
-
     if (vm_region_recurse_64(mach_task_self(), &base, &size, &depth,
                              (vm_region_info_64_t)&region,
                              &cnt) != KERN_SUCCESS)
       break;
 
     if (region.is_submap) {
-
       depth++;
 
     } else {
-
       /* We only care of main map addresses and the read only kinds */
       if ((region.protection & VM_PROT_READ) &&
           !(region.protection & VM_PROT_WRITE)) {
-
         __tokencap_ro[__tokencap_ro_cnt].st = (void *)base;
         __tokencap_ro[__tokencap_ro_cnt].en = (void *)(base + size);
 
         if (++__tokencap_ro_cnt == MAX_MAPPINGS) break;
-
       }
 
       base += size;
       size = 0;
-
     }
-
   }
 
 #elif defined __FreeBSD__ || defined __OpenBSD__ || defined __NetBSD__
@@ -191,10 +177,8 @@ static void __tokencap_load_mappings(void) {
   if (buf == MAP_FAILED) return;
 
   if (sysctl(mib, miblen, buf, &len, NULL, 0) == -1) {
-
     munmap(buf, len);
     return;
-
   }
 
   low = buf;
@@ -203,7 +187,6 @@ static void __tokencap_load_mappings(void) {
   __tokencap_ro_loaded = 1;
 
   while (low < high) {
-
     struct kinfo_vmentry *region = (struct kinfo_vmentry *)low;
 
   #if defined __FreeBSD__ || defined __NetBSD__
@@ -235,11 +218,9 @@ static void __tokencap_load_mappings(void) {
       __tokencap_ro[__tokencap_ro_cnt].en = (void *)region->kve_end;
 
       if (++__tokencap_ro_cnt == MAX_MAPPINGS) break;
-
     }
 
     low += size;
-
   }
 
   munmap(buf, len);
@@ -250,12 +231,10 @@ static void __tokencap_load_mappings(void) {
   __tokencap_ro_loaded = 1;
 
   while (get_next_image_info(0, &group, &ii) == B_OK) {
-
     __tokencap_ro[__tokencap_ro_cnt].st = ii.text;
     __tokencap_ro[__tokencap_ro_cnt].en = ((char *)ii.text) + ii.text_size;
 
     if (++__tokencap_ro_cnt == MAX_MAPPINGS) break;
-
   }
 
 #elif defined __sun
@@ -273,31 +252,25 @@ static void __tokencap_load_mappings(void) {
   __tokencap_ro_loaded = 1;
 
   for (; (r = pread(fd, map, hint, 0)) == hint;) {
-
     hint <<= 1;
     map = realloc(map, hint);
-
   }
 
   for (c = map; r > 0; c++, r -= sizeof(prmap_t)) {
-
     __tokencap_ro[__tokencap_ro_cnt].st = (void *)c->pr_vaddr;
     __tokencap_ro[__tokencap_ro_cnt].en = (void *)(c->pr_vaddr + c->pr_size);
 
     if (++__tokencap_ro_cnt == MAX_MAPPINGS) break;
-
   }
 
   free(map);
   close(fd);
 #endif
-
 }
 
 /* Check an address against the list of read-only mappings. */
 
 static u8 __tokencap_is_ro(const void *ptr) {
-
   u32 i;
 
   if (!__tokencap_ro_loaded) __tokencap_load_mappings();
@@ -306,14 +279,12 @@ static u8 __tokencap_is_ro(const void *ptr) {
     if (ptr >= __tokencap_ro[i].st && ptr <= __tokencap_ro[i].en) return 1;
 
   return 0;
-
 }
 
 /* Dump an interesting token to output file, quoting and escaping it
    properly. */
 
 static void __tokencap_dump(const u8 *ptr, size_t len, u8 is_text) {
-
   u8  buf[MAX_AUTO_EXTRA * 4 + 1];
   u32 i;
   u32 pos = 0;
@@ -322,11 +293,9 @@ static void __tokencap_dump(const u8 *ptr, size_t len, u8 is_text) {
     return;
 
   for (i = 0; i < len; i++) {
-
     if (is_text && !ptr[i]) break;
 
     switch (ptr[i]) {
-
       case 0 ... 31:
       case 127 ... 255:
       case '\"':
@@ -338,9 +307,7 @@ static void __tokencap_dump(const u8 *ptr, size_t len, u8 is_text) {
 
       default:
         buf[pos++] = ptr[i];
-
     }
-
   }
 
   buf[pos] = 0;
@@ -350,7 +317,6 @@ static void __tokencap_dump(const u8 *ptr, size_t len, u8 is_text) {
   wrt_ok &= (2 == write(__tokencap_out_file, "\"\n", 2));
 
   if (!wrt_ok) { DEBUGF("%s", "writing to the token file failed\n"); }
-
 }
 
 /* Replacements for strcmp(), memcmp(), and so on. Note that these will be used
@@ -359,7 +325,6 @@ static void __tokencap_dump(const u8 *ptr, size_t len, u8 is_text) {
 #undef strcmp
 
 __attribute__((hot)) int strcmp(const char *str1, const char *str2) {
-
   if (__tokencap_is_ro(str1)) __tokencap_dump(str1, strlen(str1), 1);
   if (__tokencap_is_ro(str2)) __tokencap_dump(str2, strlen(str2), 1);
 
@@ -368,23 +333,19 @@ __attribute__((hot)) int strcmp(const char *str1, const char *str2) {
 #endif
 
   while (1) {
-
     const unsigned char c1 = *str1, c2 = *str2;
 
     if (c1 != c2) return (c1 > c2) ? 1 : -1;
     if (!c1) return 0;
     str1++;
     str2++;
-
   }
-
 }
 
 #undef strncmp
 
 __attribute__((hot)) int strncmp(const char *str1, const char *str2,
                                  size_t len) {
-
   if (__tokencap_is_ro(str1)) __tokencap_dump(str1, len, 1);
   if (__tokencap_is_ro(str2)) __tokencap_dump(str2, len, 1);
 
@@ -393,24 +354,20 @@ __attribute__((hot)) int strncmp(const char *str1, const char *str2,
 #endif
 
   while (len--) {
-
     unsigned char c1 = *str1, c2 = *str2;
 
     if (c1 != c2) return (c1 > c2) ? 1 : -1;
     if (!c1) return 0;
     str1++;
     str2++;
-
   }
 
   return 0;
-
 }
 
 #undef strcasecmp
 
 __attribute__((hot)) int strcasecmp(const char *str1, const char *str2) {
-
   if (__tokencap_is_ro(str1)) __tokencap_dump(str1, strlen(str1), 1);
   if (__tokencap_is_ro(str2)) __tokencap_dump(str2, strlen(str2), 1);
 
@@ -419,23 +376,19 @@ __attribute__((hot)) int strcasecmp(const char *str1, const char *str2) {
 #endif
 
   while (1) {
-
     const unsigned char c1 = tolower((int)*str1), c2 = tolower((int)*str2);
 
     if (c1 != c2) return (c1 > c2) ? 1 : -1;
     if (!c1) return 0;
     str1++;
     str2++;
-
   }
-
 }
 
 #undef strncasecmp
 
 __attribute__((hot)) int strncasecmp(const char *str1, const char *str2,
                                      size_t len) {
-
   if (__tokencap_is_ro(str1)) __tokencap_dump(str1, len, 1);
   if (__tokencap_is_ro(str2)) __tokencap_dump(str2, len, 1);
 
@@ -444,25 +397,21 @@ __attribute__((hot)) int strncasecmp(const char *str1, const char *str2,
 #endif
 
   while (len--) {
-
     const unsigned char c1 = tolower((int)*str1), c2 = tolower((int)*str2);
 
     if (c1 != c2) return (c1 > c2) ? 1 : -1;
     if (!c1) return 0;
     str1++;
     str2++;
-
   }
 
   return 0;
-
 }
 
 #undef memcmp
 
 __attribute__((hot)) int memcmp(const void *mem1, const void *mem2,
                                 size_t len) {
-
   if (__tokencap_is_ro(mem1)) __tokencap_dump(mem1, len, 0);
   if (__tokencap_is_ro(mem2)) __tokencap_dump(mem2, len, 0);
 
@@ -474,22 +423,18 @@ __attribute__((hot)) int memcmp(const void *mem1, const void *mem2,
   const char *strmem2 = (const char *)mem2;
 
   while (len--) {
-
     const unsigned char c1 = *strmem1, c2 = *strmem2;
     if (c1 != c2) return (c1 > c2) ? 1 : -1;
     strmem1++;
     strmem2++;
-
   }
 
   return 0;
-
 }
 
 #undef bcmp
 
 __attribute__((hot)) int bcmp(const void *mem1, const void *mem2, size_t len) {
-
   if (__tokencap_is_ro(mem1)) __tokencap_dump(mem1, len, 0);
   if (__tokencap_is_ro(mem2)) __tokencap_dump(mem2, len, 0);
 
@@ -501,22 +446,18 @@ __attribute__((hot)) int bcmp(const void *mem1, const void *mem2, size_t len) {
   const char *strmem2 = (const char *)mem2;
 
   while (len--) {
-
     int diff = *strmem1 ^ *strmem2;
     if (diff != 0) return 1;
     strmem1++;
     strmem2++;
-
   }
 
   return 0;
-
 }
 
 #undef strstr
 
 __attribute__((hot)) char *strstr(const char *haystack, const char *needle) {
-
   if (__tokencap_is_ro(haystack))
     __tokencap_dump(haystack, strlen(haystack), 1);
 
@@ -527,7 +468,6 @@ __attribute__((hot)) char *strstr(const char *haystack, const char *needle) {
 #endif
 
   do {
-
     const char *n = needle;
     const char *h = haystack;
 
@@ -539,14 +479,12 @@ __attribute__((hot)) char *strstr(const char *haystack, const char *needle) {
   } while (*(haystack++));
 
   return 0;
-
 }
 
 #undef strcasestr
 
 __attribute__((hot)) char *strcasestr(const char *haystack,
                                       const char *needle) {
-
   if (__tokencap_is_ro(haystack))
     __tokencap_dump(haystack, strlen(haystack), 1);
 
@@ -557,7 +495,6 @@ __attribute__((hot)) char *strcasestr(const char *haystack,
 #endif
 
   do {
-
     const char *n = needle;
     const char *h = haystack;
 
@@ -569,14 +506,12 @@ __attribute__((hot)) char *strcasestr(const char *haystack,
   } while (*(haystack++));
 
   return 0;
-
 }
 
 #undef memmem
 
 __attribute__((hot)) void *memmem(const void *haystack, size_t haystack_len,
                                   const void *needle, size_t needle_len) {
-
   if (__tokencap_is_ro(haystack)) __tokencap_dump(haystack, haystack_len, 1);
 
   if (__tokencap_is_ro(needle)) __tokencap_dump(needle, needle_len, 1);
@@ -595,17 +530,13 @@ __attribute__((hot)) void *memmem(const void *haystack, size_t haystack_len,
   const char *end = h + (haystack_len - needle_len);
 
   do {
-
     if (*h == *n) {
-
       if (memcmp(h, n, needle_len) == 0) return (void *)h;
-
     }
 
   } while (h++ <= end);
 
   return 0;
-
 }
 
 /* Common libraries wrappers (from honggfuzz) */
@@ -614,170 +545,127 @@ __attribute__((hot)) void *memmem(const void *haystack, size_t haystack_len,
  * Apache's httpd wrappers
  */
 int ap_cstr_casecmp(const char *s1, const char *s2) {
-
   return strcasecmp(s1, s2);
-
 }
 
 int ap_cstr_casecmpn(const char *s1, const char *s2, size_t n) {
-
   return strncasecmp(s1, s2, n);
-
 }
 
 const char *ap_strcasestr(const char *s1, const char *s2) {
-
   return strcasestr(s1, s2);
-
 }
 
 int apr_cstr_casecmp(const char *s1, const char *s2) {
-
   return strcasecmp(s1, s2);
-
 }
 
 int apr_cstr_casecmpn(const char *s1, const char *s2, size_t n) {
-
   return strncasecmp(s1, s2, n);
-
 }
 
 /*
  * *SSL wrappers
  */
 int CRYPTO_memcmp(const void *m1, const void *m2, size_t len) {
-
   return memcmp(m1, m2, len);
-
 }
 
 int OPENSSL_memcmp(const void *m1, const void *m2, size_t len) {
-
   return memcmp(m1, m2, len);
-
 }
 
 int OPENSSL_strcasecmp(const char *s1, const char *s2) {
-
   return strcasecmp(s1, s2);
-
 }
 
 int OPENSSL_strncasecmp(const char *s1, const char *s2, size_t len) {
-
   return strncasecmp(s1, s2, len);
-
 }
 
 int32_t memcmpct(const void *s1, const void *s2, size_t len) {
-
   return memcmp(s1, s2, len);
-
 }
 
 /*
  * libXML wrappers
  */
 int xmlStrncmp(const char *s1, const char *s2, int len) {
-
   if (len <= 0) { return 0; }
   if (s1 == s2) { return 0; }
   if (s1 == NULL) { return -1; }
   if (s2 == NULL) { return 1; }
   return strncmp(s1, s2, (size_t)len);
-
 }
 
 int xmlStrcmp(const char *s1, const char *s2) {
-
   if (s1 == s2) { return 0; }
   if (s1 == NULL) { return -1; }
   if (s2 == NULL) { return 1; }
   return strcmp(s1, s2);
-
 }
 
 int xmlStrEqual(const char *s1, const char *s2) {
-
   if (s1 == s2) { return 1; }
   if (s1 == NULL) { return 0; }
   if (s2 == NULL) { return 0; }
   if (strcmp(s1, s2) == 0) { return 1; }
   return 0;
-
 }
 
 int xmlStrcasecmp(const char *s1, const char *s2) {
-
   if (s1 == s2) { return 0; }
   if (s1 == NULL) { return -1; }
   if (s2 == NULL) { return 1; }
   return strcasecmp(s1, s2);
-
 }
 
 int xmlStrncasecmp(const char *s1, const char *s2, int len) {
-
   if (len <= 0) { return 0; }
   if (s1 == s2) { return 0; }
   if (s1 == NULL) { return -1; }
   if (s2 == NULL) { return 1; }
   return strncasecmp(s1, s2, (size_t)len);
-
 }
 
 const char *xmlStrstr(const char *haystack, const char *needle) {
-
   if (haystack == NULL) { return NULL; }
   if (needle == NULL) { return NULL; }
   return strstr(haystack, needle);
-
 }
 
 const char *xmlStrcasestr(const char *haystack, const char *needle) {
-
   if (haystack == NULL) { return NULL; }
   if (needle == NULL) { return NULL; }
   return strcasestr(haystack, needle);
-
 }
 
 /*
  * Samba wrappers
  */
 int memcmp_const_time(const void *s1, const void *s2, size_t n) {
-
   return memcmp(s1, s2, n);
-
 }
 
 bool strcsequal(const void *s1, const void *s2) {
-
   if (s1 == s2) { return true; }
   if (!s1 || !s2) { return false; }
   return (strcmp(s1, s2) == 0);
-
 }
 
 /* bcmp/memcmp BSD flavors, similar to CRYPTO_memcmp */
 
 int timingsafe_bcmp(const void *mem1, const void *mem2, size_t len) {
-
   return bcmp(mem1, mem2, len);
-
 }
 
 int timingsafe_memcmp(const void *mem1, const void *mem2, size_t len) {
-
   return memcmp(mem1, mem2, len);
-
 }
 
 /* Init code to open the output file (or default to stderr). */
 
 __attribute__((constructor)) void __tokencap_init(void) {
-
   u8 *fn = getenv("AFL_TOKEN_FILE");
   if (fn) __tokencap_out_file = open(fn, O_RDWR | O_CREAT | O_APPEND, 0655);
   if (__tokencap_out_file == -1) __tokencap_out_file = STDERR_FILENO;
@@ -794,13 +682,9 @@ __attribute__((constructor)) void __tokencap_init(void) {
   __libc_strcasestr = dlsym(RTLD_NEXT, "strcasestr");
   __libc_memmem = dlsym(RTLD_NEXT, "memmem");
 #endif
-
 }
 
 /* closing as best as we can the tokens file */
 __attribute__((destructor)) void __tokencap_shutdown(void) {
-
   if (__tokencap_out_file != STDERR_FILENO) close(__tokencap_out_file);
-
 }
-

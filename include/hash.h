@@ -107,8 +107,7 @@ static inline u32 hash32(const void *key, u32 len, u32 seed) {
 
 }
 
-  #endif                                                     /* ^__x86_64__ */
+  #endif /* ^__x86_64__ */
 #endif
 
-#endif                                                     /* !_HAVE_HASH_H */
-
+#endif /* !_HAVE_HASH_H */

@@ -37,8 +37,7 @@
 #pragma GCC            optimize("O0")
 
 int main(int argc, char **argv) {
-
-  ssize_t len;                               /* how much input did we read? */
+  ssize_t len;   /* how much input did we read? */
   char buf[100]; /* Example-only buffer, you'd replace it with other global or
                     local variables appropriate for your use case. */
 
@@ -49,7 +48,6 @@ int main(int argc, char **argv) {
 
   __AFL_INIT();
   while (__AFL_LOOP(UINT_MAX)) {
-
     /*** PLACEHOLDER CODE ***/
 
     /* STEP 1: Fully re-initialize all critical variables. In our example, this
@@ -73,39 +71,26 @@ int main(int argc, char **argv) {
     if (len < 8) continue;
 
     if (buf[0] == 'f') {
-
       printf("one\n");
       if (buf[1] == 'o') {
-
         printf("two\n");
         if (buf[2] == 'o') {
-
           printf("three\n");
           if (buf[3] == '!') {
-
             printf("four\n");
             if (buf[4] == '!') {
-
               printf("five\n");
               if (buf[5] == '!') {
-
                 printf("six\n");
                 abort();
-
               }
-
             }
-
           }
-
         }
-
       }
-
     }
 
     /*** END PLACEHOLDER CODE ***/
-
   }
 
   /* Once the loop is exited, terminate normally - AFL will restart the process
@@ -113,6 +98,4 @@ int main(int argc, char **argv) {
      leftover file descriptors, etc. */
 
   return 0;
-
 }
-

@@ -45,12 +45,9 @@ enum jcc_opcodes {
 };
 
 typedef union {
-
   struct {
-
     uint8_t opcode;
     uint8_t distance;
-
   };
 
   uint8_t bytes[0];
@@ -60,21 +57,16 @@ typedef union {
 static GHashTable *coverage_blocks = NULL;
 
 gboolean instrument_is_coverage_optimize_supported(void) {
-
   return true;
-
 }
 
 static gboolean instrument_coverage_in_range(gssize offset) {
-
   return (offset >= G_MININT32 && offset <= G_MAXINT32);
-
 }
 
   #pragma pack(push, 1)
 
 typedef struct {
-
   // cur_location = (block_address >> 4) ^ (block_address << 8);
   // shared_mem[cur_location ^ prev_location]++;
   // prev_location = cur_location >> 1;
@@ -159,16 +151,13 @@ static const afl_log_code_asm_t template =
 ;
 
 typedef union {
-
   afl_log_code_asm_t code;
   uint8_t            bytes[0];
 
 } afl_log_code;
 
 void instrument_coverage_optimize_init(void) {
-
   FVERBOSE("__afl_area_ptr: %p", __afl_area_ptr);
-
 }
 
 static void instrument_coverage_switch_insn(GumStalkerObserver *self,
@@ -176,7 +165,6 @@ static void instrument_coverage_switch_insn(GumStalkerObserver *self,
                                             gpointer            start_address,
                                             const cs_insn      *from_insn,
                                             gpointer           *target) {
-
   UNUSED_PARAMETER(self);
   UNUSED_PARAMETER(from_address);
 
@@ -188,26 +176,19 @@ static void instrument_coverage_switch_insn(GumStalkerObserver *self,
   op = x86->operands;
 
   if (!g_hash_table_contains(coverage_blocks, GSIZE_TO_POINTER(*target))) {
-
     return;
-
   }
 
   switch (from_insn->id) {
-
     case X86_INS_CALL:
     case X86_INS_JMP:
       if (x86->op_count != 1) {
-
         FATAL("Unexpected operand count: %d", x86->op_count);
-
       }
 
       if (op[0].type != X86_OP_IMM) {
-
         instrument_cache_insert(start_address, *target);
         return;
-
       }
 
       break;
@@ -217,15 +198,12 @@ static void instrument_coverage_switch_insn(GumStalkerObserver *self,
       break;
     default:
       return;
-
   }
 
   *target = (guint8 *)*target + sizeof(afl_log_code);
-
 }
 
 cs_insn *instrument_disassemble(gconstpointer address) {
-
   csh      capstone;
   cs_insn *insn = NULL;
 
@@ -237,24 +215,20 @@ cs_insn *instrument_disassemble(gconstpointer address) {
   cs_close(&capstone);
 
   return insn;
-
 }
 
 static void instrument_coverage_switch(GumStalkerObserver *self,
                                        gpointer            from_address,
                                        gpointer start_address, void *from_insn,
                                        gpointer *target) {
-
   if (from_insn == NULL) { return; }
   cs_insn *insn = instrument_disassemble(from_insn);
   instrument_coverage_switch_insn(self, from_address, start_address, insn,
                                   target);
   cs_free(insn, 1);
-
 }
 
 static void instrument_coverage_suppress_init(void) {
-
   static gboolean initialized = false;
   if (initialized) { return; }
   initialized = true;
@@ -265,16 +239,12 @@ static void instrument_coverage_suppress_init(void) {
 
   coverage_blocks = g_hash_table_new(g_direct_hash, g_direct_equal);
   if (coverage_blocks == NULL) {
-
     FATAL("Failed to g_hash_table_new, errno: %d", errno);
-
   }
-
 }
 
 static void instrument_coverage_write(GumAddress        address,
                                       GumStalkerOutput *output) {
-
   afl_log_code  code = {0};
   GumX86Writer *cw = output->writer.x86;
   guint64       area_offset = instrument_get_offset_hash(address);
@@ -295,9 +265,7 @@ static void instrument_coverage_write(GumAddress        address,
       sizeof(code.code.mov_prev_loc_curr_loc_shr1) - sizeof(gint) -
       sizeof(guint32);
   if (!instrument_coverage_in_range(prev_loc_value)) {
-
     FATAL("Patch out of range (current_pc_value1): 0x%016lX", prev_loc_value);
-
   }
 
   *((gint *)&code.bytes[prev_loc_value_offset]) = (gint)prev_loc_value;
@@ -312,9 +280,7 @@ static void instrument_coverage_write(GumAddress        address,
       offsetof(afl_log_code, code.mov_eax_prev_loc) +
       sizeof(code.code.mov_eax_prev_loc) - sizeof(gint);
   if (!instrument_coverage_in_range(prev_loc_value)) {
-
     FATAL("Patch out of range (current_pc_value1): 0x%016lX", prev_loc_value2);
-
   }
 
   *((gint *)&code.bytes[prev_loc_value_offset2]) = (gint)prev_loc_value2;
@@ -339,10 +305,8 @@ static void instrument_coverage_write(GumAddress        address,
         sizeof(code.code.lea_rbx_area_ptr)));
 
   if (!instrument_coverage_in_range(lea_rbx_area_ptr_value)) {
-
     FATAL("Patch out of range (lea_rbx_area_ptr_value): 0x%016lX",
           lea_rbx_area_ptr_value);
-
   }
 
   *((guint32 *)&code.bytes[lea_rbx_area_ptr_offset]) = lea_rbx_area_ptr_value;
@@ -359,15 +323,12 @@ static void instrument_coverage_write(GumAddress        address,
   *((guint32 *)&code.bytes[curr_loc_shr_1_offset]) = (guint32)(area_offset_ror);
 
   gum_x86_writer_put_bytes(cw, code.bytes, sizeof(afl_log_code));
-
 }
 
 void instrument_coverage_optimize(const cs_insn    *instr,
                                   GumStalkerOutput *output) {
-
   GumX86Writer *cw = output->writer.x86;
   if (instrument_previous_pc_addr == NULL) {
-
     GumAddressSpec spec = {.near_address = cw->code,
                            .max_distance = 1ULL << 30};
     guint          page_size = gum_query_page_size();
@@ -377,33 +338,25 @@ void instrument_coverage_optimize(const cs_insn    *instr,
     *instrument_previous_pc_addr = instrument_hash_zero;
     FVERBOSE("instrument_previous_pc_addr: %p", instrument_previous_pc_addr);
     FVERBOSE("code_addr: %p", cw->code);
-
   }
 
   if (instrument_suppress) {
-
     instrument_coverage_suppress_init();
 
     if (!g_hash_table_add(coverage_blocks, GSIZE_TO_POINTER(cw->code))) {
-
       FATAL("Failed - g_hash_table_add");
-
     }
-
   }
 
   instrument_coverage_write(GUM_ADDRESS(instr->address), output);
-
 }
 
 void instrument_coverage_optimize_insn(const cs_insn    *instr,
                                        GumStalkerOutput *output) {
-
   GumX86Writer *cw = output->writer.x86;
   jcc_insn      taken, not_taken;
 
   switch (instr->id) {
-
     case X86_INS_CMOVA:
       taken.opcode = OPC_JA;
       not_taken.opcode = OPC_JBE;
@@ -470,7 +423,6 @@ void instrument_coverage_optimize_insn(const cs_insn    *instr,
       break;
     default:
       return;
-
   }
 
   taken.distance = sizeof(afl_log_code);
@@ -486,23 +438,17 @@ void instrument_coverage_optimize_insn(const cs_insn    *instr,
 
   FVERBOSE("Instrument - 0x%016lx: %s %s", instr->address, instr->mnemonic,
            instr->op_str);
-
 }
 
 void instrument_flush(GumStalkerOutput *output) {
-
   gum_x86_writer_flush(output->writer.x86);
-
 }
 
 gpointer instrument_cur(GumStalkerOutput *output) {
-
   return gum_x86_writer_cur(output->writer.x86);
-
 }
 
 void instrument_write_regs(GumCpuContext *cpu_context, gpointer user_data) {
-
   int fd = (int)(size_t)user_data;
   instrument_regs_format(
       fd, "rax: 0x%016x, rbx: 0x%016x, rcx: 0x%016x, rdx: 0x%016x\n",
@@ -517,8 +463,6 @@ void instrument_write_regs(GumCpuContext *cpu_context, gpointer user_data) {
       fd, "r12: 0x%016x, r13: 0x%016x, r14: 0x%016x, r15: 0x%016x\n",
       cpu_context->r12, cpu_context->r13, cpu_context->r14, cpu_context->r15);
   instrument_regs_format(fd, "rip: 0x%016x\n\n", cpu_context->rip);
-
 }
 
 #endif
-

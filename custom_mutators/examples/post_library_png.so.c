@@ -37,47 +37,37 @@
 #define UP4K(_i) ((((_i) >> 12) + 1) << 12)
 
 typedef struct post_state {
-
   unsigned char *buf;
   size_t         size;
 
 } post_state_t;
 
 void *afl_custom_init(void *afl) {
-
   post_state_t *state = malloc(sizeof(post_state_t));
   if (!state) {
-
     perror("malloc");
     return NULL;
-
   }
 
   state->buf = calloc(sizeof(unsigned char), MAX_FILE);
   if (!state->buf) {
-
     free(state);
     perror("calloc");
     return NULL;
-
   }
 
   return state;
-
 }
 
 size_t afl_custom_post_process(post_state_t *data, const unsigned char *in_buf,
                                unsigned int          len,
                                const unsigned char **out_buf) {
-
   /* Don't do anything if there's not enough room for the PNG header
      (8 bytes). */
 
   if (len < 8) {
-
     *out_buf = in_buf;
     return len;
-
   }
 
   unsigned int pos = 8;
@@ -86,7 +76,6 @@ size_t afl_custom_post_process(post_state_t *data, const unsigned char *in_buf,
      don't have that, we can bail out. */
 
   while (pos + 12 <= len) {
-
     unsigned int chunk_len, real_cksum, file_cksum;
 
     /* Chunk length is the first big-endian dword in the chunk. */
@@ -109,27 +98,20 @@ size_t afl_custom_post_process(post_state_t *data, const unsigned char *in_buf,
     /* If the checksums do not match, we need to fix the file. */
 
     if (real_cksum != file_cksum) {
-
       *(uint32_t *)(data->buf + pos + 8 + chunk_len) = real_cksum;
-
     }
 
     /* Skip the entire chunk and move to the next one. */
 
     pos += 12 + chunk_len;
-
   }
 
   *out_buf = data->buf;
   return len;
-
 }
 
 /* Gets called afterwards */
 void afl_custom_deinit(post_state_t *data) {
-
   free(data->buf);
   free(data);
-
 }
-
