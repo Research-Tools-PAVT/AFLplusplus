@@ -3,12 +3,12 @@
  */
 
 
-#define GAP 6
+#define GAP 10
 #define BASE_OFFSET 50
 #define COUNTER_WRITES 1000
+
+#define PRINT_FREQ 4096
 
 #define HISTOGRAM_MULTIPLIER 550
 #define COUNTER_MULTIPLIER 10
 #define PERF_SCORE_MULTIPLIER 20
-
-#define PRINT_FREQ 4096

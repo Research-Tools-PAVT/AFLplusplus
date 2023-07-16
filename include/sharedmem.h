@@ -48,6 +48,9 @@ typedef struct sharedmem {
 
   u8 *map;                                          /* shared memory region */
 
+#ifdef FUZZMAX
+  
+
   size_t map_size;                                 /* actual allocated size */
 
   int             cmplog_mode;

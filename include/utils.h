@@ -126,6 +126,7 @@ u8 *get_afl_area_ptr(void) {
 #endif
   }
 
+  memset(afl_area_ptr, 0, afl_map_size);
   return afl_area_ptr;
 }
 
