@@ -402,6 +402,7 @@ typedef struct afl_env_vars {
 
 #ifdef FUZZMAX
   u8 afl_no_satfuzz_cullqueue;
+  u8 afl_format_shm;
 #endif
 
   u8 *afl_tmpdir, *afl_custom_mutator_library, *afl_python_module, *afl_path,
