@@ -436,7 +436,7 @@ typedef struct afl_state {
 
   /* Send formatting and extra metrics information to AFL */
 #ifdef FUZZMAX
-  format_extra_t *shm_fm_extra;
+  format_extra_t shm_fm_extra;
 #endif
 
   afl_env_vars_t afl_env;

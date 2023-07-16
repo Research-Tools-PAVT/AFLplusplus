@@ -737,11 +737,16 @@ void show_stats_normal(afl_state_t *afl) {
   SAYF("%s" cGRA "Weight:%s%20f" cGRA "" cRST, SP5, cBRI,
        afl->queue_cur->weight);
 
-  SAYF("%s" cGRA "Bitmap Usage: %s%4u / %4lld" cGRA "" cRST, SP5, cBRI,
+  SAYF("%s" cGRA "Bitmap Usage: %s%4u / %4lld\n" cGRA "" cRST, SP5, cBRI,
        afl->queue_cur->bitmap_size, afl->total_bitmap_size);
 
-  SAYF("%s" cGRA "Extra Args:%s%3d" cGRA "" cRST, SP5, cBRI,
-       afl->shm_fm_extra->map[0]);
+  SAYF(bSTG "\t      " bV bSTOP "\n");
+
+  SAYF("%s" cGRA "Extra Args:%s%10d" cGRA "" cRST, SP5, cBRI,
+       afl->shm_fm_extra.map[0]);
+
+  SAYF("%s" cGRA "Extra Args:%s%10d" cGRA "" cRST, SP5, cBRI,
+       afl->shm_fm_extra.map[4]);
 
   SAYF(bSTG "\t      " bV bSTOP "\n");
 

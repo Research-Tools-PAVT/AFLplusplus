@@ -1294,8 +1294,8 @@ double get_runnable_processes(void) {
      processes well. */
 
   FILE *f = fopen("/proc/stat", "r");
-  u8 tmp[1024];
-  u32 val = 0;
+  u8    tmp[1024];
+  u32   val = 0;
 
   if (!f) { return 0; }
 
@@ -1527,7 +1527,7 @@ static void handle_existing_out_dir(afl_state_t *afl) {
         alloc_printf("%s_%04d%02d%02d%02d%02d%02d", fn, t.tm_year + 1900,
                      t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
 
-#endif /* ^!SIMPLE_FILES */
+#endif               /* ^!SIMPLE_FILES */
 
     rename(fn, nfn); /* Ignore errors. */
     ck_free(nfn);
@@ -1557,7 +1557,7 @@ static void handle_existing_out_dir(afl_state_t *afl) {
         alloc_printf("%s_%04d%02d%02d%02d%02d%02d", fn, t.tm_year + 1900,
                      t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
 
-#endif /* ^!SIMPLE_FILES */
+#endif               /* ^!SIMPLE_FILES */
 
     rename(fn, nfn); /* Ignore errors. */
     ck_free(nfn);
@@ -1895,7 +1895,7 @@ void check_crash_handling(void) {
    *BSD, so we can just let it slide for now. */
 
   s32 fd = open("/proc/sys/kernel/core_pattern", O_RDONLY);
-  u8 fchar;
+  u8  fchar;
 
   if (fd < 0) { return; }
 
@@ -2014,7 +2014,7 @@ void check_cpu_governor(afl_state_t *afl) {
   FATAL("Suboptimal CPU scaling governor");
 
 #elif defined __APPLE__
-  u64 min = 0, max = 0;
+  u64    min = 0, max = 0;
   size_t mlen = sizeof(min);
   if (afl->afl_env.afl_skip_cpufreq) return;
 
@@ -2089,7 +2089,7 @@ void get_core_count(afl_state_t *afl) {
 
   #endif /* ^HAVE_AFFINITY */
 
-#endif /* ^(__APPLE__ || __FreeBSD__ || __OpenBSD__) */
+#endif   /* ^(__APPLE__ || __FreeBSD__ || __OpenBSD__) */
 
   if (afl->cpu_core_count > 0) {
     u32 cur_runnable = 0;
@@ -2218,12 +2218,13 @@ static void handle_skipreq(int sig) {
 
 void setup_fm_shmem(afl_state_t *afl) {
   // takes two parameters format_extra_t * x, size_t y
-  u32 *map = (u32 *)afl_shm_fm_init(afl->shm_fm_extra, 10, 1);
-  afl->shm_fm_extra->shmemfuzz_mode = 1;
+  u32 *map = (u32 *)afl_shm_fm_init(&afl->shm_fm_extra, 10,
+                                    afl->non_instrumented_mode);
+  afl->shm_fm_extra.shmemfuzz_mode = 1;
 
   if (!map) { FATAL("BUG: Zero return from afl_shm_init."); }
 
-  u8 *shm_str = alloc_printf("%d", afl->shm_fm_extra->shm_id);
+  u8 *shm_str = alloc_printf("%d", afl->shm_fm_extra.shm_id);
   setenv(FM_SHM_ENV_VAR, shm_str, 1);
   ck_free(shm_str);
 }
@@ -2409,7 +2410,8 @@ void check_binary(afl_state_t *afl, u8 *fname) {
       !afl_memmem(f_data, f_len, SHM_ENV_VAR, strlen(SHM_ENV_VAR) + 1)) {
 
     SAYF("\n" cLRD "[-] " cRST
-         "Looks like the target binary is not instrumented! The fuzzer depends "
+         "Looks like the target binary is not instrumented! The fuzzer "
+         "depends "
          "on\n"
          "    compile-time instrumentation to isolate interesting test cases "
          "while\n"
