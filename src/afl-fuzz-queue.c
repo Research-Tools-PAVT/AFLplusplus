@@ -774,8 +774,8 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   u32 perf_score = 100;
 
 #ifdef FUZZMAX
-  q->num_preds = afl->fsrv.trace_bits[COUNTER_WRITES];
-  q->predicate_counter = afl->fsrv.trace_bits[COUNTER_WRITES + 2];
+  q->num_preds = afl->shm_fm_extra.map[1];
+  q->predicate_counter = afl->shm_fm_extra.map[2];
 #endif
 
   /* Adjust score based on execution speed of this path, compared to the
@@ -986,7 +986,7 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       if (q->favored) factor *= 1.15;
 
       // Maximum number of predicates hit so far.
-      uint8_t MAX_COUNTER = afl->fsrv.trace_bits[COUNTER_WRITES + 1];
+      uint8_t MAX_COUNTER = afl->shm_fm_extra.map[0];
 
       // afl->fsrv.trace_bits is the bitmap
       // we are updating on the client side

@@ -2217,14 +2217,13 @@ static void handle_skipreq(int sig) {
 /* Setup format and extra args shared memory */
 
 void setup_fm_shmem(afl_state_t *afl) {
-  // takes two parameters format_extra_t * x, size_t y
-  u32 *map = (u32 *)afl_shm_fm_init(&afl->shm_fm_extra, 10,
+  u32 *map = (u32 *)afl_shm_fm_init(&afl->shm_fm_extra, 12,
                                     afl->non_instrumented_mode);
-  afl->shm_fm_extra.shmemfuzz_mode = 1;
-
   if (!map) { FATAL("BUG: Zero return from afl_shm_init."); }
 
+  afl->shm_fm_extra.shmemfuzz_mode = 1;
   u8 *shm_str = alloc_printf("%d", afl->shm_fm_extra.shm_id);
+
   setenv(FM_SHM_ENV_VAR, shm_str, 1);
   ck_free(shm_str);
 }

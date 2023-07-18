@@ -678,7 +678,7 @@ void show_stats_normal(afl_state_t *afl) {
 
 #ifdef FUZZMAX
 
-  unsigned int NUM_PREDS = afl->fsrv.trace_bits[COUNTER_WRITES];
+  unsigned int NUM_PREDS = afl->shm_fm_extra.map[1];
 
   SAYF("\n" cBRI "[SATFUZZ]" cRST "%s\n\n", banner);
 
@@ -691,10 +691,10 @@ void show_stats_normal(afl_state_t *afl) {
   SAYF("%s" cGRA "NUM_PREDS:%s%3u" cGRA "" cRST, SP5, cBRI, NUM_PREDS);
 
   SAYF("%s" cGRA "MAX_COUNTER:%s%3u" cGRA "" cRST, SP5, cBRI,
-       afl->fsrv.trace_bits[COUNTER_WRITES + 1]);
+       afl->shm_fm_extra.map[0]);
 
   SAYF("%s" cGRA "CURRENT_COUNTER:%s%3u" cGRA cRST, SP5, cBRI,
-       afl->fsrv.trace_bits[COUNTER_WRITES + 2]);
+       afl->shm_fm_extra.map[2]);
 
   SAYF(bSTG "       " bV bSTOP "\n");
 
@@ -737,18 +737,57 @@ void show_stats_normal(afl_state_t *afl) {
   SAYF("%s" cGRA "Weight:%s%20f" cGRA "" cRST, SP5, cBRI,
        afl->queue_cur->weight);
 
-  SAYF("%s" cGRA "Bitmap Usage: %s%4u / %4lld\n" cGRA "" cRST, SP5, cBRI,
+  SAYF("%s" cGRA "Bitmap Usage: %s%4u / %4lld" cGRA "" cRST, SP5, cBRI,
        afl->queue_cur->bitmap_size, afl->total_bitmap_size);
 
-  SAYF(bSTG "\t      " bV bSTOP "\n");
+  SAYF(bSTG "       " bV bSTOP "\n");
+  SAYF(bSTG bV bSTOP);
 
-  SAYF("%s" cGRA "Extra Args:%s%10d" cGRA "" cRST, SP5, cBRI,
-       afl->shm_fm_extra.map[0]);
+  SAYF("%s" cGRA "Loop:%s%8d" cGRA "" cRST, SP5, cBRI,
+       afl->shm_fm_extra.map[3]);
 
-  SAYF("%s" cGRA "Extra Args:%s%10d" cGRA "" cRST, SP5, cBRI,
+  SAYF("%s" cGRA "Crash:%s%4d" cGRA "" cRST, SP5, cBRI,
+       afl->shm_fm_extra.map[9]);
+
+  SAYF("%s" cGRA "n1map:%s%4d" cGRA "" cRST, SP5, cBRI,
+       afl->shm_fm_extra.map[6]);
+
+  SAYF("%s" cGRA "n2map:%s%4d" cGRA "" cRST, SP5, cBRI,
+       afl->shm_fm_extra.map[8]);
+
+  SAYF(bSTG "      " bV bSTOP "\n");
+  SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
+       " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
+       " Offsets-(3)" bSTG bH bVL                       bSTOP "\n");
+
+  SAYF(bSTG bV bSTOP);
+
+  SAYF("%s" cGRA "2-preds:%s%4d" cGRA "" cRST, SP5, cBRI,
        afl->shm_fm_extra.map[4]);
 
+  SAYF("%s" cGRA "Last:%s%4d" cGRA "" cRST, SP5, cBRI,
+       afl->shm_fm_extra.map[10]);
+
+  SAYF("%s" cGRA "n1map:%s%4d" cGRA "" cRST, SP5, cBRI,
+       afl->shm_fm_extra.map[5]);
+
+  SAYF("%s" cGRA "n2map:%s%4d" cGRA "" cRST, SP5, cBRI,
+       afl->shm_fm_extra.map[7]);
+
   SAYF(bSTG "\t      " bV bSTOP "\n");
+
+  SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
+       " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
+       "Current Hits" bSTG bH bVL                       bSTOP "\n");
+  SAYF(bSTG bV bSTOP);
+
+  // Add more extra info.
+  for (size_t i = 0; i < NUM_PREDS; i++) {
+    SAYF("%s" cGRA "%s%3d" cGRA "" cRST, SP5, cBRI,
+         afl->fsrv.trace_bits[i + 1]);
+  }
+
+  SAYF(bSTG "\t      " bSTOP "\n");
 
   SAYF(SET_G1 bSTG bLB bH bSTOP                  cCYA
        "" bSTG bH30 bH20 bH5 bH2 bH5 bH bH bSTOP cCYA "" bSTG bH2 bH2 bRB bSTOP
