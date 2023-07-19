@@ -57,7 +57,7 @@ double energy_f2(uint8_t *heuf, afl_state_t *afl, uint64_t NUM_PREDS) {
     }
   }
 
-  afl->histogram = &global_histogram_val;
+  afl->histogram = global_histogram_val;
   return histogram_energy;
 }
 
