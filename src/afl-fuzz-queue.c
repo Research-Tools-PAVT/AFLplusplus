@@ -992,7 +992,8 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       // we are updating on the client side
       // code.
       double histogram_norm =
-          energy_f2(afl->fsrv.trace_bits, afl, q->num_preds);
+          energy_f2(afl->fsrv.trace_bits, afl, q->num_preds, 11);
+
       double counter_norm =
           (double)(q->predicate_counter / (double)(q->num_preds));
 
@@ -1007,6 +1008,7 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
 
       // Update the performance score of the test case.
       perf_score = PERF_SCORE_MULTIPLIER * q->predicate_counter + MAX_COUNTER;
+      // perf_score = 1434;
 
       // This is just for logging in the AFL UI.
       // It does not change the counters or any other variable.

@@ -2215,9 +2215,10 @@ static void handle_skipreq(int sig) {
 
 #ifdef FUZZMAX
 /* Setup format and extra args shared memory */
+/* Formatting and Histogram values. */
 
 void setup_fm_shmem(afl_state_t *afl) {
-  u32 *map = (u32 *)afl_shm_fm_init(&afl->shm_fm_extra, 12,
+  u32 *map = (u32 *)afl_shm_fm_init(&afl->shm_fm_extra, 12 + 50,
                                     afl->non_instrumented_mode);
   if (!map) { FATAL("BUG: Zero return from afl_shm_init."); }
 

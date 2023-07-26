@@ -15,8 +15,6 @@
 #include "afl-fuzz.h"
 #include "debug.h"
 
-uint64_t global_histogram_val[50] = {0};
-
 void min_max_scaler(double *arr, size_t size) {
   double x_min = arr[0];
   double x_max = arr[0];
@@ -33,32 +31,30 @@ void min_max_scaler(double *arr, size_t size) {
   return;
 }
 
-double energy_f2(uint8_t *heuf, afl_state_t *afl, uint64_t NUM_PREDS) {
+double energy_f2(uint8_t *trace_bits, afl_state_t *afl, uint64_t NUM_PREDS, size_t offset) {
   // TODO: Normalize histogram values
   double arr[NUM_PREDS];
 
   // Update the histogram and the array for normalization.
   for (uint64_t k = 0; k < NUM_PREDS; k++) {
-    global_histogram_val[k] += (heuf[k + 1] > 0);
-    arr[k] = global_histogram_val[k];
+    arr[k] = afl->shm_fm_extra.map[offset + k];
   }
 
   // Perform min-max like normalization on the array.
   min_max_scaler(arr, NUM_PREDS);
 
   double histogram_energy = 0.00;
-  double run_energy = (double)global_histogram_val[0];
+  uint32_t run_energy = afl->shm_fm_extra.map[offset + 0];
 
   for (uint64_t i = 0; i < NUM_PREDS; i++) {
-    // fprintf(fptr, "%lu, ", global_histogram_val[i]);
-    if (heuf[i + 1] > 0 && (global_histogram_val[i] <= run_energy)) {
-      run_energy = global_histogram_val[i];
+    if (trace_bits[i + 1] > 0 && (afl->shm_fm_extra.map[offset + i] <= run_energy)) {
+      run_energy = afl->shm_fm_extra.map[offset + i];
       histogram_energy = (double)arr[i];
     }
   }
 
-  afl->histogram = global_histogram_val;
   return histogram_energy;
 }
+
 
 #endif
