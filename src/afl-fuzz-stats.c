@@ -438,7 +438,7 @@ void show_stats_normal(afl_state_t *afl) {
 
   static u8 banner[128];
   u32       banner_len, banner_pad;
-  u8        tmp[256];
+  u8        tmp[512];
   u8        time_tmp[64];
 
   u8 val_buf[8][STRINGIFY_VAL_SIZE_MAX];
@@ -776,28 +776,35 @@ void show_stats_normal(afl_state_t *afl) {
 
   SAYF(bSTG "\t      " bV bSTOP "\n");
 
-  if (NUM_PREDS <= 11) {
-    SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
-         " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
-         "Current Hits" bSTG bH bVL                       bSTOP "\n");
-
-    // Add more extra info.
-    for (size_t i = 0; i < NUM_PREDS; i++) {
-      SAYF("%s" cGRA "%s%5d" cGRA "" cRST, SP5, cBRI,
-           afl->fsrv.trace_bits[i + 1]);
-    }
-
-    SAYF(bSTG "\t      " bSTOP "\n");
-
-    // Add more extra info.
-    for (size_t i = 0; i < NUM_PREDS; i++) {
-      SAYF("%s" cGRA "%s%5d" cGRA "" cRST, SP5, cBRI,
-           afl->shm_fm_extra.map[i + 11]);
-    }
-
-    SAYF(bSTG "\t      " bSTOP "\n");
+  // Add more extra info.
+  for (size_t i = 0; i < 8; i++) {
+    SAYF("%s" cGRA "%s%3d" cGRA "" cRST, SP5, cBRI,
+         afl->fsrv.trace_bits[i + 1]);
   }
 
+  SAYF(bSTG "      " bSTOP "\n");
+
+  // Add more extra info.
+  for (size_t i = 9; i < 16; i++) {
+    SAYF("%s" cGRA "%s%3d" cGRA "" cRST, SP5, cBRI,
+         afl->fsrv.trace_bits[i + 1]);
+  }
+
+  SAYF(bSTG "      " bSTOP "\n");
+  // Add more extra info.
+  for (size_t i = 17; i < 24; i++) {
+    SAYF("%s" cGRA "%s%3d" cGRA "" cRST, SP5, cBRI,
+         afl->fsrv.trace_bits[i + 1]);
+  }
+
+  SAYF(bSTG "      " bSTOP "\n");
+  // Add more extra info.
+  for (size_t i = 25; i < 32; i++) {
+    SAYF("%s" cGRA "%s%3d" cGRA "" cRST, SP5, cBRI,
+         afl->fsrv.trace_bits[i + 1]);
+  }
+
+  SAYF(bSTG "      " bSTOP "\n");
   SAYF(SET_G1 bSTG bLB bH bSTOP                  cCYA
        "" bSTG bH30 bH20 bH5 bH2 bH5 bH bH bSTOP cCYA "" bSTG bH2 bH2 bRB bSTOP
        "\n");
