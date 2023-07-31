@@ -438,7 +438,7 @@ void show_stats_normal(afl_state_t *afl) {
 
   static u8 banner[128];
   u32       banner_len, banner_pad;
-  u8        tmp[256];
+  u8        tmp[512];
   u8        time_tmp[64];
 
   u8 val_buf[8][STRINGIFY_VAL_SIZE_MAX];
@@ -676,133 +676,141 @@ void show_stats_normal(afl_state_t *afl) {
 #define SP10 SP5 SP5
 #define SP20 SP10 SP10
 
-#ifdef FUZZMAX
-
-  unsigned int NUM_PREDS = afl->shm_fm_extra.map[1];
-
   SAYF("\n" cBRI "[SATFUZZ]" cRST "%s\n\n", banner);
 
-  SAYF(SET_G1 bSTG bLT bH bSTOP                         cCYA
-       " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
-       " Counters " bSTG bH2 bH bRT                     bSTOP "\n");
+#ifdef FUZZMAX
 
-  SAYF(bSTG bV bSTOP);
+  // unsigned int NUM_PREDS = afl->shm_fm_extra.map[1];
 
-  SAYF("%s" cGRA "NUM_PREDS:%s%3u" cGRA "" cRST, SP5, cBRI, NUM_PREDS);
+  // SAYF(SET_G1 bSTG bLT bH bSTOP                         cCYA
+  //      " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
+  //      " Counters " bSTG bH2 bH bRT                     bSTOP "\n");
 
-  SAYF("%s" cGRA "MAX_COUNTER:%s%3u" cGRA "" cRST, SP5, cBRI,
-       afl->shm_fm_extra.map[0]);
+  // SAYF(bSTG bV bSTOP);
 
-  SAYF("%s" cGRA "CURRENT_COUNTER:%s%3u" cGRA cRST, SP5, cBRI,
-       afl->shm_fm_extra.map[2]);
+  // SAYF("%s" cGRA "NUM_PREDS:%s%3u" cGRA "" cRST, SP5, cBRI, NUM_PREDS);
 
-  SAYF(bSTG "       " bV bSTOP "\n");
+  // SAYF("%s" cGRA "MAX_COUNTER:%s%3u" cGRA "" cRST, SP5, cBRI,
+  //      afl->shm_fm_extra.map[0]);
 
-  SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
-       " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
-       " Metrics " bSTG bH2 bH2 bVL                     bSTOP "\n");
+  // SAYF("%s" cGRA "CURRENT_COUNTER:%s%3u" cGRA cRST, SP5, cBRI,
+  //      afl->shm_fm_extra.map[2]);
 
-  SAYF(bSTG bV bSTOP);
+  // SAYF(bSTG "       " bV bSTOP "\n");
 
-  SAYF("%s" cGRA "Histogram Quad:%s%12f" cGRA "" cRST, SP5, cBRI,
-       afl->histogram_quad);
+  // SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
+  //      " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
+  //      " Metrics " bSTG bH2 bH2 bVL                     bSTOP "\n");
 
-  SAYF("%s" cGRA "Counter Quad:%s%12f" cGRA "" cRST, SP5, cBRI,
-       afl->counter_quad);
+  // SAYF(bSTG bV bSTOP);
 
-  SAYF(bSTG "       " bV bSTOP "\n");
-  SAYF(bSTG bV bSTOP);
+  // SAYF("%s" cGRA "Histogram Quad:%s%12f" cGRA "" cRST, SP5, cBRI,
+  //      afl->histogram_quad);
 
-  SAYF("%s" cGRA "Histogram_norm:%s%12f" cGRA "" cRST, SP5, cBRI,
-       afl->histogram_norm);
+  // SAYF("%s" cGRA "Counter Quad:%s%12f" cGRA "" cRST, SP5, cBRI,
+  //      afl->counter_quad);
 
-  SAYF("%s" cGRA "Counter_norm:%s%12f" cGRA "" cRST, SP5, cBRI,
-       afl->counter_norm);
+  // SAYF(bSTG "       " bV bSTOP "\n");
+  // SAYF(bSTG bV bSTOP);
 
-  SAYF(bSTG "       " bV bSTOP "\n");
-  SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
-       " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
-       " Statistics " bSTG bH bVL                       bSTOP "\n");
+  // SAYF("%s" cGRA "Histogram_norm:%s%12f" cGRA "" cRST, SP5, cBRI,
+  //      afl->histogram_norm);
 
-  SAYF(bSTG bV bSTOP);
+  // SAYF("%s" cGRA "Counter_norm:%s%12f" cGRA "" cRST, SP5, cBRI,
+  //      afl->counter_norm);
 
-  SAYF("%s" cGRA "Factor:%s%20f" cGRA "" cRST, SP5, cBRI, afl->factor);
+  // SAYF(bSTG "       " bV bSTOP "\n");
+  // SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
+  //      " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
+  //      " Statistics " bSTG bH bVL                       bSTOP "\n");
 
-  SAYF("%s" cGRA "Perf Score:%s%14f" cGRA "" cRST, SP5, cBRI,
-       afl->queue_cur->perf_score);
+  // SAYF(bSTG bV bSTOP);
 
-  SAYF(bSTG "       " bV bSTOP "\n");
-  SAYF(bSTG bV bSTOP);
+  // SAYF("%s" cGRA "Factor:%s%20f" cGRA "" cRST, SP5, cBRI, afl->factor);
 
-  SAYF("%s" cGRA "Weight:%s%20f" cGRA "" cRST, SP5, cBRI,
-       afl->queue_cur->weight);
+  // SAYF("%s" cGRA "Perf Score:%s%14f" cGRA "" cRST, SP5, cBRI,
+  //      afl->queue_cur->perf_score);
 
-  SAYF("%s" cGRA "Bitmap Usage: %s%4u / %4lld" cGRA "" cRST, SP5, cBRI,
-       afl->queue_cur->bitmap_size, afl->total_bitmap_size);
+  // SAYF(bSTG "       " bV bSTOP "\n");
+  // SAYF(bSTG bV bSTOP);
 
-  SAYF(bSTG "       " bV bSTOP "\n");
-  SAYF(bSTG bV bSTOP);
+  // SAYF("%s" cGRA "Weight:%s%20f" cGRA "" cRST, SP5, cBRI,
+  //      afl->queue_cur->weight);
 
-  SAYF("%s" cGRA "Loop:%s%8d" cGRA "" cRST, SP5, cBRI,
-       afl->shm_fm_extra.map[3]);
+  // SAYF("%s" cGRA "Bitmap Usage: %s%4u / %4lld" cGRA "" cRST, SP5, cBRI,
+  //      afl->queue_cur->bitmap_size, afl->total_bitmap_size);
 
-  SAYF("%s" cGRA "Crash:%s%4d" cGRA "" cRST, SP5, cBRI,
-       afl->shm_fm_extra.map[9]);
+  // SAYF(bSTG "       " bV bSTOP "\n");
+  // SAYF(bSTG bV bSTOP);
 
-  SAYF("%s" cGRA "n1map:%s%4d" cGRA "" cRST, SP5, cBRI,
-       afl->shm_fm_extra.map[6]);
+  // SAYF("%s" cGRA "Loop:%s%8d" cGRA "" cRST, SP5, cBRI,
+  //      afl->shm_fm_extra.map[3]);
 
-  SAYF("%s" cGRA "n2map:%s%4d" cGRA "" cRST, SP5, cBRI,
-       afl->shm_fm_extra.map[8]);
+  // SAYF("%s" cGRA "Crash:%s%4d" cGRA "" cRST, SP5, cBRI,
+  //      afl->shm_fm_extra.map[9]);
 
-  SAYF(bSTG "      " bV bSTOP "\n");
-  SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
-       " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
-       " Offsets-(3)" bSTG bH bVL                       bSTOP "\n");
+  // SAYF("%s" cGRA "n1map:%s%4d" cGRA "" cRST, SP5, cBRI,
+  //      afl->shm_fm_extra.map[6]);
 
-  SAYF(bSTG bV bSTOP);
+  // SAYF("%s" cGRA "n2map:%s%4d" cGRA "" cRST, SP5, cBRI,
+  //      afl->shm_fm_extra.map[8]);
 
-  SAYF("%s" cGRA "2-preds:%s%4d" cGRA "" cRST, SP5, cBRI,
-       afl->shm_fm_extra.map[4]);
+  // SAYF(bSTG "      " bV bSTOP "\n");
+  // SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
+  //      " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
+  //      " Offsets-(3)" bSTG bH bVL                       bSTOP "\n");
 
-  SAYF("%s" cGRA "Last:%s%4d" cGRA "" cRST, SP5, cBRI,
-       afl->shm_fm_extra.map[10]);
+  // SAYF(bSTG bV bSTOP);
 
-  SAYF("%s" cGRA "n1map:%s%4d" cGRA "" cRST, SP5, cBRI,
-       afl->shm_fm_extra.map[5]);
+  // SAYF("%s" cGRA "2-preds:%s%4d" cGRA "" cRST, SP5, cBRI,
+  //      afl->shm_fm_extra.map[4]);
 
-  SAYF("%s" cGRA "n2map:%s%4d" cGRA "" cRST, SP5, cBRI,
-       afl->shm_fm_extra.map[7]);
+  // SAYF("%s" cGRA "Last:%s%4d" cGRA "" cRST, SP5, cBRI,
+  //      afl->shm_fm_extra.map[10]);
 
-  SAYF(bSTG "\t      " bV bSTOP "\n");
+  // SAYF("%s" cGRA "n1map:%s%4d" cGRA "" cRST, SP5, cBRI,
+  //      afl->shm_fm_extra.map[5]);
 
-  if (NUM_PREDS <= 11) {
-    SAYF(SET_G1 bSTG bVR bH bSTOP                         cCYA
-         " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
-         "Current Hits" bSTG bH bVL                       bSTOP "\n");
+  // SAYF("%s" cGRA "n2map:%s%4d" cGRA "" cRST, SP5, cBRI,
+  //      afl->shm_fm_extra.map[7]);
 
-    // Add more extra info.
-    for (size_t i = 0; i < NUM_PREDS; i++) {
-      SAYF("%s" cGRA "%s%5d" cGRA "" cRST, SP5, cBRI,
-           afl->fsrv.trace_bits[i + 1]);
-    }
+  // SAYF(bSTG "\t      " bV bSTOP "\n");
 
-    SAYF(bSTG "\t      " bSTOP "\n");
+  // // Add more extra info.
+  // for (size_t i = 0; i < 8; i++) {
+  //   SAYF("%s" cGRA "%s%3d" cGRA "" cRST, SP5, cBRI,
+  //        afl->fsrv.trace_bits[i + 1]);
+  // }
 
-    // Add more extra info.
-    for (size_t i = 0; i < NUM_PREDS; i++) {
-      SAYF("%s" cGRA "%s%5d" cGRA "" cRST, SP5, cBRI,
-           afl->shm_fm_extra.map[i + 11]);
-    }
+  // SAYF(bSTG "      " bSTOP "\n");
 
-    SAYF(bSTG "\t      " bSTOP "\n");
-  }
+  // // Add more extra info.
+  // for (size_t i = 9; i < 16; i++) {
+  //   SAYF("%s" cGRA "%s%3d" cGRA "" cRST, SP5, cBRI,
+  //        afl->fsrv.trace_bits[i + 1]);
+  // }
 
-  SAYF(SET_G1 bSTG bLB bH bSTOP                  cCYA
-       "" bSTG bH30 bH20 bH5 bH2 bH5 bH bH bSTOP cCYA "" bSTG bH2 bH2 bRB bSTOP
-       "\n");
+  // SAYF(bSTG "      " bSTOP "\n");
+  // // Add more extra info.
+  // for (size_t i = 17; i < 24; i++) {
+  //   SAYF("%s" cGRA "%s%3d" cGRA "" cRST, SP5, cBRI,
+  //        afl->fsrv.trace_bits[i + 1]);
+  // }
 
-  SAYF(cBRI "\n" cRST);
+  // SAYF(bSTG "      " bSTOP "\n");
+  // // Add more extra info.
+  // for (size_t i = 25; i < 32; i++) {
+  //   SAYF("%s" cGRA "%s%3d" cGRA "" cRST, SP5, cBRI,
+  //        afl->fsrv.trace_bits[i + 1]);
+  // }
+
+  // SAYF(bSTG "      " bSTOP "\n");
+  // SAYF(SET_G1 bSTG bLB bH bSTOP                  cCYA
+  //      "" bSTG bH30 bH20 bH5 bH2 bH5 bH bH bSTOP cCYA "" bSTG bH2 bH2 bRB
+  //      bSTOP
+  //      "\n");
+
+  // SAYF(cBRI "\n" cRST);
 #endif
 
   /* Since `total_crashes` does not get reloaded from disk on restart,
