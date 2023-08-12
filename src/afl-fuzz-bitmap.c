@@ -410,6 +410,7 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
      need_hash = 1;
   s32 fd;
   u64 cksum = 0;
+  u32 cksum_k1 = hash32(afl->fsrv.trace_bits, afl->shm_fm.map[1], 0);
 
   /* Update path frequency. */
 
@@ -442,7 +443,6 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
 
     if (afl->q_max_pred_count < afl->shm_fm.map[0]) {
       afl->q_max_pred_count = afl->shm_fm.map[0];
-      OKF("id:%06u: hits = %u\n", afl->queued_items, afl->shm_fm.map[0]);
     } else {
       if (likely(!new_bits)) {
         if (unlikely(afl->crash_mode)) { ++afl->total_crashes; }
@@ -472,6 +472,7 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
 #ifdef STABLE_DEBUG
     DEBUGF("[add_to_queue] AFL added this (save_if_interesting)\n");
 #endif
+
     add_to_queue(afl, queue_fn, len, 0);
 
 #ifdef INTROSPECTION
@@ -523,6 +524,13 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
     if (likely(afl->q_testcase_max_cache_size)) {
       queue_testcase_store_mem(afl, afl->queue_top, mem);
     }
+
+    OKF("id:%06u : hits = %u, trace = %u\n", afl->queued_items,
+        afl->shm_fm.map[0], cksum_k1);
+    for (u32 i = 1; i <= afl->shm_fm.map[1]; ++i)
+      printf("%u,", afl->fsrv.trace_bits[i]);
+
+    printf("\n");
 
     keeping = 1;
   }

@@ -86,8 +86,8 @@ void create_alias_table(afl_state_t *afl) {
   afl->alias_probability = (double *)afl_realloc(
       (void **)&afl->alias_probability, n * sizeof(double));
   double *P = (double *)afl_realloc(AFL_BUF_PARAM(out), n * sizeof(double));
-  int    *S = (int *)afl_realloc(AFL_BUF_PARAM(out_scratch), n * sizeof(u32));
-  int    *L = (int *)afl_realloc(AFL_BUF_PARAM(in_scratch), n * sizeof(u32));
+  int *   S = (int *)afl_realloc(AFL_BUF_PARAM(out_scratch), n * sizeof(u32));
+  int *   L = (int *)afl_realloc(AFL_BUF_PARAM(in_scratch), n * sizeof(u32));
 
   if (!P || !S || !L || !afl->alias_table || !afl->alias_probability) {
     FATAL("could not acquire memory for alias table");
@@ -373,7 +373,7 @@ u8 check_if_text_buf(u8 *buf, u32 len) {
 static u8 check_if_text(afl_state_t *afl, struct queue_entry *q) {
   if (q->len < AFL_TXT_MIN_LEN || q->len < AFL_TXT_MAX_LEN) return 0;
 
-  u8     *buf;
+  u8 *    buf;
   int     fd;
   u32     len = q->len, offset = 0, ascii = 0, utf8 = 0;
   ssize_t comp;
@@ -600,49 +600,55 @@ void update_bitmap_score(afl_state_t *afl, struct queue_entry *q) {
      winner, and how it compares to us. */
   for (i = 0; i < afl->fsrv.map_size; ++i) {
     if (afl->fsrv.trace_bits[i]) {
-      if (afl->top_rated[i]) {
-        /* Faster-executing or smaller test cases are favored. */
-        u64 top_rated_fav_factor;
-        u64 top_rated_fuzz_p2;
-        if (unlikely(afl->schedule >= FAST && afl->schedule <= RARE))
-          top_rated_fuzz_p2 =
-              next_pow2(afl->n_fuzz[afl->top_rated[i]->n_fuzz_entry]);
-        else
-          top_rated_fuzz_p2 = afl->top_rated[i]->fuzz_level;
+      /* if (afl->top_rated[i]) { */
+      /*   /\* Faster-executing or smaller test cases are favored. *\/ */
+      /*   u64 top_rated_fav_factor; */
+      /*   u64 top_rated_fuzz_p2; */
+      /*   if (unlikely(afl->schedule >= FAST && afl->schedule <= RARE)) */
+      /*     top_rated_fuzz_p2 = */
+      /*         next_pow2(afl->n_fuzz[afl->top_rated[i]->n_fuzz_entry]); */
+      /*   else */
+      /*     top_rated_fuzz_p2 = afl->top_rated[i]->fuzz_level; */
 
-        if (unlikely(afl->schedule >= RARE) || unlikely(afl->fixed_seed)) {
-          top_rated_fav_factor = afl->top_rated[i]->len << 2;
+      /*   if (unlikely(afl->schedule >= RARE) || unlikely(afl->fixed_seed)) {
+       */
+      /*     top_rated_fav_factor = afl->top_rated[i]->len << 2; */
 
-        } else {
-          top_rated_fav_factor =
-              afl->top_rated[i]->exec_us * afl->top_rated[i]->len;
-        }
+      /*   } else { */
+      /*     top_rated_fav_factor = */
+      /*         afl->top_rated[i]->exec_us * afl->top_rated[i]->len; */
+      /*   } */
 
-        if (fuzz_p2 > top_rated_fuzz_p2) {
-          continue;
+      /*   if (fuzz_p2 > top_rated_fuzz_p2) { */
+      /*     continue; */
 
-        } else if (fuzz_p2 == top_rated_fuzz_p2) {
-          if (fav_factor > top_rated_fav_factor) { continue; }
-        }
+      /*   } else if (fuzz_p2 == top_rated_fuzz_p2) { */
+      /*     if (fav_factor > top_rated_fav_factor) { continue; } */
+      /*   } */
 
-        if (unlikely(afl->schedule >= RARE) || unlikely(afl->fixed_seed)) {
-          if (fav_factor > afl->top_rated[i]->len << 2) { continue; }
+      /*   if (unlikely(afl->schedule >= RARE) || unlikely(afl->fixed_seed)) {
+       */
+      /*     if (fav_factor > afl->top_rated[i]->len << 2) { continue; } */
 
-        } else {
-          if (fav_factor >
-              afl->top_rated[i]->exec_us * afl->top_rated[i]->len) {
-            continue;
-          }
-        }
+      /*   } else { */
+      /*     if (fav_factor > */
+      /*         afl->top_rated[i]->exec_us * afl->top_rated[i]->len) { */
+      /*       continue; */
+      /*     } */
+      /*   } */
 
-        /* Looks like we're going to win. Decrease ref count for the
-           previous winner, discard its afl->fsrv.trace_bits[] if necessary. */
+      /*   /\* Looks like we're going to win. Decrease ref count for the */
+      /*      previous winner, discard its afl->fsrv.trace_bits[] if necessary.
+       * *\/ */
 
-        if (!--afl->top_rated[i]->tc_ref) {
-          ck_free(afl->top_rated[i]->trace_mini);
-          afl->top_rated[i]->trace_mini = 0;
-        }
-      }
+      /*   if (!--afl->top_rated[i]->tc_ref) { */
+      /*     ck_free(afl->top_rated[i]->trace_mini); */
+      /*     afl->top_rated[i]->trace_mini = 0; */
+      /*   } */
+      /* } */
+
+      if (afl->top_rated[i] && afl->top_rated[i]->fm_hits >= q->fm_hits)
+        continue;
 
       /* Insert ourselves as the new winner. */
 
@@ -680,14 +686,12 @@ void cull_queue(afl_state_t *afl) {
   afl->queued_favored = 0;
   afl->pending_favored = 0;
 
-  /*
   u32 max_score_id = 0;
   for (i = 0; i < afl->queued_items; i++) {
     afl->queue_buf[i]->favored = 0;
     if (afl->queue_buf[i]->fm_hits > afl->queue_buf[max_score_id]->fm_hits)
       max_score_id = i;
   }
-  */
 
   /* Let's see if anything in the bitmap isn't captured in temp_v.
      If yes, and if it has a afl->top_rated[] contender, let's use it. */
@@ -713,13 +717,11 @@ void cull_queue(afl_state_t *afl) {
     }
   }
 
-  /*
   if (!afl->queue_buf[max_score_id]->favored) {
     afl->queue_buf[max_score_id]->favored = 1;
     ++afl->queued_favored;
     if (!afl->queue_buf[max_score_id]->was_fuzzed) { ++afl->pending_favored; }
   }
-  */
 
   for (i = 0; i < afl->queued_items; i++) {
     if (likely(!afl->queue_buf[i]->disabled)) {
