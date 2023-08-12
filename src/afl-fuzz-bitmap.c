@@ -440,23 +440,14 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
       if (unlikely(new_bits)) { classified = 1; }
     }
 
-    u8 hits = afl->shm_fm.map[0];
-    u8 maxfound = 1;
-    for (u32 i = 0; i < afl->queued_items; i++) {
-      struct queue_entry *q = afl->queue_buf[i];
-      if (q->fm_hits >= hits) {
-        maxfound = 0;
-        break;
-      }
-    }
-
-    if (!maxfound) {
+    if (afl->q_max_pred_count < afl->shm_fm.map[0]) {
+      afl->q_max_pred_count = afl->shm_fm.map[0];
+      OKF("id:%06u: hits = %u\n", afl->queued_items, afl->shm_fm.map[0]);
+    } else {
       if (likely(!new_bits)) {
         if (unlikely(afl->crash_mode)) { ++afl->total_crashes; }
         return 0;
       }
-    } else {
-      OKF("id:%06u: hits = %u\n", afl->queued_items, hits);
     }
 
   save_to_queue:

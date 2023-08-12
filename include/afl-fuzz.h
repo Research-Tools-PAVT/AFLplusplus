@@ -122,7 +122,7 @@
   #define CASE_PREFIX "id:"
 #else
   #define CASE_PREFIX "id_"
-#endif                      /* ^!SIMPLE_FILES */
+#endif /* ^!SIMPLE_FILES */
 
 #define STAGE_BUF_SIZE (64) /* usable size for stage name buf in afl_state */
 
@@ -148,9 +148,9 @@ struct tainted {
 };
 
 struct queue_entry {
-  u8 *fname;        /* File name for the test case      */
-  u32 len;          /* Input length                     */
-  u32 id;           /* entry number in queue_buf        */
+  u8 *fname; /* File name for the test case      */
+  u32 len;   /* Input length                     */
+  u32 id;    /* entry number in queue_buf        */
 
   u8 colorized,     /* Do not run redqueen stage again  */
       cal_failed;   /* Calibration failed?              */
@@ -164,9 +164,9 @@ struct queue_entry {
       is_ascii,     /* Is the input just ascii text?    */
       disabled;     /* Is disabled from fuzz selection  */
 
-  u32 bitmap_size,  /* Number of bits set in bitmap     */
-      fuzz_level,   /* Number of fuzzing iterations     */
-      n_fuzz_entry  /* offset in n_fuzz                 */
+  u32 bitmap_size, /* Number of bits set in bitmap     */
+      fuzz_level,  /* Number of fuzzing iterations     */
+      n_fuzz_entry /* offset in n_fuzz                 */
 #ifdef INTROSPECTION
       ,
       stats_selected, /* stats: how often selected        */
@@ -183,8 +183,8 @@ struct queue_entry {
       exec_cksum,    /* Checksum of the execution trace  */
       stats_mutated; /* stats: # of mutations performed  */
 
-  u8 *trace_mini;    /* Trace bytes, if kept             */
-  u32 tc_ref;        /* Trace bytes ref count            */
+  u8 *trace_mini; /* Trace bytes, if kept             */
+  u32 tc_ref;     /* Trace bytes ref count            */
 
 #ifdef INTROSPECTION
   u32 bitsmap_size;
@@ -193,12 +193,12 @@ struct queue_entry {
   double perf_score, /* performance score                */
       weight;
 
-  u8 *testcase_buf;                  /* The testcase buffer, if loaded.  */
+  u8 *testcase_buf; /* The testcase buffer, if loaded.  */
 
-  u8             *cmplog_colorinput; /* the result buf of colorization   */
+  u8 *            cmplog_colorinput; /* the result buf of colorization   */
   struct tainted *taint;             /* Taint information from CmpLog    */
 
-  struct queue_entry *mother;        /* queue entry this based on        */
+  struct queue_entry *mother; /* queue entry this based on        */
 
   u8 fm_hits;
   u8 npreds;
@@ -348,18 +348,18 @@ enum {
 typedef struct py_mutator {
   PyObject *py_module;
   PyObject *py_functions[PY_FUNC_COUNT];
-  void     *afl_state;
-  void     *py_data;
+  void *    afl_state;
+  void *    py_data;
 
-  u8    *fuzz_buf;
+  u8 *   fuzz_buf;
   size_t fuzz_size;
 
   Py_buffer post_process_buf;
 
-  u8    *trim_buf;
+  u8 *   trim_buf;
   size_t trim_size;
 
-  u8    *havoc_buf;
+  u8 *   havoc_buf;
   size_t havoc_size;
 
 } py_mutator_t;
@@ -367,13 +367,13 @@ typedef struct py_mutator {
 #endif
 
 typedef struct MOpt_globals {
-  u64  *finds;
-  u64  *finds_v2;
-  u64  *cycles;
-  u64  *cycles_v2;
-  u64  *cycles_v3;
+  u64 * finds;
+  u64 * finds_v2;
+  u64 * cycles;
+  u64 * cycles_v2;
+  u64 * cycles_v3;
   u32   is_pilot_mode;
-  u64  *pTime;
+  u64 * pTime;
   u64   period;
   char *havoc_stagename;
   char *splice_stageformat;
@@ -412,7 +412,7 @@ struct afl_pass_stat {
 };
 
 struct foreign_sync {
-  u8    *dir;
+  u8 *   dir;
   time_t mtime;
 };
 
@@ -422,7 +422,7 @@ typedef struct afl_state {
 
   afl_forkserver_t fsrv;
   sharedmem_t      shm;
-  sharedmem_t     *shm_fuzz;
+  sharedmem_t *    shm_fuzz;
   sharedmem_t      shm_fm;
   afl_env_vars_t   afl_env;
 
@@ -470,19 +470,19 @@ typedef struct afl_state {
   double period_pilot_tmp;
   s32    key_lv;
 
-  u8 *in_dir,               /* Input directory with test cases  */
-      *out_dir,             /* Working & output directory       */
-      *tmp_dir,             /* Temporary directory for input    */
-      *sync_dir,            /* Synchronization directory        */
-      *sync_id,             /* Fuzzer ID                        */
-      *power_name,          /* Power schedule name              */
-      *use_banner,          /* Display banner                   */
-      *in_bitmap,           /* Input bitmap                     */
-      *file_extension,      /* File extension                   */
-      *orig_cmdline,        /* Original command line            */
-      *infoexec;            /* Command to execute on a new crash */
+  u8 *in_dir,          /* Input directory with test cases  */
+      *out_dir,        /* Working & output directory       */
+      *tmp_dir,        /* Temporary directory for input    */
+      *sync_dir,       /* Synchronization directory        */
+      *sync_id,        /* Fuzzer ID                        */
+      *power_name,     /* Power schedule name              */
+      *use_banner,     /* Display banner                   */
+      *in_bitmap,      /* Input bitmap                     */
+      *file_extension, /* File extension                   */
+      *orig_cmdline,   /* Original command line            */
+      *infoexec;       /* Command to execute on a new crash */
 
-  u32 hang_tmout;           /* Timeout used for hang det (ms)   */
+  u32 hang_tmout; /* Timeout used for hang det (ms)   */
 
   u8 havoc_stack_pow2,      /* HAVOC_STACK_POW2                 */
       no_unlink,            /* do not unlink cur_input          */
@@ -493,9 +493,9 @@ typedef struct afl_state {
       is_secondary_node,    /* if this is a secondary instance  */
       pizza_is_served;      /* pizza mode                       */
 
-  u32 stats_update_freq;    /* Stats update frequency (execs)   */
+  u32 stats_update_freq; /* Stats update frequency (execs)   */
 
-  u8 schedule;              /* Power schedule (default: EXPLORE)*/
+  u8 schedule; /* Power schedule (default: EXPLORE)*/
   u8 havoc_max_mult;
 
   u8 skip_deterministic,     /* Skip deterministic stages?       */
@@ -530,105 +530,105 @@ typedef struct afl_state {
       old_seed_selection,    /* use vanilla afl seed selection   */
       reinit_table;          /* reinit the queue weight table    */
 
-  u8 *virgin_bits,           /* Regions yet untouched by fuzzing */
-      *virgin_tmout,         /* Bits we haven't seen in tmouts   */
-      *virgin_crash;         /* Bits we haven't seen in crashes  */
+  u8 *virgin_bits,   /* Regions yet untouched by fuzzing */
+      *virgin_tmout, /* Bits we haven't seen in tmouts   */
+      *virgin_crash; /* Bits we haven't seen in crashes  */
 
   double *alias_probability; /* alias weighted probabilities     */
-  u32    *alias_table;       /* alias weighted random lookup table */
+  u32 *   alias_table;       /* alias weighted random lookup table */
   u32     active_items;      /* enabled entries in the queue     */
 
-  u8 *var_bytes;             /* Bytes that appear to be variable */
+  u8 *var_bytes; /* Bytes that appear to be variable */
 
 #define N_FUZZ_SIZE (1 << 21)
   u32 *n_fuzz;
 
-  volatile u8 stop_soon,             /* Ctrl-C pressed?                  */
-      clear_screen;                  /* Window resized?                  */
+  volatile u8 stop_soon, /* Ctrl-C pressed?                  */
+      clear_screen;      /* Window resized?                  */
 
-  u32 queued_items,                  /* Total number of queued testcases */
-      queued_variable,               /* Testcases with variable behavior */
-      queued_at_start,               /* Total number of initial inputs   */
-      queued_discovered,             /* Items discovered during this run */
-      queued_imported,               /* Items imported via -S            */
-      queued_favored,                /* Paths deemed favorable           */
-      queued_with_cov,               /* Paths with new coverage bytes    */
-      pending_not_fuzzed,            /* Queued but not done yet          */
-      pending_favored,               /* Pending favored paths            */
-      cur_skipped_items,             /* Abandoned inputs in cur cycle    */
-      cur_depth,                     /* Current path depth               */
-      max_depth,                     /* Max path depth                   */
-      useless_at_start,              /* Number of useless starting paths */
-      var_byte_count,                /* Bitmap bytes with var behavior   */
-      current_entry,                 /* Current queue entry ID           */
-      havoc_div,                     /* Cycle count divisor for havoc    */
-      max_det_extras;                /* deterministic extra count (dicts)*/
+  u32 queued_items,       /* Total number of queued testcases */
+      queued_variable,    /* Testcases with variable behavior */
+      queued_at_start,    /* Total number of initial inputs   */
+      queued_discovered,  /* Items discovered during this run */
+      queued_imported,    /* Items imported via -S            */
+      queued_favored,     /* Paths deemed favorable           */
+      queued_with_cov,    /* Paths with new coverage bytes    */
+      pending_not_fuzzed, /* Queued but not done yet          */
+      pending_favored,    /* Pending favored paths            */
+      cur_skipped_items,  /* Abandoned inputs in cur cycle    */
+      cur_depth,          /* Current path depth               */
+      max_depth,          /* Max path depth                   */
+      useless_at_start,   /* Number of useless starting paths */
+      var_byte_count,     /* Bitmap bytes with var behavior   */
+      current_entry,      /* Current queue entry ID           */
+      havoc_div,          /* Cycle count divisor for havoc    */
+      max_det_extras;     /* deterministic extra count (dicts)*/
 
-  u64 total_crashes,                 /* Total number of crashes          */
-      saved_crashes,                 /* Crashes with unique signatures   */
-      total_tmouts,                  /* Total number of timeouts         */
-      saved_tmouts,                  /* Timeouts with unique signatures  */
-      saved_hangs,                   /* Hangs with unique signatures     */
-      last_crash_execs,              /* Exec counter at last crash       */
-      queue_cycle,                   /* Queue round counter              */
-      cycles_wo_finds,               /* Cycles without any new paths     */
-      trim_execs,                    /* Execs done to trim input files   */
-      bytes_trim_in,                 /* Bytes coming into the trimmer    */
-      bytes_trim_out,                /* Bytes coming outa the trimmer    */
-      blocks_eff_total,              /* Blocks subject to effector maps  */
-      blocks_eff_select,             /* Blocks selected as fuzzable      */
-      start_time,                    /* Unix start time (ms)             */
-      last_sync_time,                /* Time of last sync                */
-      last_sync_cycle,               /* Cycle no. of the last sync       */
-      last_find_time,                /* Time for most recent path (ms)   */
-      last_crash_time,               /* Time for most recent crash (ms)  */
-      last_hang_time,                /* Time for most recent hang (ms)   */
-      longest_find_time,             /* Longest time taken for a find    */
-      exit_on_time,                  /* Delay to exit if no new paths    */
-      sync_time;                     /* Sync time (ms)                   */
+  u64 total_crashes,     /* Total number of crashes          */
+      saved_crashes,     /* Crashes with unique signatures   */
+      total_tmouts,      /* Total number of timeouts         */
+      saved_tmouts,      /* Timeouts with unique signatures  */
+      saved_hangs,       /* Hangs with unique signatures     */
+      last_crash_execs,  /* Exec counter at last crash       */
+      queue_cycle,       /* Queue round counter              */
+      cycles_wo_finds,   /* Cycles without any new paths     */
+      trim_execs,        /* Execs done to trim input files   */
+      bytes_trim_in,     /* Bytes coming into the trimmer    */
+      bytes_trim_out,    /* Bytes coming outa the trimmer    */
+      blocks_eff_total,  /* Blocks subject to effector maps  */
+      blocks_eff_select, /* Blocks selected as fuzzable      */
+      start_time,        /* Unix start time (ms)             */
+      last_sync_time,    /* Time of last sync                */
+      last_sync_cycle,   /* Cycle no. of the last sync       */
+      last_find_time,    /* Time for most recent path (ms)   */
+      last_crash_time,   /* Time for most recent crash (ms)  */
+      last_hang_time,    /* Time for most recent hang (ms)   */
+      longest_find_time, /* Longest time taken for a find    */
+      exit_on_time,      /* Delay to exit if no new paths    */
+      sync_time;         /* Sync time (ms)                   */
 
-  u32 slowest_exec_ms,               /* Slowest testcase non hang in ms  */
-      subseq_tmouts;                 /* Number of timeouts in a row      */
+  u32 slowest_exec_ms, /* Slowest testcase non hang in ms  */
+      subseq_tmouts;   /* Number of timeouts in a row      */
 
-  u8 *stage_name,                    /* Name of the current fuzz stage   */
-      *stage_short,                  /* Short stage name                 */
-      *syncing_party;                /* Currently syncing with...        */
+  u8 *stage_name,     /* Name of the current fuzz stage   */
+      *stage_short,   /* Short stage name                 */
+      *syncing_party; /* Currently syncing with...        */
 
   u8 stage_name_buf[STAGE_BUF_SIZE]; /* reused stagename buf with len 64 */
 
-  u32 stage_cur, stage_max;          /* Stage progression                */
-  s32 splicing_with;                 /* Splicing with which test case?   */
+  u32 stage_cur, stage_max; /* Stage progression                */
+  s32 splicing_with;        /* Splicing with which test case?   */
 
-  u32 main_node_id, main_node_max;   /*   Main instance job splitting    */
+  u32 main_node_id, main_node_max; /*   Main instance job splitting    */
 
-  u32 syncing_case;                  /* Syncing with case #...           */
+  u32 syncing_case; /* Syncing with case #...           */
 
-  s32 stage_cur_byte,                /* Byte offset of current stage op  */
-      stage_cur_val;                 /* Value used for stage op          */
+  s32 stage_cur_byte, /* Byte offset of current stage op  */
+      stage_cur_val;  /* Value used for stage op          */
 
-  u8 stage_val_type;                 /* Value type (STAGE_VAL_*)         */
+  u8 stage_val_type; /* Value type (STAGE_VAL_*)         */
 
-  u64 stage_finds[32],               /* Patterns found per fuzz stage    */
-      stage_cycles[32];              /* Execs per fuzz stage             */
+  u64 stage_finds[32],  /* Patterns found per fuzz stage    */
+      stage_cycles[32]; /* Execs per fuzz stage             */
 
-  u32 rand_cnt;                      /* Random number counter            */
+  u32 rand_cnt; /* Random number counter            */
 
   /*  unsigned long rand_seed[3]; would also work */
   AFL_RAND_RETURN rand_seed[3];
   s64             init_seed;
 
-  u64 total_cal_us,         /* Total calibration time (us)      */
-      total_cal_cycles;     /* Total calibration cycles         */
+  u64 total_cal_us,     /* Total calibration time (us)      */
+      total_cal_cycles; /* Total calibration cycles         */
 
   u64 total_bitmap_size,    /* Total bit count for all bitmaps  */
       total_bitmap_entries; /* Number of bitmaps counted        */
 
-  s32 cpu_core_count,       /* CPU core count                   */
-      cpu_to_bind;          /* bind to specific CPU             */
+  s32 cpu_core_count, /* CPU core count                   */
+      cpu_to_bind;    /* bind to specific CPU             */
 
 #ifdef HAVE_AFFINITY
-  s32 cpu_aff;               /* Selected CPU core                */
-#endif                       /* HAVE_AFFINITY */
+  s32 cpu_aff; /* Selected CPU core                */
+#endif         /* HAVE_AFFINITY */
 
   struct queue_entry *queue, /* Fuzzing queue (linked list)      */
       *queue_cur,            /* Current offset within the queue  */
@@ -639,8 +639,8 @@ typedef struct afl_state {
 
   struct queue_entry **top_rated; /* Top entries for bitmap bytes */
 
-  struct extra_data *extras;      /* Extra tokens to fuzz with        */
-  u32                extras_cnt;  /* Total number of tokens read      */
+  struct extra_data *extras;     /* Extra tokens to fuzz with        */
+  u32                extras_cnt; /* Total number of tokens read      */
 
   struct auto_extra_data
       a_extras[MAX_AUTO_EXTRAS]; /* Automatically selected extras    */
@@ -650,7 +650,7 @@ typedef struct afl_state {
 
   /* CmpLog */
 
-  char            *cmplog_binary;
+  char *           cmplog_binary;
   afl_forkserver_t cmplog_fsrv; /* cmplog has its own little forkserver */
 
   /* Custom mutators */
@@ -665,7 +665,7 @@ typedef struct afl_state {
   u8  cmplog_enable_arith, cmplog_enable_transform, cmplog_random_colorization;
 
   struct afl_pass_stat *pass_stats;
-  struct cmp_map       *orig_cmp_map;
+  struct cmp_map *      orig_cmp_map;
 
   u8 describe_op_buf_256[256]; /* describe_op will use this to return a string
                                   up to 256 */
@@ -699,9 +699,9 @@ typedef struct afl_state {
   u64                statsd_last_send_ms;
   struct sockaddr_in statsd_server;
   int                statsd_sock;
-  char              *statsd_tags_flavor;
-  char              *statsd_tags_format;
-  char              *statsd_metric_format;
+  char *             statsd_tags_flavor;
+  char *             statsd_tags_format;
+  char *             statsd_metric_format;
   int                statsd_metric_format_type;
 
   double stats_avg_exec;
@@ -774,13 +774,14 @@ typedef struct afl_state {
   u32   bitsmap_size;
 #endif
 
+  u32 q_max_pred_count;
 } afl_state_t;
 
 struct custom_mutator {
   const char *name;
-  char       *name_short;
-  void       *dh;
-  u8         *post_process_buf;
+  char *      name_short;
+  void *      dh;
+  u8 *        post_process_buf;
   u8          stacked_custom_prob, stacked_custom;
 
   void *data; /* custom mutator data ptr */
