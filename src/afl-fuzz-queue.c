@@ -523,8 +523,9 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
 
   q->fm_hits = afl->shm_fm.map[0];
   q->npreds = afl->shm_fm.map[1];
-  DEBUGF("[TEST ID: %u] fm_hits: %u, npreds: %u\n", q->id, afl->shm_fm.map[0],
-         afl->shm_fm.map[1]);
+  /* DEBUGF("[TEST ID: %u] fm_hits: %u, npreds: %u\n", q->id,
+   * afl->shm_fm.map[0], */
+  /*        afl->shm_fm.map[1]); */
 
   if (likely(afl->start_time) &&
       unlikely(afl->longest_find_time < cur_time - afl->last_find_time)) {
@@ -579,22 +580,22 @@ void destroy_queue(afl_state_t *afl) {
 
 void update_bitmap_score(afl_state_t *afl, struct queue_entry *q) {
   u32 i;
-  u64 fav_factor;
-  u64 fuzz_p2;
+  /* u64 fav_factor; */
+  /* u64 fuzz_p2; */
 
-  if (unlikely(afl->schedule >= FAST && afl->schedule < RARE))
-    fuzz_p2 = 0;  // Skip the fuzz_p2 comparison
-  else if (unlikely(afl->schedule == RARE))
-    fuzz_p2 = next_pow2(afl->n_fuzz[q->n_fuzz_entry]);
-  else
-    fuzz_p2 = q->fuzz_level;
+  /* if (unlikely(afl->schedule >= FAST && afl->schedule < RARE)) */
+  /*   fuzz_p2 = 0;  // Skip the fuzz_p2 comparison */
+  /* else if (unlikely(afl->schedule == RARE)) */
+  /*   fuzz_p2 = next_pow2(afl->n_fuzz[q->n_fuzz_entry]); */
+  /* else */
+  /*   fuzz_p2 = q->fuzz_level; */
 
-  if (unlikely(afl->schedule >= RARE) || unlikely(afl->fixed_seed)) {
-    fav_factor = q->len << 2;
+  /* if (unlikely(afl->schedule >= RARE) || unlikely(afl->fixed_seed)) { */
+  /*   fav_factor = q->len << 2; */
 
-  } else {
-    fav_factor = q->exec_us * q->len;
-  }
+  /* } else { */
+  /*   fav_factor = q->exec_us * q->len; */
+  /* } */
 
   /* For every byte set in afl->fsrv.trace_bits[], see if there is a previous
      winner, and how it compares to us. */

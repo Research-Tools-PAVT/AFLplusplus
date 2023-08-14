@@ -525,12 +525,12 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
       queue_testcase_store_mem(afl, afl->queue_top, mem);
     }
 
-    OKF("id:%06u : hits = %u, trace = %u\n", afl->queued_items,
+    OKF("id:%06u : hits = %u, trace_hash = %u\n", afl->queued_items,
         afl->shm_fm.map[0], cksum_k1);
-    for (u32 i = 1; i <= afl->shm_fm.map[1]; ++i)
-      printf("%u,", afl->fsrv.trace_bits[i]);
+    /* for (u32 i = 1; i <= afl->shm_fm.map[1]; ++i) */
+    /*   printf("%u,", afl->fsrv.trace_bits[i]); */
 
-    printf("\n");
+    /* printf("\n"); */
 
     keeping = 1;
   }
