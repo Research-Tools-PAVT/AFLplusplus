@@ -2218,7 +2218,7 @@ static void handle_skipreq(int sig) {
 /* Formatting and Histogram values. */
 
 void setup_fm_shmem(afl_state_t *afl) {
-  u32 *map = (u32 *)afl_shm_fm_init(&afl->shm_fm_extra, 12 + 50,
+  u32 *map = (u32 *)afl_shm_fm_init(&afl->shm_fm_extra, 20,
                                     afl->non_instrumented_mode);
   if (!map) { FATAL("BUG: Zero return from afl_shm_init."); }
 
