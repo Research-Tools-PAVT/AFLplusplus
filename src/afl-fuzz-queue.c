@@ -580,74 +580,11 @@ void destroy_queue(afl_state_t *afl) {
 
 void update_bitmap_score(afl_state_t *afl, struct queue_entry *q) {
   u32 i;
-  /* u64 fav_factor; */
-  /* u64 fuzz_p2; */
-
-  /* if (unlikely(afl->schedule >= FAST && afl->schedule < RARE)) */
-  /*   fuzz_p2 = 0;  // Skip the fuzz_p2 comparison */
-  /* else if (unlikely(afl->schedule == RARE)) */
-  /*   fuzz_p2 = next_pow2(afl->n_fuzz[q->n_fuzz_entry]); */
-  /* else */
-  /*   fuzz_p2 = q->fuzz_level; */
-
-  /* if (unlikely(afl->schedule >= RARE) || unlikely(afl->fixed_seed)) { */
-  /*   fav_factor = q->len << 2; */
-
-  /* } else { */
-  /*   fav_factor = q->exec_us * q->len; */
-  /* } */
 
   /* For every byte set in afl->fsrv.trace_bits[], see if there is a previous
      winner, and how it compares to us. */
   for (i = 0; i < afl->fsrv.map_size; ++i) {
     if (afl->fsrv.trace_bits[i]) {
-      /* if (afl->top_rated[i]) { */
-      /*   /\* Faster-executing or smaller test cases are favored. *\/ */
-      /*   u64 top_rated_fav_factor; */
-      /*   u64 top_rated_fuzz_p2; */
-      /*   if (unlikely(afl->schedule >= FAST && afl->schedule <= RARE)) */
-      /*     top_rated_fuzz_p2 = */
-      /*         next_pow2(afl->n_fuzz[afl->top_rated[i]->n_fuzz_entry]); */
-      /*   else */
-      /*     top_rated_fuzz_p2 = afl->top_rated[i]->fuzz_level; */
-
-      /*   if (unlikely(afl->schedule >= RARE) || unlikely(afl->fixed_seed)) {
-       */
-      /*     top_rated_fav_factor = afl->top_rated[i]->len << 2; */
-
-      /*   } else { */
-      /*     top_rated_fav_factor = */
-      /*         afl->top_rated[i]->exec_us * afl->top_rated[i]->len; */
-      /*   } */
-
-      /*   if (fuzz_p2 > top_rated_fuzz_p2) { */
-      /*     continue; */
-
-      /*   } else if (fuzz_p2 == top_rated_fuzz_p2) { */
-      /*     if (fav_factor > top_rated_fav_factor) { continue; } */
-      /*   } */
-
-      /*   if (unlikely(afl->schedule >= RARE) || unlikely(afl->fixed_seed)) {
-       */
-      /*     if (fav_factor > afl->top_rated[i]->len << 2) { continue; } */
-
-      /*   } else { */
-      /*     if (fav_factor > */
-      /*         afl->top_rated[i]->exec_us * afl->top_rated[i]->len) { */
-      /*       continue; */
-      /*     } */
-      /*   } */
-
-      /*   /\* Looks like we're going to win. Decrease ref count for the */
-      /*      previous winner, discard its afl->fsrv.trace_bits[] if necessary.
-       * *\/ */
-
-      /*   if (!--afl->top_rated[i]->tc_ref) { */
-      /*     ck_free(afl->top_rated[i]->trace_mini); */
-      /*     afl->top_rated[i]->trace_mini = 0; */
-      /*   } */
-      /* } */
-
       if (afl->top_rated[i] && afl->top_rated[i]->fm_hits >= q->fm_hits)
         continue;
 
