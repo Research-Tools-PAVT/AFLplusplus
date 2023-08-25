@@ -72,6 +72,10 @@ void afl_shm_deinit(sharedmem_t *shm) {
 
     unsetenv(SHM_FUZZ_ENV_VAR);
 
+  } else if (shm->fm_shmem_mode) {
+
+    unsetenv(FM_SHM_ENV_VAR);
+
   } else {
 
     unsetenv(SHM_ENV_VAR);

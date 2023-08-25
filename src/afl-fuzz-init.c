@@ -2583,7 +2583,7 @@ static void handle_skipreq(int sig) {
 }
 
 void setup_fm_shmem(afl_state_t *afl) {
-  u8* map = afl_shm_init(&afl->shm_fm, 2, 1);
+  u8* map = afl_shm_init(&afl->shm_fm, 2 * sizeof (u16), 1);
   afl->shm_fm.fm_shmem_mode = 1;
   
   if (!map) { FATAL("BUG: Zero return from afl_shm_init."); }
