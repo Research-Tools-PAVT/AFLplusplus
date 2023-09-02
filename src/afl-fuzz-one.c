@@ -503,7 +503,7 @@ u8 fuzz_one_original(afl_state_t *afl) {
   if (afl->queued_items < 2) goto skip_crossover;
 
   afl->stage_name = "crossover1";
-  afl->stage_short = "crossover-50-50";
+  afl->stage_short = "crossover-byte";
   afl->stage_cur = 0;
   afl->stage_max = afl->queued_items * (afl->queued_items - 1);
 
@@ -519,45 +519,29 @@ u8 fuzz_one_original(afl_state_t *afl) {
 
   for (test1 = 0; test1 < afl->queued_items; test1++) {
     test2 = afl->queue_buf[test1]->hm_max_id;
-    //    if (test1 == test2) continue;
 
     u8 *test1buf = afl->queue_buf[test1]->testcase_buf;
     u8 *test2buf = afl->queue_buf[test2]->testcase_buf;
 
+    if (test1buf == NULL || test2buf == NULL) continue;
+
     if (minlen != afl->queue_buf[test1]->npreds ||
         minlen != afl->queue_buf[test2]->npreds) {
-      printf("crossover-1: npreds not equal -- %u, %u, %u\n", minlen, afl->queue_buf[test1]->npreds, afl->queue_buf[test2]->npreds);
       continue;
     }
 
-    if (test1buf == NULL) continue;
-    if (test2buf == NULL) continue;
 
     memcpy(newbuf, test1buf, minlen);
-    //    memcpy(newbuf + copylen, test2buf + copylen, minlen - copylen);
-
     for (j = 0; j < minlen; ++j) {
       if (afl->queue_buf[test1]->k1_trace[j] == 0) newbuf[j] = test2buf[j];
     }
 
-//    for (j = 0; j < minlen; ++j) {
-//      printf("%02x ", newbuf[j]);
-//    }
-//    printf("\n");
-
     if (common_fuzz_stuff(afl, newbuf, minlen)) { goto abandon_entry; }
 
-    memcpy(newbuf, test2buf, copylen);
-    //    memcpy(newbuf + copylen, test1buf + copylen, minlen - copylen);
-
+    memcpy(newbuf, test2buf, minlen);
     for (j = 0; j < minlen; ++j) {
       if (afl->queue_buf[test2]->k1_trace[j] == 0) newbuf[j] = test1buf[j];
     }
-
-//    for (j = 0; j < minlen; ++j) {
-//      printf("%02x ", newbuf[j]);
-//    }
-//    printf("\n\n\n");
 
     if (common_fuzz_stuff(afl, newbuf, minlen)) { goto abandon_entry; }
 
@@ -568,9 +552,7 @@ u8 fuzz_one_original(afl_state_t *afl) {
 
   afl->stage_finds[STAGE_EXTRAS_AI] += new_hit_cnt - orig_hit_cnt;
   afl->stage_cycles[STAGE_EXTRAS_AI] += afl->stage_max;
-  printf("crossover-1 is done for: %llu\n", afl->queue_cycle - 1);
-  free(newbuf);
-  newbuf = NULL;
+  ck_free(newbuf);
 
 skip_crossover:
 
