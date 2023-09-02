@@ -478,6 +478,18 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   q->trace_mini = NULL;
   q->testcase_buf = NULL;
   q->mother = afl->queue_cur;
+  q->fm_hits = afl->shm_fm.map[0];
+  q->npreds = afl->shm_fm.map[1];
+
+  // these values are updated in save_if_interesting for now
+  q->hm_max_val = 0;
+  q->hm_max_id = afl->queued_items;
+
+  q->k1_trace = (u8 *)ck_alloc(q->npreds);
+  memcpy(q->k1_trace, afl->fsrv.trace_bits, q->npreds);
+
+  //  for (u32 i = 0; i < q->npreds; i++) { printf("%u,", q->k1_trace[i]); }
+  //  printf("\n");
 
 #ifdef STABLE_DEBUG
   if (q->mother != NULL) {
@@ -519,10 +531,23 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   queue_buf[afl->queued_items - 1] = q;
   q->id = afl->queued_items - 1;
 
+  for (u32 i = 0; i < q->id; i++) {
+    u32 tdist =
+        hamming_distance(afl->queue_buf[i]->k1_trace, q->k1_trace, q->npreds);
+
+    if (tdist > q->hm_max_val) {
+      q->hm_max_val = tdist;
+      q->hm_max_id = i;
+    }
+
+    if (tdist > afl->queue_buf[i]->hm_max_val) {
+      afl->queue_buf[i]->hm_max_val = tdist;
+      afl->queue_buf[i]->hm_max_id = q->id;
+    }
+  }
+
   u64 cur_time = get_cur_time();
 
-  q->fm_hits = afl->shm_fm.map[0];
-  q->npreds = afl->shm_fm.map[1];
   /* DEBUGF("[TEST ID: %u] fm_hits: %u, npreds: %u\n", q->id,
    * afl->shm_fm.map[0], */
   /*        afl->shm_fm.map[1]); */
@@ -563,6 +588,7 @@ void destroy_queue(afl_state_t *afl) {
     q = afl->queue_buf[i];
     ck_free(q->fname);
     ck_free(q->trace_mini);
+    ck_free(q->k1_trace);
     ck_free(q);
   }
 }
@@ -602,6 +628,8 @@ void update_bitmap_score(afl_state_t *afl, struct queue_entry *q) {
       afl->score_changed = 1;
     }
   }
+
+  // for
 }
 
 /* The second part of the mechanism discussed above is a routine that

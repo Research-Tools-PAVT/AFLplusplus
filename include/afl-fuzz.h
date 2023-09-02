@@ -202,6 +202,11 @@ struct queue_entry {
 
   u16 fm_hits;
   u16 npreds;
+  u32 pcksum;  /* checksum of the 1-predicate map */
+
+  u32 hm_max_val; /* max hamming distance value */
+  u32 hm_max_id; /* test id with farthest hamming distance */
+  u8 *k1_trace;   /* 1-predicate map bytes */
 };
 
 struct extra_data {
@@ -774,7 +779,8 @@ typedef struct afl_state {
   u32   bitsmap_size;
 #endif
 
-  u32 q_max_pred_count;
+  u32 fm_max_pcount;
+  u32 fm_max_pcount_id;
 } afl_state_t;
 
 struct custom_mutator {
@@ -1110,6 +1116,8 @@ u8 has_new_bits_unclassified(afl_state_t *, u8 *);
 #ifndef AFL_SHOWMAP
 void classify_counts(afl_forkserver_t *);
 #endif
+
+u32 hamming_distance(u8 *, u8 *, u32 len);
 
 /* Extras */
 

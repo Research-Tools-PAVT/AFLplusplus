@@ -392,6 +392,17 @@ void write_crash_readme(afl_state_t *afl) {
   fclose(f);
 }
 
+
+u32 hamming_distance(u8 *t1, u8 *t2, u32 len) {
+      u32 i, dist = 0;
+      for (i = 0; i < len; i++) {
+        u8 x = *(t1 + i);
+        u8 y = *(t2 + i);
+        dist += (x ^ y);
+      }
+      return dist;
+}
+
 /* Check if the result of an execve() during routine fuzzing is interesting,
    save or queue the input test case for further analysis if so. Returns 1 if
    entry is saved, 0 otherwise. */
@@ -410,7 +421,7 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
      need_hash = 1;
   s32 fd;
   u64 cksum = 0;
-  u32 cksum_k1 = hash32(afl->fsrv.trace_bits, afl->shm_fm.map[1], 0);
+  u32 cksum_p1 = hash32(afl->fsrv.trace_bits, afl->shm_fm.map[1], 0);
 
   /* Update path frequency. */
 
@@ -441,8 +452,9 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
       if (unlikely(new_bits)) { classified = 1; }
     }
 
-    if (afl->q_max_pred_count < afl->shm_fm.map[0]) {
-      afl->q_max_pred_count = afl->shm_fm.map[0];
+    if (afl->fm_max_pcount < afl->shm_fm.map[0]) {
+      afl->fm_max_pcount = afl->shm_fm.map[0];
+      afl->fm_max_pcount_id = afl->queued_items;
     } else {
       if (likely(!new_bits)) {
         if (unlikely(afl->crash_mode)) { ++afl->total_crashes; }
@@ -455,9 +467,9 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
 #ifndef SIMPLE_FILES
 
     queue_fn =
-        alloc_printf("%s/queue/id:%06u,%s", afl->out_dir, afl->queued_items,
+        alloc_printf("%s/queue/id:%06u,%s,%u", afl->out_dir, afl->queued_items,
                      describe_op(afl, new_bits + is_timeout,
-                                 NAME_MAX - strlen("id:000000,")));
+                                 NAME_MAX - strlen("id:000000,")), afl->shm_fm.map[0]);
 
 #else
 
@@ -474,6 +486,7 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
 #endif
 
     add_to_queue(afl, queue_fn, len, 0);
+    afl->queue_top->pcksum = cksum_p1; /* updating 1-predicate checksum */
 
 #ifdef INTROSPECTION
     if (afl->custom_mutators_count && afl->current_custom_fuzz) {
@@ -524,13 +537,6 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
     if (likely(afl->q_testcase_max_cache_size)) {
       queue_testcase_store_mem(afl, afl->queue_top, mem);
     }
-
-    OKF("id:%06u : hits = %u, trace_hash = %u\n", afl->queued_items,
-        afl->shm_fm.map[0], cksum_k1);
-    /* for (u32 i = 1; i <= afl->shm_fm.map[1]; ++i) */
-    /*   printf("%u,", afl->fsrv.trace_bits[i]); */
-
-    /* printf("\n"); */
 
     keeping = 1;
   }

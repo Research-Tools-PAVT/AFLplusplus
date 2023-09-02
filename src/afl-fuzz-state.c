@@ -141,7 +141,8 @@ void afl_state_init(afl_state_t *afl, uint32_t map_size) {
 
   list_append(&afl_states, afl);
 
-  afl->q_max_pred_count = 0;
+  afl->fm_max_pcount = 0;
+  afl->fm_max_pcount_id = 0;
 }
 
 /*This sets up the environment variables for afl-fuzz into the afl_state

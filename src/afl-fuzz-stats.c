@@ -1280,13 +1280,16 @@ void show_stats_normal(afl_state_t *afl) {
     SAYF("\r");
 
   }
-
   /* Last line */
   SAYF(SET_G1 "\n" bSTG bLB bH30 bH20 bH2 bRB bSTOP cRST RESET_G1);
 
 #undef IB
 
   /* Hallelujah! */
+
+  SAYF("\n" SET_G1 bSTART bVR bH cCYA bSTOP " k-1 coverage " bSTG bH10 bH2 bH30  bSTOP RESET_G1"\n");
+  SAYF("   max pcount : " cRST "%u" bSTG, afl->fm_max_pcount);
+  SAYF("\n    corpus id : " cRST "%u", afl->fm_max_pcount_id);
 
   fflush(0);
 

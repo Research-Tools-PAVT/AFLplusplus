@@ -904,6 +904,11 @@ void perform_dry_run(afl_state_t *afl) {
       SAYF(cGRA "    len = %u, map size = %u, exec speed = %llu us\n" cRST,
            q->len, q->bitmap_size, q->exec_us);
 
+      q->fm_hits = afl->shm_fm.map[0];
+      q->npreds = afl->shm_fm.map[1];
+      ck_free(q->k1_trace);
+      q->k1_trace = (u8*) ck_alloc(q->npreds);
+      memcpy(q->k1_trace, afl->fsrv.trace_bits, q->npreds);
     }
 
     switch (res) {
@@ -911,7 +916,6 @@ void perform_dry_run(afl_state_t *afl) {
       case FSRV_RUN_OK:
 
         if (afl->crash_mode) { FATAL("Test case '%s' does *NOT* crash", fn); }
-
         break;
 
       case FSRV_RUN_TMOUT:
