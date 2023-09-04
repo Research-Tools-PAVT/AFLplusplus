@@ -505,23 +505,19 @@ u8 fuzz_one_original(afl_state_t *afl) {
   afl->stage_name = "crossover1";
   afl->stage_short = "crossover-byte";
   afl->stage_cur = 0;
-  afl->stage_max = afl->queued_items * (afl->queued_items - 1);
+  afl->stage_max = afl->queued_items;
 
   orig_hit_cnt = new_hit_cnt;
 
-  u32 minlen =
-      afl->min_length;  // NOTE: we require that min buffer length must be set
-
+  // NOTE: we require that min buffer length must be set
+  u32 minlen = afl->min_length;
   u8 *newbuf = DFL_ck_alloc(minlen);
 
-  u32 test1, test2;
-
-  for (test1 = 0; test1 < afl->queued_items; test1++) {
-    test2 = afl->queue_buf[test1]->hm_max_id;
+  for (u32 test1 = 0; test1 < afl->queued_items; test1++) {
+    u32 test2 = afl->queue_buf[test1]->hm_max_id;
 
     u8 *test1buf = afl->queue_buf[test1]->testcase_buf;
     u8 *test2buf = afl->queue_buf[test2]->testcase_buf;
-
     if (test1buf == NULL || test2buf == NULL) continue;
 
     if (minlen != afl->queue_buf[test1]->npreds ||
@@ -529,21 +525,12 @@ u8 fuzz_one_original(afl_state_t *afl) {
       continue;
     }
 
-
     memcpy(newbuf, test1buf, minlen);
     for (j = 0; j < minlen; ++j) {
       if (afl->queue_buf[test1]->k1_trace[j] == 0) newbuf[j] = test2buf[j];
     }
 
     if (common_fuzz_stuff(afl, newbuf, minlen)) { goto abandon_entry; }
-
-//    memcpy(newbuf, test2buf, minlen);
-//    for (j = 0; j < minlen; ++j) {
-//      if (afl->queue_buf[test2]->k1_trace[j] == 0) newbuf[j] = test1buf[j];
-//    }
-//
-//    if (common_fuzz_stuff(afl, newbuf, minlen)) { goto abandon_entry; }
-
     afl->stage_cur += 1;
   }
 
