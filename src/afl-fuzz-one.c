@@ -512,7 +512,6 @@ u8 fuzz_one_original(afl_state_t *afl) {
   u32 minlen =
       afl->min_length;  // NOTE: we require that min buffer length must be set
 
-  u32 copylen = minlen / 2;
   u8 *newbuf = DFL_ck_alloc(minlen);
 
   u32 test1, test2;
@@ -538,12 +537,12 @@ u8 fuzz_one_original(afl_state_t *afl) {
 
     if (common_fuzz_stuff(afl, newbuf, minlen)) { goto abandon_entry; }
 
-    memcpy(newbuf, test2buf, minlen);
-    for (j = 0; j < minlen; ++j) {
-      if (afl->queue_buf[test2]->k1_trace[j] == 0) newbuf[j] = test1buf[j];
-    }
-
-    if (common_fuzz_stuff(afl, newbuf, minlen)) { goto abandon_entry; }
+//    memcpy(newbuf, test2buf, minlen);
+//    for (j = 0; j < minlen; ++j) {
+//      if (afl->queue_buf[test2]->k1_trace[j] == 0) newbuf[j] = test1buf[j];
+//    }
+//
+//    if (common_fuzz_stuff(afl, newbuf, minlen)) { goto abandon_entry; }
 
     afl->stage_cur += 1;
   }

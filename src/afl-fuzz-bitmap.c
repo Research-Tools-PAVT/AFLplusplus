@@ -393,9 +393,20 @@ void write_crash_readme(afl_state_t *afl) {
 }
 
 
-u32 hamming_distance(u8 *t1, u8 *t2, u32 len) {
+u32 hamming(u8 *t1, u8 *t2, u32 len) {
+  u32 i, dist = 0;
+  for (i = 0; i < len; i++) {
+    u8 x = *(t1 + i);
+    u8 y = *(t2 + i);
+    dist += (x ^ y);
+  }
+  return dist;
+}
+
+u32 modified_hamming(u8 *t1, u8 *t2, u32 len) {
       u32 i, dist = 0;
       for (i = 0; i < len; i++) {
+        if (*(t1 + i) == 1) continue;
         u8 x = *(t1 + i);
         u8 y = *(t2 + i);
         dist += (x ^ y);

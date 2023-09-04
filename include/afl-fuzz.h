@@ -1117,7 +1117,8 @@ u8 has_new_bits_unclassified(afl_state_t *, u8 *);
 void classify_counts(afl_forkserver_t *);
 #endif
 
-u32 hamming_distance(u8 *, u8 *, u32 len);
+u32 hamming (u8 *, u8 *, u32 len);
+u32 modified_hamming (u8 *, u8 *, u32 len);
 
 /* Extras */
 

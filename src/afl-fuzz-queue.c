@@ -532,8 +532,7 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   q->id = afl->queued_items - 1;
 
   for (u32 i = 0; i < q->id; i++) {
-    u32 tdist =
-        hamming_distance(afl->queue_buf[i]->k1_trace, q->k1_trace, q->npreds);
+    u32 tdist = modified_hamming (afl->queue_buf[i]->k1_trace, q->k1_trace, q->npreds);
 
     if (tdist > q->hm_max_val) {
       q->hm_max_val = tdist;
