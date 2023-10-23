@@ -470,9 +470,15 @@ void read_afl_environment(afl_state_t *afl, char **envp) {
             afl->afl_env.afl_target_env =
                 (u8 *)get_afl_env(afl_environment_variables[i]);
 
-          } else if (!strncmp(env, "AFL_INPUT_LEN_MIN",
-
+          } else if (!strncmp(env, "AFL_CROSSOVER_MUT",
                               afl_environment_variable_len)) {
+            afl->mut_crossover =
+                get_afl_env(afl_environment_variables[i]) ? 1 : 0;
+          }
+
+          else if (!strncmp(env, "AFL_INPUT_LEN_MIN",
+
+                            afl_environment_variable_len)) {
             afl->min_length =
                 atoi((u8 *)get_afl_env(afl_environment_variables[i]));
 
@@ -610,9 +616,7 @@ void afl_state_deinit(afl_state_t *afl) {
 void afl_states_stop(void) {
   /* We may be inside a signal handler.
    Set flags first, send kill signals to child proceses later. */
-  LIST_FOREACH(&afl_states, afl_state_t, {
-    el->stop_soon = 1;
-  });
+  LIST_FOREACH(&afl_states, afl_state_t, { el->stop_soon = 1; });
 
   LIST_FOREACH(&afl_states, afl_state_t, {
     /* NOTE: We need to make sure that the parent (the forkserver) reap the

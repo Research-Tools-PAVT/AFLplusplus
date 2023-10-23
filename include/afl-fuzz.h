@@ -202,10 +202,10 @@ struct queue_entry {
 
   u16 fm_hits;
   u16 npreds;
-  u32 pcksum;  /* checksum of the 1-predicate map */
+  u32 pcksum; /* checksum of the 1-predicate map */
 
   u32 hm_max_val; /* max hamming distance value */
-  u32 hm_max_id; /* test id with farthest hamming distance */
+  u32 hm_max_id;  /* test id with farthest hamming distance */
   u8 *k1_trace;   /* 1-predicate map bytes */
 };
 
@@ -474,6 +474,8 @@ typedef struct afl_state {
 
   double period_pilot_tmp;
   s32    key_lv;
+
+  u8 mut_crossover;
 
   u8 *in_dir,          /* Input directory with test cases  */
       *out_dir,        /* Working & output directory       */
@@ -1117,8 +1119,8 @@ u8 has_new_bits_unclassified(afl_state_t *, u8 *);
 void classify_counts(afl_forkserver_t *);
 #endif
 
-u32 hamming (u8 *, u8 *, u32 len);
-u32 modified_hamming (u8 *, u8 *, u32 len);
+u32 hamming(u8 *, u8 *, u32 len);
+u32 modified_hamming(u8 *, u8 *, u32 len);
 
 /* Extras */
 
