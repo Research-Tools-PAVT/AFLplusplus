@@ -294,7 +294,7 @@ u8 *afl_shm_init(sharedmem_t *shm, size_t map_size,
     shm->cmp_map = shmat(shm->cmplog_shm_id, NULL, 0);
 
     if (shm->cmp_map == (void *)-1 || !shm->cmp_map) {
-      shmctl(shm->shm_id, IPC_RMID, NULL);         // do not leak shmem
+      shmctl(shm->shm_id, IPC_RMID, NULL);  // do not leak shmem
 
       shmctl(shm->cmplog_shm_id, IPC_RMID, NULL);  // do not leak shmem
 
@@ -309,63 +309,3 @@ u8 *afl_shm_init(sharedmem_t *shm, size_t map_size,
 
   return shm->map;
 }
-
-/* Configure shared memory.
-   Returns a pointer to shm->map for ease of use.
-*/
-
-#ifdef FUZZMAX
-
-u32 *afl_shm_fm_init(format_extra_t *shm, size_t map_size,
-                     unsigned char non_instrumented_mode) {
-  DEBUGF("[satfuzz] Initiating memory alloc for formatting and extra args\n");
-
-  shm->map_size = 0;
-  shm->map = NULL;
-  u8 *shm_str;
-
-  shm->shm_id = shmget(IPC_PRIVATE, map_size * sizeof(u32),
-                       IPC_CREAT | IPC_EXCL | DEFAULT_PERMISSION);
-
-  if (shm->shm_id < 0) {
-    PFATAL("shmget() failed, try running afl-system-config");
-  }
-
-  if (!non_instrumented_mode) {
-    shm_str = alloc_printf("%d", shm->shm_id);
-    setenv(FM_SHM_ENV_VAR, shm_str, 1);
-    ck_free(shm_str);
-  }
-
-  shm->map = (u32 *)shmat(shm->shm_id, NULL, 0);
-
-  if (shm->map == (u32 *)-1 || !shm->map) {
-    shmctl(shm->shm_id, IPC_RMID, NULL);  // do not leak shmem
-    PFATAL("shmat() failed");
-  }
-
-  shm->map_size = map_size * sizeof(u32);
-  memset(shm->map, 42, shm->map_size);
-  list_append(&shm_list, shm);
-
-  DEBUGF("[satfuzz] Allocated memory for formatting and extra args\n");
-  return (u32 *)shm->map;
-}
-
-void afl_shm_fm_deinit(format_extra_t *shm) {
-  if (shm == NULL) { return; }
-  list_remove(&shm_list, shm);
-
-  if (shm->shmemfuzz_mode) {
-    unsetenv(SHM_FUZZ_ENV_VAR);
-  } else {
-    unsetenv(FM_SHM_ENV_VAR);
-  }
-
-  shmctl(shm->shm_id, IPC_RMID, NULL);
-
-  DEBUGF("[satfuzz] Deallocated memory for formatting and extra args\n");
-  shm->map = NULL;
-}
-
-#endif

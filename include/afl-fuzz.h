@@ -400,11 +400,6 @@ typedef struct afl_env_vars {
       afl_no_startup_calibration, afl_no_warn_instability,
       afl_post_process_keep_original;
 
-#ifdef FUZZMAX
-  u8 afl_no_satfuzz_cullqueue;
-  u8 afl_format_shm;
-#endif
-
   u8 *afl_tmpdir, *afl_custom_mutator_library, *afl_python_module, *afl_path,
       *afl_hang_tmout, *afl_forksrv_init_tmout, *afl_preload,
       *afl_max_det_extras, *afl_statsd_host, *afl_statsd_port,
@@ -434,11 +429,6 @@ typedef struct afl_state {
   sharedmem_t      shm;
   sharedmem_t     *shm_fuzz;
 
-  /* Send formatting and extra metrics information to AFL */
-#ifdef FUZZMAX
-  format_extra_t shm_fm_extra;
-#endif
-
   afl_env_vars_t afl_env;
 
   char **argv; /* argv if needed */
@@ -450,11 +440,6 @@ typedef struct afl_state {
       total_pacemaker_time, total_puppet_find, temp_puppet_find, most_time_key,
       most_time, most_execs_key, most_execs, old_hit_count, force_ui_update,
       prev_run_time;
-
-#ifdef FUZZMAX
-  uint64_t *histogram;
-  double    histogram_quad, counter_quad, histogram_norm, counter_norm, factor;
-#endif
 
   MOpt_globals_t mopt_globals_core, mopt_globals_pilot;
 
@@ -1058,11 +1043,6 @@ void afl_states_request_skip(void);
 
 /* Setup shmem for testcase delivery */
 void setup_testcase_shmem(afl_state_t *afl);
-
-#ifdef FUZZMAX
-/* Setup format and extra args shared memory */
-void setup_fm_shmem(afl_state_t *afl);
-#endif
 
 void read_afl_environment(afl_state_t *, char **);
 

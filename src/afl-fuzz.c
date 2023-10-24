@@ -1753,11 +1753,6 @@ int main(int argc, char **argv_orig, char **envp) {
   afl->fsrv.trace_bits =
       afl_shm_init(&afl->shm, afl->fsrv.map_size, afl->non_instrumented_mode);
 
-  #ifdef FUZZMAX
-  /* Setup format and extra args shared memory */
-  setup_fm_shmem(afl);
-  #endif
-
   if (!afl->non_instrumented_mode && !afl->fsrv.qemu_mode &&
       !afl->unicorn_mode && !afl->fsrv.frida_mode && !afl->fsrv.cs_mode &&
       !afl->afl_env.afl_skip_bin_check) {
@@ -2315,10 +2310,6 @@ stop_fuzzing:
   if (afl->most_execs_key == 2) {
     SAYF(cYEL "[!] " cRST "Execution limit was reached\n");
   }
-
-  #ifdef FUZZMAX
-  afl_shm_fm_deinit(&(afl->shm_fm_extra));
-  #endif
 
   /* Running for more than 30 minutes but still doing first cycle? */
 

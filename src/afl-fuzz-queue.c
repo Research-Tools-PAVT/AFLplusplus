@@ -699,20 +699,8 @@ void cull_queue(afl_state_t *afl) {
   afl->queued_favored = 0;
   afl->pending_favored = 0;
 
-#ifdef FUZZMAX
-  u32 max_score_id = 0;
-#endif
-
   for (i = 0; i < afl->queued_items; i++) {
     afl->queue_buf[i]->favored = 0;
-
-#ifdef FUZZMAX
-    if (likely(!afl->afl_env.afl_no_satfuzz_cullqueue)) {
-      if (afl->queue_buf[i]->predicate_counter >
-          afl->queue_buf[max_score_id]->predicate_counter)
-        max_score_id = i;
-    }
-#endif
   }
 
   /* Let's see if anything in the bitmap isn't captured in temp_v.
@@ -739,16 +727,6 @@ void cull_queue(afl_state_t *afl) {
     }
   }
 
-#ifdef FUZZMAX
-  if (likely(!afl->afl_env.afl_no_satfuzz_cullqueue)) {
-    if (!afl->queue_buf[max_score_id]->favored) {
-      afl->queue_buf[max_score_id]->favored = 1;
-      ++afl->queued_favored;
-      if (!afl->queue_buf[max_score_id]->was_fuzzed) { ++afl->pending_favored; }
-    }
-  }
-#endif
-
   for (i = 0; i < afl->queued_items; i++) {
     if (likely(!afl->queue_buf[i]->disabled)) {
       mark_as_redundant(afl, afl->queue_buf[i], !afl->queue_buf[i]->favored);
@@ -774,8 +752,8 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   u32 perf_score = 100;
 
 #ifdef FUZZMAX
-  q->num_preds = afl->shm_fm_extra.map[1];
-  q->predicate_counter = afl->shm_fm_extra.map[2];
+  q->num_preds = 0;
+  q->predicate_counter = 0;
 #endif
 
   /* Adjust score based on execution speed of this path, compared to the
@@ -788,7 +766,6 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   // Longer execution time means longer work on the input, the deeper in
   // coverage, the better the fuzzing, right? -mh
 
-#ifndef FUZZMAX
   if (likely(afl->schedule < RARE) && likely(!afl->fixed_seed)) {
     if (q->exec_us * 0.1 > avg_exec_us) {
       perf_score = 10;
@@ -812,7 +789,6 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       perf_score = 150;
     }
   }
-#endif
 
   /* Adjust score based on bitmap size. The working theory is that better
      coverage translates to better targets. Multiplier from 0.25x to 3x. */
@@ -984,40 +960,6 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       }
 
       if (q->favored) factor *= 1.15;
-
-      // Maximum number of predicates hit so far.
-      uint8_t MAX_COUNTER = afl->shm_fm_extra.map[0];
-
-      // afl->fsrv.trace_bits is the bitmap
-      // we are updating on the client side
-      // code.
-      double histogram_norm =
-          energy_f2(afl->fsrv.trace_bits, afl, q->num_preds, 11);
-
-      double counter_norm =
-          (double)(q->predicate_counter / (double)(q->num_preds));
-
-      double histogram_quad =
-          histogram_norm * histogram_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
-      double counter_quad =
-          counter_norm * counter_norm / (afl->n_fuzz[q->n_fuzz_entry] + 1);
-
-      // Update the factor for this test case.
-      factor += HISTOGRAM_MULTIPLIER * histogram_quad;
-      factor += COUNTER_MULTIPLIER * counter_quad;
-
-      // Update the performance score of the test case.
-      perf_score = PERF_SCORE_MULTIPLIER * q->predicate_counter + MAX_COUNTER;
-      // perf_score = 1434;
-
-      // This is just for logging in the AFL UI.
-      // It does not change the counters or any other variable.
-      afl->histogram_norm = histogram_norm;
-      afl->counter_norm = counter_norm;
-      afl->histogram_quad = histogram_quad;
-      afl->counter_quad = counter_quad;
-      afl->factor = factor;
-
       break;
 #endif
 

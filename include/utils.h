@@ -44,21 +44,11 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
-#define FM_SHM_ENV_VAR "__AFL_FM_SHM_ENV_VAR"
-
 #ifdef __ANDROID__
 u32 afl_map_size = MAP_SIZE;
 #else
 __thread u32 afl_map_size = MAP_SIZE;
 #endif
-
-/* SHM setup. */
-
-u32 *get_fm_ptr(void) {
-  char *id_str = getenv(FM_SHM_ENV_VAR);
-  u32   shm_id = atoi(id_str);
-  return (u32 *)shmat(shm_id, 0, 0);
-}
 
 u8 *get_afl_area_ptr(void) {
   char *id_str = getenv(SHM_ENV_VAR);
