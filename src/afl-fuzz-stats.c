@@ -27,6 +27,9 @@
 #include "envs.h"
 #include <limits.h>
 
+static char fuzzing_state[4][12] = {"started ΔΔ", "in progress", "final phase",
+                                    "finished..."};
+
 /* Write fuzzer setup file */
 
 void write_setup_file(afl_state_t *afl, u32 argc, char **argv) {
@@ -435,7 +438,7 @@ void show_stats_normal(afl_state_t *afl) {
 
   static u8 banner[128];
   u32       banner_len, banner_pad;
-  u8        tmp[512];
+  u8        tmp[256];
   u8        time_tmp[64];
 
   u8 val_buf[8][STRINGIFY_VAL_SIZE_MAX];
@@ -644,7 +647,7 @@ void show_stats_normal(afl_state_t *afl) {
       snprintf(banner + banner_pad, sizeof(banner) - banner_pad,
                "%s " cLCY VERSION cLBL " {%s} " cLGN "(%s) " cPIN "[%s] - Nyx",
                afl->crash_mode ? cPIN "peruvian were-rabbit"
-                               : cYEL "american fuzzy lop",
+                               : cYEL "american fuzzy lop [satfuzz]",
                si, afl->use_banner, afl->power_name);
 
     } else {
@@ -652,7 +655,7 @@ void show_stats_normal(afl_state_t *afl) {
       snprintf(banner + banner_pad, sizeof(banner) - banner_pad,
                "%s " cLCY VERSION cLBL " {%s} " cLGN "(%s) " cPIN "[%s]",
                afl->crash_mode ? cPIN "peruvian were-rabbit"
-                               : cYEL "american fuzzy lop",
+                               : cYEL "american fuzzy lop [satfuzz]",
                si, afl->use_banner, afl->power_name);
 
 #ifdef __linux__
@@ -660,6 +663,8 @@ void show_stats_normal(afl_state_t *afl) {
 
 #endif
   }
+
+  SAYF("\n%s\n", banner);
 
   /* "Handy" shortcuts for drawing boxes... */
 
@@ -1080,18 +1085,19 @@ void show_stats_normal(afl_state_t *afl) {
 #ifdef HAVE_AFFINITY
 
     if (afl->cpu_aff >= 0) {
-      SAYF("%s" cGRA "[CPU%03u:%s%3u%%" cGRA "]\r" cRST, spacing,
+      SAYF("%s" cGRA "[cpu%03u:%s%3u%%" cGRA "]\r" cRST, spacing,
            MIN(afl->cpu_aff, 999), cpu_color, MIN(cur_utilization, (u32)999));
 
     } else {
-      SAYF("%s" cGRA "   [CPU:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
+      SAYF("%s" cGRA "   [cpu:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
            MIN(cur_utilization, (u32)999));
     }
 
 #else
 
-    SAYF("%s" cGRA "   [CPU:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
+    SAYF("%s" cGRA "   [cpu:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
          MIN(cur_utilization, (u32)999));
+
 #endif /* ^HAVE_AFFINITY */
 
   } else {
@@ -1803,17 +1809,17 @@ void show_stats_pizza(afl_state_t *afl) {
 #ifdef HAVE_AFFINITY
 
     if (afl->cpu_aff >= 0) {
-      SAYF("%s" cGRA "[CPU%03u:%s%3u%%" cGRA "]\r" cRST, spacing,
+      SAYF("%s" cGRA "[cpu%03u:%s%3u%%" cGRA "]\r" cRST, spacing,
            MIN(afl->cpu_aff, 999), cpu_color, MIN(cur_utilization, (u32)999));
 
     } else {
-      SAYF("%s" cGRA "   [CPU:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
+      SAYF("%s" cGRA "   [cpu:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
            MIN(cur_utilization, (u32)999));
     }
 
 #else
 
-    SAYF("%s" cGRA "   [CPU:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
+    SAYF("%s" cGRA "   [cpu:%s%3u%%" cGRA "]\r" cRST, spacing, cpu_color,
          MIN(cur_utilization, (u32)999));
 
 #endif /* ^HAVE_AFFINITY */
@@ -1932,7 +1938,11 @@ void show_init_stats(afl_state_t *afl) {
       stringify_int(IB(0), min_us), stringify_int(IB(1), max_us),
       stringify_int(IB(2), avg_us));
 
-  if (afl->timeout_given != 1) {
+  if (afl->timeout_given == 3) {
+    ACTF("Applying timeout settings from resumed session (%u ms).",
+         afl->fsrv.exec_tmout);
+
+  } else if (afl->timeout_given != 1) {
     /* Figure out the appropriate timeout. The basic idea is: 5x average or
        1x max, rounded up to EXEC_TM_ROUND ms and capped at 1 second.
 
@@ -1965,10 +1975,6 @@ void show_init_stats(afl_state_t *afl) {
          afl->fsrv.exec_tmout);
 
     afl->timeout_given = 1;
-
-  } else if (afl->timeout_given == 3) {
-    ACTF("Applying timeout settings from resumed session (%u ms).",
-         afl->fsrv.exec_tmout);
 
   } else {
     ACTF("-t option specified. We'll use an exec timeout of %u ms.",
