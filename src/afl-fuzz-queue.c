@@ -24,7 +24,6 @@
 
 #include "afl-fuzz.h"
 #ifdef FUZZMAX
-  #include "heuristics.h"
   #include "satfuzz.h"
 #endif
 #include <limits.h>
