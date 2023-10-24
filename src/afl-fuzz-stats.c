@@ -435,7 +435,7 @@ void show_stats_normal(afl_state_t *afl) {
 
   static u8 banner[128];
   u32       banner_len, banner_pad;
-  u8        tmp[256];
+  u8        tmp[512];
   u8        time_tmp[64];
 
   u8 val_buf[8][STRINGIFY_VAL_SIZE_MAX];

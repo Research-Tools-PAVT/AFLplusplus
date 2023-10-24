@@ -155,6 +155,7 @@ struct queue_entry {
 #ifdef FUZZMAX
   u32 num_preds;
   u32 predicate_counter;
+  u32 MAX_COUNTER;
 #endif
 
   u8 colorized,     /* Do not run redqueen stage again  */
