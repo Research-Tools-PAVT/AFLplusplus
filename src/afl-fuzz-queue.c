@@ -750,11 +750,6 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   u32 avg_bitmap_size = afl->total_bitmap_size / bitmap_entries;
   u32 perf_score = 100;
 
-#ifdef FUZZMAX
-  q->num_preds = 0;
-  q->predicate_counter = 0;
-#endif
-
   /* Adjust score based on execution speed of this path, compared to the
      global average. Multiplier ranges from 0.1x to 3x. Fast inputs are
      less expensive to fuzz, so we're giving them more air time. */
@@ -959,7 +954,8 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
       }
 
       if (q->favored) factor *= 1.15;
-      break;
+
+      perf_score = 640 + 800 * (uint8_t)afl->fsrv.trace_bits[1007];
 #endif
 
     case LIN:
@@ -1040,6 +1036,10 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
            q->id, afl->current_entry, perf_score, factor);
     DEBUGF("[fuzzsat] TEST ID: %u, Curr file: %s\n", q->id, q->fname);
   }
+#endif
+#ifdef FUZZMAX
+  afl->perf_score = perf_score;
+  afl->factor = factor;
 #endif
   return perf_score;
 }

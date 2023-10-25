@@ -152,12 +152,6 @@ struct queue_entry {
   u32 len;   /* Input length                     */
   u32 id;    /* entry number in queue_buf        */
 
-#ifdef FUZZMAX
-  u32 num_preds;
-  u32 predicate_counter;
-  u32 MAX_COUNTER;
-#endif
-
   u8 colorized,     /* Do not run redqueen stage again  */
       cal_failed;   /* Calibration failed?              */
   bool trim_done,   /* Trimmed?                         */
@@ -425,6 +419,11 @@ struct foreign_sync {
 typedef struct afl_state {
   /* Position of this state in the global states list */
   u32 _id;
+
+#ifdef FUZZMAX
+  u32 perf_score;
+  u32 factor;
+#endif
 
   afl_forkserver_t fsrv;
   sharedmem_t      shm;

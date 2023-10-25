@@ -404,6 +404,14 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
     return 0;
   }
 
+#ifdef FUZZMAX
+  if (afl->fsrv.trace_bits[1005] == 0) {
+    return 0;
+  } else {
+    afl->fsrv.trace_bits[1005] = 0;
+  }
+#endif
+
   u8  fn[PATH_MAX];
   u8 *queue_fn = "";
   u8  new_bits = 0, keeping = 0, res, classified = 0, is_timeout = 0,
@@ -440,29 +448,23 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
       if (unlikely(new_bits)) { classified = 1; }
     }
 
-#ifdef FUZZMAX
-    if (likely(afl->fsrv.trace_bits[1005] == 0) &&
-        likely(afl->fsrv.trace_bits[1006] == 0)) {
-      if (likely(!new_bits)) {
-        if (unlikely(afl->crash_mode)) { ++afl->total_crashes; }
-        return 0;
-      }
-    }
-#endif
+    // if (likely(!new_bits)) {
+    //   if (unlikely(afl->crash_mode)) { ++afl->total_crashes; }
+    //   return 0;
+    // }
 
   save_to_queue:
 
 #ifndef SIMPLE_FILES
 
-    queue_fn = alloc_printf("%s/queue/satfuzz_id_:%06u,%s", afl->out_dir,
-                            afl->queued_items,
-                            describe_op(afl, new_bits + is_timeout,
-                                        NAME_MAX - strlen("id:000000,")));
+    queue_fn =
+        alloc_printf("%s/queue/id:%06u,%s", afl->out_dir, afl->queued_items,
+                     describe_op(afl, new_bits + is_timeout,
+                                 NAME_MAX - strlen("id:000000,")));
 
 #else
 
-    queue_fn = alloc_printf("%s/queue/satfuzz_id_%06u", afl->out_dir,
-                            afl->queued_items);
+    queue_fn = alloc_printf("%s/queue/id%06u", afl->out_dir, afl->queued_items);
 
 #endif /* ^!SIMPLE_FILES */
     fd = open(queue_fn, O_WRONLY | O_CREAT | O_EXCL, DEFAULT_PERMISSION);

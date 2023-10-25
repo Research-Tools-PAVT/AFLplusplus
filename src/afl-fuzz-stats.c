@@ -696,15 +696,17 @@ void show_stats_normal(afl_state_t *afl) {
   SAYF("%s" cGRA "CURRENT:%s%3u" cGRA cRST, SP5, cBRI,
        afl->fsrv.trace_bits[1001]);
 
-  SAYF("%s" cGRA "Generation:%s%3u" cGRA "" cRST, SP5, cBRI,
+  SAYF("%s" cGRA "Generation:%s%3u\n" cGRA "" cRST, SP5, cBRI,
        afl->fsrv.trace_bits[1003]);
 
-  SAYF("%s" cGRA "Lambda:%s%4u\n" cGRA "" cRST, SP5, cBRI,
-       afl->fsrv.trace_bits[1004]);
+  SAYF("%s" cGRA "Lambda:%s%6u" cGRA "" cRST, SP5, cBRI,
+       afl->fsrv.trace_bits[1005]);
 
-  SAYF("%s" cGRA "Len:%s%4u\n" cGRA "" cRST, SP5, cBRI, afl->fsrv.map_size);
+  SAYF("%s" cGRA "Len:%s%6u" cGRA "" cRST, SP5, cBRI, afl->fsrv.map_size);
 
-  SAYF(bSTG bV bSTOP);
+  SAYF("%s" cGRA "Perf_Score:%s%6u" cGRA "" cRST, SP5, cBRI, afl->perf_score);
+  SAYF("%s" cGRA "Factor:%s%6u\n" cGRA "" cRST, SP5, cBRI, afl->factor);
+
 #endif
 
   /* Since `total_crashes` does not get reloaded from disk on restart,
