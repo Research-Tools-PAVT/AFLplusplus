@@ -678,6 +678,35 @@ void show_stats_normal(afl_state_t *afl) {
 #define SP10 SP5 SP5
 #define SP20 SP10 SP10
 
+#ifdef FUZZMAX
+  // Statistics UI
+  unsigned int NUM_PREDS = afl->fsrv.trace_bits[1000];
+
+  SAYF(SET_G1 bSTG bLT bH bSTOP                         cCYA
+       " SATFUZZ Running " bSTG bH30 bH5 bH bH bH bSTOP cCYA
+       " Counters " bSTG bH2 bH bRT                     bSTOP "\n");
+
+  SAYF(bSTG bV bSTOP);
+
+  SAYF("%s" cGRA "NUM_PREDS:%s%3u" cGRA "" cRST, SP5, cBRI, NUM_PREDS);
+
+  SAYF("%s" cGRA "MAX:%s%3u" cGRA "" cRST, SP5, cBRI,
+       afl->fsrv.trace_bits[1002]);
+
+  SAYF("%s" cGRA "CURRENT:%s%3u" cGRA cRST, SP5, cBRI,
+       afl->fsrv.trace_bits[1001]);
+
+  SAYF("%s" cGRA "Generation:%s%3u" cGRA "" cRST, SP5, cBRI,
+       afl->fsrv.trace_bits[1003]);
+
+  SAYF("%s" cGRA "Lambda:%s%4u\n" cGRA "" cRST, SP5, cBRI,
+       afl->fsrv.trace_bits[1004]);
+
+  SAYF("%s" cGRA "Len:%s%4u\n" cGRA "" cRST, SP5, cBRI, afl->fsrv.map_size);
+
+  SAYF(bSTG bV bSTOP);
+#endif
+
   /* Since `total_crashes` does not get reloaded from disk on restart,
     it indicates if we found crashes this round already -> paint red.
     If it's 0, but `saved_crashes` is set from a past run, paint in yellow. */

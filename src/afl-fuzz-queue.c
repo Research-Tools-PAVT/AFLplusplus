@@ -502,7 +502,7 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   q->testcase_buf = NULL;
   q->mother = afl->queue_cur;
 
-#ifdef SATFUZZ_DEBUG
+#ifdef FUZZMAX_DEBUG
   if (q->mother != NULL) {
     DEBUGF("[add_to_queue] Entry: %u, cur_depth: %u, CurrEntry: %u, " cGRN
            " %s" cRST "\n",

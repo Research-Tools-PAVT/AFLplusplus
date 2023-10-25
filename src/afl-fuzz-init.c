@@ -660,7 +660,7 @@ void read_testcases(afl_state_t *afl, u8 *directory) {
 
       if (!access(dfn, F_OK)) { passed_det = 1; }
 
-#ifdef SATFUZZ_DEBUG
+#ifdef FUZZMAX_DEBUG
       DEBUGF(
           "[add_to_queue] AFL queued it for inital testing (read_testcases)\n");
 #endif
