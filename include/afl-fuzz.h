@@ -475,7 +475,11 @@ typedef struct afl_state {
   double period_pilot_tmp;
   s32    key_lv;
 
-  u8 mut_crossover;
+  u8  mut_crossover;
+  u8 *predbuf;
+  u32 nvars, npreds;
+  u32 minbuflen;
+  u8  corrupt_predmap;
 
   u8 *in_dir,          /* Input directory with test cases  */
       *out_dir,        /* Working & output directory       */
