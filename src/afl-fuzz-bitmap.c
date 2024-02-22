@@ -9,7 +9,7 @@
                         Andrea Fioraldi <andreafioraldi@gmail.com>
 
    Copyright 2016, 2017 Google Inc. All rights reserved.
-   Copyright 2019-2023 AFLplusplus Project. All rights reserved.
+   Copyright 2019-2024 AFLplusplus Project. All rights reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -458,6 +458,17 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
   if (unlikely(len == 0)) { return 0; }
 
   if (unlikely(fault == FSRV_RUN_TMOUT && afl->afl_env.afl_ignore_timeouts)) {
+
+    if (likely(afl->schedule >= FAST && afl->schedule <= RARE)) {
+
+      classify_counts(&afl->fsrv);
+      u64 cksum = hash64(afl->fsrv.trace_bits, afl->fsrv.map_size, HASH_CONST);
+
+      // Saturated increment
+      if (likely(afl->n_fuzz[cksum % N_FUZZ_SIZE] < 0xFFFFFFFF))
+        afl->n_fuzz[cksum % N_FUZZ_SIZE]++;
+
+    }
 
     return 0;
 

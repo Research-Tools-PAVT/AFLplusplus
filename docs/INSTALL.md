@@ -7,7 +7,7 @@ You can use the [Dockerfile](../Dockerfile) or just pull directly from the
 Docker Hub (for x86_64 and arm64):
 
 ```shell
-docker pull aflplusplus/aflplusplus:
+docker pull aflplusplus/aflplusplus:latest
 docker run -ti -v /location/of/your/target:/src aflplusplus/aflplusplus
 ```
 
@@ -114,10 +114,10 @@ freshly installed clang, clang++, llvm-config, gmake and coreutils, e.g.:
 # Depending on your MacOS system + brew version it is either
 export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
 # or
-export PATH="/usr/local/opt/llvm/bin:$PATH"
+export PATH="/usr/local/opt/llvm/bin:/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 # you can check with "brew info llvm"
 
-export PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/bin:$PATH"
+export PATH="/usr/local/bin:$PATH"
 export CC=clang
 export CXX=clang++
 gmake
